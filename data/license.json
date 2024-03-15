@@ -1,0 +1,10 @@
+{
+    "https://creativecommons.org/licenses/by/4.0/":{"name":"CC BY 4.0 Deed","OK":true},
+    "https://creativecommons.org/licenses/by-sa/4.0/":{"name":"CC BY-SA 4.0 Deed","OK":true},
+    "https://creativecommons.org/licenses/by-nc/4.0/":{"name":"CC BY-NC 4.0 Deed","OK":false},
+    "https://creativecommons.org/licenses/by-nc-sa/4.0/":{"name":"CC BY-NC-SA 4.0 Deed","OK":false},
+    "https://creativecommons.org/licenses/by-nd/4.0/":{"name":"CC BY-ND 4.0 Deed","OK":false},
+    "https://creativecommons.org/licenses/by-nc-nd/4.0/":{"name":"CC BY-NC-ND 4.0 Deed","OK":false},
+    "https://creativecommons.org/publicdomain/zero/1.0/":{"name":"CC0 1.0 Deed","OK":true},
+    "https://arxiv.org/licenses/nonexclusive-distrib/1.0/license.html":{"name":"arXiv.org - Non-exclusive license to distribute","OK":false}
+}
