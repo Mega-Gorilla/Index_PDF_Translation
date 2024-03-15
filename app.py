@@ -1,4 +1,4 @@
-from fastapi import FastAPI, BackgroundTasks, Depends
+from fastapi import FastAPI, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from modules.arxiv_api import get_arxiv_info_async
@@ -39,7 +39,8 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 # データベースモデルの定義
 
-# 中間テーブル
+# ---SQL テーブル---
+# 著者名テーブル
 user_authors = Table(
     "user_authors", #テーブル名
     Base.metadata,
@@ -50,6 +51,7 @@ class Author(Base):
     __tablename__ = "authors"
     id = Column(String, primary_key=True, index=True)
 
+# カテゴリーテーブル
 paper_categories = Table('paper_categories', Base.metadata,
     Column('paper_id', Integer, ForeignKey('paper_meta.id')),
     Column('category_id', String, ForeignKey('categories.id'))
@@ -59,6 +61,16 @@ class Category(Base):
 
     id = Column(String, primary_key=True, index=True)
 
+# コメントテーブル
+class Comment(Base):
+    __tablename__ = "comments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String)
+    content = Column(String)
+    created_at = Column(DateTime)
+    paper_meta_id = Column(Integer, ForeignKey("paper_meta.id"))
+    paper_meta = relationship("paper_meta_data", back_populates="comments")
 
 # 論文メタデータリスト
 class paper_meta_data(Base):
@@ -76,7 +88,10 @@ class paper_meta_data(Base):
     categories_list = relationship("Category", secondary=paper_categories)
     license = Column(String)                            #"http://creativecommons.org/licenses/by/4.0/",
     abstract = Column(String)                           #"  Large Language Models (LLMs) have demonstrated remarkable
+    abstract_jp = Column(String)
+    comments = relationship("Comment", back_populates="paper_meta")
 
+# ---FastAPI 宣言---
 class AuthorResponse(BaseModel):
     id: str
 
@@ -85,6 +100,15 @@ class AuthorResponse(BaseModel):
 
 class CategoryResponse(BaseModel):
     id: str
+
+    class Config:
+        from_attributes = True
+
+class CommentResponse(BaseModel):
+    id: int
+    user_id: str
+    content: str
+    created_at: datetime
 
     class Config:
         from_attributes = True
@@ -102,6 +126,8 @@ class PaperMetaDataResponse(BaseModel):
     categories_list: List[CategoryResponse]  # 修正
     license: str
     abstract: str
+    abstract_jp: Optional[str]
+    comments: List[CommentResponse]
 
     class Config:
         from_attributes = True
@@ -152,7 +178,8 @@ async def create_paper_meta_data(arxiv_info: dict, db: Session):
         categories=arxiv_info['categories'],
         categories_list=categories_list,
         license=arxiv_info['license'],
-        abstract=arxiv_info['abstract']
+        abstract=arxiv_info['abstract'],
+        abstract_jp = None
     )
 
     # セッションにデータを追加
@@ -177,14 +204,18 @@ async def Get_Paper_Data(arxiv_id: str, db: Session = Depends(get_db)):
         return paper_meta
 
 # --------------- DB問い合わせ ----------------
-
 @app.get("/papers/", response_model=List[PaperMetaDataResponse])
 async def get_all_papers(db: Session = Depends(get_db)):
     papers = db.query(paper_meta_data).all()
     return papers
 
-@app.get("/papers/search/", response_model=List[PaperMetaDataResponse])
+@app.get("/papers/search/name/{author_name}", response_model=List[PaperMetaDataResponse])
 async def search_papers_by_author(author_name: str, db: Session = Depends(get_db)):
+    """
+    ### 著者検索 - 名前に基づいてDBから著者検索をします。完全一致する論文リストを返します。
+    
+    - author_name: 検索名をフルネームで入力します。苗字名前の間には必ず半角スペースを入れてください。
+    """
     # 著者名が完全一致する場合を検索
     papers = db.query(paper_meta_data).join(paper_meta_data.authors).filter(
         Author.id == author_name
@@ -192,6 +223,22 @@ async def search_papers_by_author(author_name: str, db: Session = Depends(get_db
     
     return papers
 # -----------------------------------
+@app.post("/papers/{paper_id}/comments")
+async def add_comment_to_paper(paper_id: int, user_id: str, content: str, db: Session = Depends(get_db)):
+    """
+    コメントを追加する
+    """
+    paper = db.query(paper_meta_data).filter(paper_meta_data.id == paper_id).first()
+    if not paper:
+        raise HTTPException(status_code=404, detail="Paper not found")
+
+    comment = Comment(user_id=user_id, content=content, created_at=datetime.now(), paper_meta=paper)
+    db.add(comment)
+    db.commit()
+    db.refresh(comment)
+
+    return {"ok":False,"message": "Comment added successfully"}
+
 # ジョブキューを作成
 job_queue = Queue()
 
