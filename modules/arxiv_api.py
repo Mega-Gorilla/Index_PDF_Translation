@@ -114,11 +114,41 @@ async def get_arxiv_info_async(arxiv_id):
 
     return info
 
+async def download_arxiv_pdf(arxiv_id):
+    global last_request_time
+
+    # 現在の時刻を取得
+    current_time = time.time()
+
+    # 最後のリクエストからの経過時間を計算
+    elapsed_time = current_time - last_request_time
+
+    # 最後のリクエストから3秒以内の場合、残りの時間だけ待機
+    if elapsed_time < RATE_LIMIT:
+        await asyncio.sleep(RATE_LIMIT - elapsed_time)
+
+    # 最後のリクエスト時刻を更新
+    last_request_time = time.time()
+
+    # PDFのダウンロードURL
+    pdf_url = f'https://arxiv.org/pdf/{arxiv_id}.pdf'
+
+    # aiohttp を使用してPDFをダウンロード
+    async with aiohttp.ClientSession() as session:
+        async with session.get(pdf_url) as response:
+            # PDFデータを取得
+            pdf_data = await response.read()
+
+    return pdf_data
+
 if __name__ == "__main__":
     # Example usage
     async def main():
         arxiv_id = '2403.07874'  # Replace with the desired arXiv ID
         info = await get_arxiv_info_async(arxiv_id)
         print(info)
+
+        pdf_data = await download_arxiv_pdf(arxiv_id)
+        print(f'PDF downloaded. Size: {len(pdf_data)} bytes')
 
     asyncio.run(main())
