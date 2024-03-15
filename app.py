@@ -2,6 +2,7 @@ from fastapi import FastAPI, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from modules.arxiv_api import get_arxiv_info_async
+from modules.translate import translate_text
 from datetime import datetime
 from typing import List,Optional
 
@@ -84,6 +85,7 @@ class paper_meta_data(Base):
     updated = Column(DateTime)                          #2024-02-20
     authors = relationship("Author", secondary="user_authors") #[{"id": 3,"keyname": "Zhu","forenames": "Lei"},{"id": 4,"keyname": "Wei","forenames": "Fangyun"},{"id": 5,"keyname": "Lu","forenames": "Yanye"}],
     title = Column(String)                              #"The Unreasonable Effectiveness of Eccentric Automatic Prompts",
+    title_jp = Column(String)
     categories = Column(String)                         #cs.CL cs.AI cs.LG
     categories_list = relationship("Category", secondary=paper_categories)
     license = Column(String)                            #"http://creativecommons.org/licenses/by/4.0/",
@@ -122,6 +124,7 @@ class PaperMetaDataResponse(BaseModel):
     updated: Optional[datetime]
     authors: List[AuthorResponse]
     title: str
+    title_jp: Optional[str]
     categories: str
     categories_list: List[CategoryResponse]  # 修正
     license: str
@@ -175,10 +178,11 @@ async def create_paper_meta_data(arxiv_info: dict, db: Session):
         updated=datetime.strptime(arxiv_info['updated'], '%Y-%m-%d') if 'updated' in arxiv_info else None,
         authors=authors,
         title=arxiv_info['title'],
+        title_jp = None,
         categories=arxiv_info['categories'],
         categories_list=categories_list,
         license=arxiv_info['license'],
-        abstract=arxiv_info['abstract'],
+        abstract=arxiv_info['abstract'].replace("\n",""),
         abstract_jp = None
     )
 
@@ -203,9 +207,11 @@ async def Get_Paper_Data(arxiv_id: str, db: Session = Depends(get_db)):
         paper_meta = await create_paper_meta_data(arxiv_info, db)
         return paper_meta
 
-# --------------- DB問い合わせ ----------------
 @app.get("/papers/", response_model=List[PaperMetaDataResponse])
 async def get_all_papers(db: Session = Depends(get_db)):
+    """
+    DBにあるすべてのデータを取得します。
+    """
     papers = db.query(paper_meta_data).all()
     return papers
 
@@ -222,7 +228,7 @@ async def search_papers_by_author(author_name: str, db: Session = Depends(get_db
     ).all()
     
     return papers
-# -----------------------------------
+
 @app.post("/papers/{paper_id}/comments")
 async def add_comment_to_paper(paper_id: int, user_id: str, content: str, db: Session = Depends(get_db)):
     """
@@ -237,20 +243,39 @@ async def add_comment_to_paper(paper_id: int, user_id: str, content: str, db: Se
     db.commit()
     db.refresh(comment)
 
-    return {"ok":False,"message": "Comment added successfully"}
+    return {"message": "Comment added successfully"}
 
-# ジョブキューを作成
-job_queue = Queue()
+@app.post("/papers/{paper_id}/translate")
+async def traslate_abstract(paper_id:int,target_lang: str = "JA", db: Session = Depends(get_db)):
+    """
+    abstract を日本語に翻訳します。
+    """
+    # データベースに問い合わせて、指定された arxiv_id のデータを取得
+    paper = db.query(paper_meta_data).filter(paper_meta_data.id == paper_id).first()
+    if paper:
+        if not paper.abstract_jp:
+            translation_result = await translate_text(paper.abstract, target_lang)
+            if translation_result['ok']:
+                paper.abstract_jp = translation_result['data']
+            else:
+                raise HTTPException(status_code=500, detail=translation_result['message'])
+        elif not paper.title_jp:
+            translation_result = await translate_text(paper.title, target_lang)
+            if translation_result['ok']:
+                paper.title_jp = translation_result['data']
+            else:
+                raise HTTPException(status_code=500, detail=translation_result['message'])
+        else:
+            return paper
+        # データを更新した場合
+        db.commit()
+        db.refresh(paper)
+        return paper
 
-# ジョブを処理する非同期タスク
-async def process_job(arxiv_id: str):
-    try:
-        # 仮想のメタデータ取得関数を想定
-        data = await get_arxiv_info_async(arxiv_id)
-        print(f"Processed job for arxiv_id: {arxiv_id}\n{data}")
-    except Exception as e:
-        print(f"Error occurred while processing job for arxiv_id: {arxiv_id}. Error: {str(e)}")
+    else:
+        raise HTTPException(status_code=404, detail="Paper not found")
 
+    
 if __name__ == "__main__":
     #uvicorn API:app --reload   
     import uvicorn
