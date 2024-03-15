@@ -38,12 +38,27 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 # Baseモデルの作成
 Base = declarative_base()
 # データベースモデルの定義
-# 著者名リスト
+
+# 中間テーブル
+user_authors = Table(
+    "user_authors", #テーブル名
+    Base.metadata,
+    Column("paper_meta", Integer, ForeignKey("paper_meta.id")),
+    Column("author_id", String, ForeignKey("authors.id")),
+)
 class Author(Base):
     __tablename__ = "authors"
-    id = Column(Integer, primary_key=True, index=True)
-    keyname = Column(String, index=True)
-    forenames = Column(String, index=True)
+    id = Column(String, primary_key=True, index=True)
+
+paper_categories = Table('paper_categories', Base.metadata,
+    Column('paper_id', Integer, ForeignKey('paper_meta.id')),
+    Column('category_id', String, ForeignKey('categories.id'))
+)
+class Category(Base):
+    __tablename__ = "categories"
+
+    id = Column(String, primary_key=True, index=True)
+
 
 # 論文メタデータリスト
 class paper_meta_data(Base):
@@ -55,78 +70,21 @@ class paper_meta_data(Base):
     setSpec = Column(String)                            #cs
     created = Column(DateTime)                          #2024-02-09
     updated = Column(DateTime)                          #2024-02-20
-    authors = relationship("Author", secondary="user_authors")
-    title = Column(String)
-    categories = Column(String)
-    license = Column(String)
-    abstract = Column(String)
+    authors = relationship("Author", secondary="user_authors") #[{"id": 3,"keyname": "Zhu","forenames": "Lei"},{"id": 4,"keyname": "Wei","forenames": "Fangyun"},{"id": 5,"keyname": "Lu","forenames": "Yanye"}],
+    title = Column(String)                              #"The Unreasonable Effectiveness of Eccentric Automatic Prompts",
+    categories = Column(String)                         #cs.CL cs.AI cs.LG
+    categories_list = relationship("Category", secondary=paper_categories)
+    license = Column(String)                            #"http://creativecommons.org/licenses/by/4.0/",
+    abstract = Column(String)                           #"  Large Language Models (LLMs) have demonstrated remarkable
 
-# 中間テーブル
-user_authors = Table(
-    "user_authors", #テーブル名
-    Base.metadata,
-    Column("paper_meta", Integer, ForeignKey("paper_meta.id")),
-    Column("author_id", Integer, ForeignKey("authors.id")),
-)
-
-# テーブルの作成
-Base.metadata.create_all(bind=engine)
-
-# データベースセッションの取得
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-async def create_paper_meta_data(arxiv_info: dict, db: Session):
-    # 著者データの作成
-    authors = []
-    for author in arxiv_info['authors']:
-        db_author = Author(keyname=author['keyname'], forenames=author['forenames'])
-        authors.append(db_author)
-
-    # paper_meta_dataの作成
-    paper_meta = paper_meta_data(
-        identifier=arxiv_info['identifier'],
-        datestamp=datetime.strptime(arxiv_info['datestamp'], '%Y-%m-%d') if 'datestamp' in arxiv_info else None,
-        setSpec=arxiv_info['setSpec'],
-        created=datetime.strptime(arxiv_info['created'], '%Y-%m-%d') if 'created' in arxiv_info else None,
-        updated=datetime.strptime(arxiv_info['updated'], '%Y-%m-%d') if 'updated' in arxiv_info else None,
-        authors=authors,
-        title=arxiv_info['title'],
-        categories=arxiv_info['categories'],
-        license=arxiv_info['license'],
-        abstract=arxiv_info['abstract']
-    )
-
-    # セッションにデータを追加
-    db.add(paper_meta)
-    db.commit()
-    db.refresh(paper_meta)
-
-    return paper_meta
-
-@app.post("/arxiv/metadata/{arxiv_id}")
-async def create_paper(arxiv_id: str, db: Session = Depends(get_db)):
-    # データベースに問い合わせて、指定された arxiv_id のデータを取得
-    existing_paper = db.query(paper_meta_data).filter(paper_meta_data.identifier == f"oai:arXiv.org:{arxiv_id}").first()
-
-    if existing_paper:
-        # データが既に存在する場合は、そのデータを返す
-        return existing_paper
-    else:
-        # データが存在しない場合は、Arxiv からメタデータを取得し、データベースに保存
-        arxiv_info = await get_arxiv_info_async(arxiv_id)
-        paper_meta = await create_paper_meta_data(arxiv_info, db)
-        return paper_meta
-
-# --------------- DB問い合わせ ----------------
 class AuthorResponse(BaseModel):
-    id: int
-    keyname: str
-    forenames: str
+    id: str
+
+    class Config:
+        from_attributes = True
+
+class CategoryResponse(BaseModel):
+    id: str
 
     class Config:
         from_attributes = True
@@ -141,11 +99,84 @@ class PaperMetaDataResponse(BaseModel):
     authors: List[AuthorResponse]
     title: str
     categories: str
+    categories_list: List[CategoryResponse]  # 修正
     license: str
     abstract: str
 
     class Config:
         from_attributes = True
+
+# テーブルの作成
+Base.metadata.create_all(bind=engine)
+
+# データベースセッションの取得
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+async def create_paper_meta_data(arxiv_info: dict, db: Session):
+    """
+    arxiv_info: ArXivから受信した辞書配列情報
+    db: データベース
+    """
+
+    # 著者データの作成
+    authors = []
+    for author in arxiv_info['authors']:
+        author_id = f"{author['forenames']} {author['keyname']}"
+        db_author = db.query(Author).filter(Author.id == author_id).first()
+        if not db_author:
+            db_author = Author(id=author_id)
+        authors.append(db_author)
+
+    # カテゴリーリストを作成
+    categories_list = []
+    for category in arxiv_info['categories'].split():
+        db_category = db.query(Category).filter(Category.id == category).first()
+        if not db_category:
+            db_category = Category(id=category)
+        categories_list.append(db_category)
+
+    # paper_meta_dataの作成
+    paper_meta = paper_meta_data(
+        identifier=arxiv_info['identifier'],
+        datestamp=datetime.strptime(arxiv_info['datestamp'], '%Y-%m-%d') if 'datestamp' in arxiv_info else None,
+        setSpec=arxiv_info['setSpec'],
+        created=datetime.strptime(arxiv_info['created'], '%Y-%m-%d') if 'created' in arxiv_info else None,
+        updated=datetime.strptime(arxiv_info['updated'], '%Y-%m-%d') if 'updated' in arxiv_info else None,
+        authors=authors,
+        title=arxiv_info['title'],
+        categories=arxiv_info['categories'],
+        categories_list=categories_list,
+        license=arxiv_info['license'],
+        abstract=arxiv_info['abstract']
+    )
+
+    # セッションにデータを追加
+    db.add(paper_meta)
+    db.commit()
+    db.refresh(paper_meta)
+
+    return paper_meta
+
+@app.get("/arxiv/metadata/{arxiv_id}")
+async def Get_Paper_Data(arxiv_id: str, db: Session = Depends(get_db)):
+    # データベースに問い合わせて、指定された arxiv_id のデータを取得
+    existing_paper = db.query(paper_meta_data).filter(paper_meta_data.identifier == f"oai:arXiv.org:{arxiv_id}").first()
+
+    if existing_paper:
+        # データが既に存在する場合は、そのデータを返す
+        return existing_paper
+    else:
+        # データが存在しない場合は、Arxiv からメタデータを取得し、データベースに保存
+        arxiv_info = await get_arxiv_info_async(arxiv_id)
+        paper_meta = await create_paper_meta_data(arxiv_info, db)
+        return paper_meta
+
+# --------------- DB問い合わせ ----------------
 
 @app.get("/papers/", response_model=List[PaperMetaDataResponse])
 async def get_all_papers(db: Session = Depends(get_db)):
@@ -154,9 +185,9 @@ async def get_all_papers(db: Session = Depends(get_db)):
 
 @app.get("/papers/search/", response_model=List[PaperMetaDataResponse])
 async def search_papers_by_author(author_name: str, db: Session = Depends(get_db)):
-    # 著者名を "keyname forenames" の形式で検索
+    # 著者名が完全一致する場合を検索
     papers = db.query(paper_meta_data).join(paper_meta_data.authors).filter(
-        func.concat(Author.keyname, ' ', Author.forenames).ilike(f"%{author_name}%")
+        Author.id == author_name
     ).all()
     
     return papers
