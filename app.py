@@ -1,16 +1,17 @@
-from fastapi import FastAPI, BackgroundTasks, Depends, HTTPException
+from fastapi import FastAPI, BackgroundTasks, Depends, HTTPException,status
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from modules.arxiv_api import get_arxiv_info_async
 from modules.translate import translate_text
 from datetime import datetime
 from typing import List,Optional
+import json
 
 from queue import Queue
 import os
 
 import psycopg2
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, Table, ForeignKey,func
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, Table, ForeignKey
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship, Session
 
@@ -92,6 +93,8 @@ class paper_meta_data(Base):
     abstract = Column(String)                           #"  Large Language Models (LLMs) have demonstrated remarkable
     abstract_jp = Column(String)
     comments = relationship("Comment", back_populates="paper_meta")
+    good = Column(Integer, index=True)
+    bad = Column(Integer)
 
 # ---FastAPI 宣言---
 class AuthorResponse(BaseModel):
@@ -131,6 +134,8 @@ class PaperMetaDataResponse(BaseModel):
     abstract: str
     abstract_jp: Optional[str]
     comments: List[CommentResponse]
+    good: Optional[int]
+    bad:  Optional[int]
 
     class Config:
         from_attributes = True
@@ -183,7 +188,9 @@ async def create_paper_meta_data(arxiv_info: dict, db: Session):
         categories_list=categories_list,
         license=arxiv_info['license'],
         abstract=arxiv_info['abstract'].replace("\n",""),
-        abstract_jp = None
+        abstract_jp = None,
+        good = 0,
+        bad = 0
     )
 
     # セッションにデータを追加
@@ -229,11 +236,12 @@ async def search_papers_by_author(author_name: str, db: Session = Depends(get_db
     
     return papers
 
-@app.post("/papers/{paper_id}/comments")
+@app.post("/papers/{paper_id}/comments", status_code=status.HTTP_501_NOT_IMPLEMENTED)
 async def add_comment_to_paper(paper_id: int, user_id: str, content: str, db: Session = Depends(get_db)):
     """
     コメントを追加する
     """
+    raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail="This endpoint is not implemented yet")
     paper = db.query(paper_meta_data).filter(paper_meta_data.id == paper_id).first()
     if not paper:
         raise HTTPException(status_code=404, detail="Paper not found")
@@ -245,14 +253,26 @@ async def add_comment_to_paper(paper_id: int, user_id: str, content: str, db: Se
 
     return {"message": "Comment added successfully"}
 
+def load_license_data():
+    with open('data/license.json', 'r') as f:
+        return json.load(f)
+
 @app.post("/papers/{paper_id}/translate")
 async def traslate_abstract(paper_id:int,target_lang: str = "JA", db: Session = Depends(get_db)):
     """
     abstract を日本語に翻訳します。
     """
+    # ライセンスデータを読み込み
+    license_data = load_license_data()
+
     # データベースに問い合わせて、指定された arxiv_id のデータを取得
     paper = db.query(paper_meta_data).filter(paper_meta_data.id == paper_id).first()
     if paper:
+        # ライセンスが許可されているか検証
+        license_ok = license_data.get(paper.license, {}).get("OK", False)
+        if not license_ok:
+            raise HTTPException(status_code=400, detail="License not permitted for translation")
+
         if not paper.abstract_jp:
             translation_result = await translate_text(paper.abstract, target_lang)
             if translation_result['ok']:
@@ -275,6 +295,30 @@ async def traslate_abstract(paper_id:int,target_lang: str = "JA", db: Session = 
     else:
         raise HTTPException(status_code=404, detail="Paper not found")
 
+@app.post("/papers/{paper_id}/vote", status_code=status.HTTP_501_NOT_IMPLEMENTED)
+async def update_paper_vote(paper_id: int, vote_type: str, db: Session = Depends(get_db)):
+    """
+    指定された論文のgood数またはbad数を更新します。呼ばれた際、+1します。(認証追加後実装)
+    
+    - vote_type: "good" or "bad"
+    """
+    raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail="This endpoint is not implemented yet")
+    paper = db.query(paper_meta_data).filter(paper_meta_data.id == paper_id).first()
+
+    if not paper:
+        raise HTTPException(status_code=404, detail="Paper not found")
+
+    if vote_type == "good":
+        paper.good = (paper.good or 0) + 1
+    elif vote_type == "bad":
+        paper.bad = (paper.bad or 0) + 1
+    else:
+        raise HTTPException(status_code=400, detail="Invalid vote type")
+
+    db.commit()
+    db.refresh(paper)
+
+    return {"message": "Vote updated successfully"}
     
 if __name__ == "__main__":
     #uvicorn API:app --reload   
