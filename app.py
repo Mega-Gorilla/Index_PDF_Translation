@@ -264,7 +264,6 @@ async def traslate_abstract(paper_id:int,target_lang: str = "JA", db: Session = 
     """
     # ライセンスデータを読み込み
     license_data = load_license_data()
-
     # データベースに問い合わせて、指定された arxiv_id のデータを取得
     paper = db.query(paper_meta_data).filter(paper_meta_data.id == paper_id).first()
     if paper:
@@ -272,19 +271,20 @@ async def traslate_abstract(paper_id:int,target_lang: str = "JA", db: Session = 
         license_ok = license_data.get(paper.license, {}).get("OK", False)
         if not license_ok:
             raise HTTPException(status_code=400, detail="License not permitted for translation")
-
-        if not paper.abstract_jp:
-            translation_result = await translate_text(paper.abstract, target_lang)
-            if translation_result['ok']:
-                paper.abstract_jp = translation_result['data']
-            else:
-                raise HTTPException(status_code=500, detail=translation_result['message'])
-        elif not paper.title_jp:
-            translation_result = await translate_text(paper.title, target_lang)
-            if translation_result['ok']:
-                paper.title_jp = translation_result['data']
-            else:
-                raise HTTPException(status_code=500, detail=translation_result['message'])
+        
+        if not paper.abstract_jp or not paper.title_jp:
+            if not paper.abstract_jp:
+                translation_result = await translate_text(paper.abstract, target_lang)
+                if translation_result['ok']:
+                    paper.abstract_jp = translation_result['data']
+                else:
+                    raise HTTPException(status_code=500, detail=translation_result['message'])
+            if not paper.title_jp:
+                translation_result = await translate_text(paper.title, target_lang)
+                if translation_result['ok']:
+                    paper.title_jp = translation_result['data']
+                else:
+                    raise HTTPException(status_code=500, detail=translation_result['message'])
         else:
             return paper
         # データを更新した場合
