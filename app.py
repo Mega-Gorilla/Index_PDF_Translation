@@ -11,7 +11,7 @@ from queue import Queue
 import os
 
 import psycopg2
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, Table, ForeignKey
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, Table, ForeignKey,Boolean
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship, Session
 
@@ -63,6 +63,19 @@ class Category(Base):
 
     id = Column(String, primary_key=True, index=True)
 
+# ユーザーアブストテーブル
+class AbstractUser(Base):
+    __tablename__ = "abstract_user"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String)
+    lang = Column(String,index=True)
+    like = Column(Integer)
+    content = Column(String)
+    created_at = Column(DateTime)
+    paper_meta_id = Column(Integer, ForeignKey("paper_meta.id"))
+    paper_meta = relationship("paper_meta_data", back_populates="abstract_user")
+
 # コメントテーブル
 class Comment(Base):
     __tablename__ = "comments"
@@ -70,6 +83,7 @@ class Comment(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(String)
     content = Column(String)
+    lang = Column(String,index=True)
     created_at = Column(DateTime)
     paper_meta_id = Column(Integer, ForeignKey("paper_meta.id"))
     paper_meta = relationship("paper_meta_data", back_populates="comments")
@@ -89,12 +103,15 @@ class paper_meta_data(Base):
     title_jp = Column(String)
     categories = Column(String)                         #cs.CL cs.AI cs.LG
     categories_list = relationship("Category", secondary=paper_categories)
-    license = Column(String)                            #"http://creativecommons.org/licenses/by/4.0/",
+    license = Column(String)                            #"http://creativecommons.org/licenses/by/4.0/"
+    license_bool =Column(Boolean)
     abstract = Column(String)                           #"  Large Language Models (LLMs) have demonstrated remarkable
-    abstract_jp = Column(String)
-    comments = relationship("Comment", back_populates="paper_meta")
+    abstract_jp = Column(String)                        # Abstract 日本語版
+    abstract_user = relationship("AbstractUser", back_populates="paper_meta")   # Userに提供された Abstract
+    comments = relationship("Comment", back_populates="paper_meta")             # Userによるコメント
     good = Column(Integer, index=True)
     bad = Column(Integer)
+    favorite = Column(Integer)
 
 # ---FastAPI 宣言---
 class AuthorResponse(BaseModel):
@@ -113,12 +130,25 @@ class CommentResponse(BaseModel):
     id: int
     user_id: str
     content: str
+    lang: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class AbstractUserResponse(BaseModel):
+    id: int
+    user_id: str
+    lang: str
+    like: int
+    content: str
     created_at: datetime
 
     class Config:
         from_attributes = True
 
 class PaperMetaDataResponse(BaseModel):
+    #　追加した場合、paper_meta_dataと、 paper_meta = paper_meta_dataを修正し、DBに列を追加のこと
     id: int
     identifier: str
     datestamp: datetime
@@ -131,11 +161,14 @@ class PaperMetaDataResponse(BaseModel):
     categories: str
     categories_list: List[CategoryResponse]  # 修正
     license: str
+    license_bool : Optional[bool]
     abstract: str
     abstract_jp: Optional[str]
+    abstract_user: List[AbstractUserResponse]
     comments: List[CommentResponse]
     good: Optional[int]
     bad:  Optional[int]
+    favorite: Optional[int]
 
     class Config:
         from_attributes = True
@@ -173,6 +206,13 @@ async def create_paper_meta_data(arxiv_info: dict, db: Session):
         if not db_category:
             db_category = Category(id=category)
         categories_list.append(db_category)
+    
+    # ライセンスの確認
+    # ライセンスデータを読み込み
+    license_data = load_license_data()
+    # データベースに問い合わせて、指定された arxiv_id のデータを取得
+    license = arxiv_info['license']
+    license_ok = license_data.get(license, {}).get("OK", False)
 
     # paper_meta_dataの作成
     paper_meta = paper_meta_data(
@@ -187,10 +227,13 @@ async def create_paper_meta_data(arxiv_info: dict, db: Session):
         categories=arxiv_info['categories'],
         categories_list=categories_list,
         license=arxiv_info['license'],
+        license_bool = license_ok,
         abstract=arxiv_info['abstract'].replace("\n",""),
         abstract_jp = None,
+        abstract_user = [],
         good = 0,
-        bad = 0
+        bad = 0,
+        favorite = 0
     )
 
     # セッションにデータを追加
@@ -202,7 +245,10 @@ async def create_paper_meta_data(arxiv_info: dict, db: Session):
 
 @app.get("/arxiv/metadata/{arxiv_id}")
 async def Get_Paper_Data(arxiv_id: str, db: Session = Depends(get_db)):
-    # データベースに問い合わせて、指定された arxiv_id のデータを取得
+    """
+    ArXiv IDより、自社DBのデータを参照します。存在しない場合はArXiv APIに問い合わせ実施する。
+    """
+    # 自社データベースに問い合わせて、指定された arxiv_id のデータを取得
     existing_paper = db.query(paper_meta_data).filter(paper_meta_data.identifier == f"oai:arXiv.org:{arxiv_id}").first()
 
     if existing_paper:
@@ -236,22 +282,38 @@ async def search_papers_by_author(author_name: str, db: Session = Depends(get_db
     
     return papers
 
-@app.post("/papers/{paper_id}/comments", status_code=status.HTTP_501_NOT_IMPLEMENTED)
-async def add_comment_to_paper(paper_id: int, user_id: str, content: str, db: Session = Depends(get_db)):
+@app.post("/papers/{paper_id}/comments")
+async def add_comment_to_paper(paper_id: int, user_id: str, content: str, lang: str, db: Session = Depends(get_db)):
     """
     コメントを追加する
     """
-    raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail="This endpoint is not implemented yet")
+    #raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail="This endpoint is not implemented yet")
     paper = db.query(paper_meta_data).filter(paper_meta_data.id == paper_id).first()
     if not paper:
         raise HTTPException(status_code=404, detail="Paper not found")
 
-    comment = Comment(user_id=user_id, content=content, created_at=datetime.now(), paper_meta=paper)
+    comment = Comment(user_id=user_id, content=content,lang=lang, created_at=datetime.now(), paper_meta=paper)
     db.add(comment)
     db.commit()
     db.refresh(comment)
 
     return {"message": "Comment added successfully"}
+
+@app.post("/papers/{paper_id}/usr_abstracts")
+async def add_abstract_to_paper(paper_id: int, user_id: str, lang: str, like: int, content: str, db: Session = Depends(get_db)):
+    """
+    特定の論文に対するユーザー抽象を追加する
+    """
+    paper = db.query(paper_meta_data).filter(paper_meta_data.id == paper_id).first()
+    if not paper:
+        raise HTTPException(status_code=404, detail="Paper not found")
+
+    abstract_user = AbstractUser(user_id=user_id, lang=lang, like=like, content=content, created_at=datetime.now(), paper_meta_id=paper_id)
+    db.add(abstract_user)
+    db.commit()
+    db.refresh(abstract_user)
+
+    return {"message": "Abstract added successfully"}
 
 def load_license_data():
     with open('data/license.json', 'r') as f:
