@@ -31,90 +31,7 @@ app.add_middleware(
     allow_headers=["*"], #ブラウザからアクセスできるようにするレスポンスヘッダーを示します
 )
 
-# --------------- FastAPI用 DB型宣言 ---------------
-class AuthorResponse(BaseModel):
-    id: str
 
-    class Config:
-        from_attributes = True
-
-class TitleResponse(BaseModel):
-    en: Optional[str]
-    ja: Optional[str]
-    paper_meta_id: Optional[int]
-    
-    class Config:
-        from_attributes = True
-
-class CategoryResponse(BaseModel):
-    id: str
-
-    class Config:
-        from_attributes = True
-
-class CommentResponse(BaseModel):
-    id: int
-    user_id: str
-    content: str
-    lang: Optional[str]
-    created_at: datetime
-    paper_meta_id: Optional[int]
-
-    class Config:
-        from_attributes = True
-
-class AbstractResponse(BaseModel):
-    en: Optional[str]
-    ja: Optional[str]
-    paper_meta_id: Optional[int]
-
-    class Config:
-        from_attributes = True
-
-class AbstractUserResponse(BaseModel):
-    id: int
-    user_id: str
-    lang: Optional[str]
-    like: int
-    content: str
-    created_at: datetime
-    paper_meta_id: Optional[int]
-
-    class Config:
-        from_attributes = True
-
-class PdfURLResponse(BaseModel):
-    en: Optional[str]
-    ja: Optional[str]
-    paper_meta_id: Optional[int]
-
-    class Config:
-        from_attributes = True
-
-class PaperMetaDataResponse(BaseModel):
-    #　追加した場合、paper_meta_dataと、 paper_meta = paper_meta_dataを修正し、DBに列を追加のこと
-    id: int
-    identifier: str
-    datestamp: datetime
-    setSpec: str
-    created: datetime
-    updated: Optional[datetime]
-    authors: List[AuthorResponse]
-    title: List[TitleResponse]
-    categories: str
-    categories_list: List[CategoryResponse] 
-    license: str
-    license_bool : bool
-    abstract: List[AbstractResponse]
-    abstract_user: List[AbstractUserResponse]
-    pdf_url: List[PdfURLResponse]
-    comments: List[CommentResponse]
-    good: int
-    bad:  int
-    favorite: int
-
-    class Config:
-        from_attributes = True
 
 # テーブルの作成
 Base.metadata.create_all(bind=engine)
@@ -248,6 +165,7 @@ async def create_user(user: UserCreate, db: Session = Depends(get_db)):
 
     return {"message": "User created successfully"}
 # --------------- Paper meta DB用処理 ---------------
+
 async def create_paper_meta_data(arxiv_info: dict, db: Session):
     """
     arxiv_info: ArXivから受信した辞書配列情報
@@ -340,6 +258,90 @@ async def Get_Paper_Data(arxiv_id: str, db: Session = Depends(get_db)):
         arxiv_info = await get_arxiv_info_async(arxiv_id)
         paper_meta = await create_paper_meta_data(arxiv_info, db)
         return paper_meta
+    
+class AuthorResponse(BaseModel):
+    id: str
+
+    class Config:
+        from_attributes = True
+
+class TitleResponse(BaseModel):
+    en: Optional[str]
+    ja: Optional[str]
+    paper_meta_id: Optional[int]
+    
+    class Config:
+        from_attributes = True
+
+class CategoryResponse(BaseModel):
+    id: str
+
+    class Config:
+        from_attributes = True
+
+class CommentResponse(BaseModel):
+    id: int
+    user_id: str
+    content: str
+    lang: Optional[str]
+    created_at: datetime
+    paper_meta_id: Optional[int]
+
+    class Config:
+        from_attributes = True
+
+class AbstractResponse(BaseModel):
+    en: Optional[str]
+    ja: Optional[str]
+    paper_meta_id: Optional[int]
+
+    class Config:
+        from_attributes = True
+
+class AbstractUserResponse(BaseModel):
+    id: int
+    user_id: str
+    lang: Optional[str]
+    like: int
+    content: str
+    created_at: datetime
+    paper_meta_id: Optional[int]
+
+    class Config:
+        from_attributes = True
+
+class PdfURLResponse(BaseModel):
+    en: Optional[str]
+    ja: Optional[str]
+    paper_meta_id: Optional[int]
+
+    class Config:
+        from_attributes = True
+
+class PaperMetaDataResponse(BaseModel):
+    #　追加した場合、paper_meta_dataと、 paper_meta = paper_meta_dataを修正し、DBに列を追加のこと
+    id: int
+    identifier: str
+    datestamp: datetime
+    setSpec: str
+    created: datetime
+    updated: Optional[datetime]
+    authors: List[AuthorResponse]
+    title: List[TitleResponse]
+    categories: str
+    categories_list: List[CategoryResponse] 
+    license: str
+    license_bool : bool
+    abstract: List[AbstractResponse]
+    abstract_user: List[AbstractUserResponse]
+    pdf_url: List[PdfURLResponse]
+    comments: List[CommentResponse]
+    good: int
+    bad:  int
+    favorite: int
+
+    class Config:
+        from_attributes = True
 
 @app.get("/papers/", response_model=List[PaperMetaDataResponse])
 async def get_all_papers(db: Session = Depends(get_db)):
@@ -364,7 +366,11 @@ async def search_papers_by_author(author_name: str, db: Session = Depends(get_db
     return papers
 
 @app.post("/papers/{paper_id}/comments")
-async def add_comment_to_paper(paper_id: int, user_id: str, content: str, lang: str, db: Session = Depends(get_db)):
+async def add_comment_to_paper(paper_id: int, 
+                               content: str, 
+                               lang: str, 
+                               db: Session = Depends(get_db),
+                               current_user: User = Depends(get_current_active_user)):
     """
     コメントを追加する
     """
@@ -373,7 +379,7 @@ async def add_comment_to_paper(paper_id: int, user_id: str, content: str, lang: 
     if not paper:
         raise HTTPException(status_code=404, detail="Paper not found")
 
-    comment = Comment(user_id=user_id, content=content,lang=lang, created_at=datetime.now(), paper_meta=paper)
+    comment = Comment(user_id=current_user.username, content=content,lang=lang, created_at=datetime.now(), paper_meta=paper)
     db.add(comment)
     db.commit()
     db.refresh(comment)
@@ -409,14 +415,17 @@ async def add_abstract_to_paper(
 
     return {"message": "Abstract added successfully"}
 
+async def translate_pdf(arxiv_id):
+   pass 
+
 def load_license_data():
     with open('data/license.json', 'r') as f:
         return json.load(f)
 
 @app.post("/papers/{paper_id}/translate")
-async def traslate_abstract(paper_id:int,target_lang: str = "JA", db: Session = Depends(get_db)):
+async def traslate_paper_data(paper_id:int,target_lang: str = "JA", db: Session = Depends(get_db)):
     """
-    abstract を日本語に翻訳します。
+    abstract およびPDF を日本語に翻訳します。
     """
     # ライセンスデータを読み込み
     license_data = load_license_data()
@@ -448,12 +457,14 @@ async def traslate_abstract(paper_id:int,target_lang: str = "JA", db: Session = 
         db.commit()
         db.refresh(paper)
         return paper
-
     else:
         raise HTTPException(status_code=404, detail="Paper not found")
 
 @app.post("/papers/{paper_id}/vote")
-async def update_paper_vote(paper_id: int, vote_type: str, db: Session = Depends(get_db)):
+async def update_paper_vote(paper_id: int, 
+                            vote_type: str, 
+                            db: Session = Depends(get_db),
+                            current_user: User = Depends(get_current_active_user),):
     """
     指定された論文のgood数またはbad数を更新します。呼ばれた際、+1します。(認証追加後実装)
     
