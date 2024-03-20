@@ -1,19 +1,21 @@
 from fastapi import FastAPI, BackgroundTasks, Depends, HTTPException,status
-from pydantic import BaseModel
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
+
+from typing import List,Optional,Union
+from pydantic import BaseModel
+from datetime import datetime, timedelta, timezone
+from jose import JWTError, jwt
+import json
+from queue import Queue
+import psycopg2
+from passlib.context import CryptContext
+
 from modules.arxiv_api import get_arxiv_info_async
 from modules.translate import translate_text
-from datetime import datetime
-from typing import List,Optional
-import json
+from modules.database import *
 
-from queue import Queue
-import os
-
-import psycopg2
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, Table, ForeignKey,Boolean
-from sqlalchemy.orm import declarative_base
-from sqlalchemy.orm import sessionmaker, relationship, Session
+from sqlalchemy.orm import  Session
 
 app = FastAPI()
 
@@ -29,94 +31,18 @@ app.add_middleware(
     allow_headers=["*"], #ブラウザからアクセスできるようにするレスポンスヘッダーを示します
 )
 
-# --------------- DB設定 ----------------
-# PostgreSQLデータベースの接続設定
-SQLALCHEMY_DATABASE_URL = os.environ.get('render-db-url')
-# SQLAlchemyエンジンの作成
-engine = create_engine(SQLALCHEMY_DATABASE_URL)
-# セッションの作成 (autocommitとautoflushはFalseに設定され、明示的にコミットやフラッシュを行う必要があります。)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-# Baseモデルの作成
-Base = declarative_base()
-# データベースモデルの定義
-
-# ---SQL テーブル---
-# 著者名テーブル
-user_authors = Table(
-    "user_authors", #テーブル名
-    Base.metadata,
-    Column("paper_meta", Integer, ForeignKey("paper_meta.id")),
-    Column("author_id", String, ForeignKey("authors.id")),
-)
-class Author(Base):
-    __tablename__ = "authors"
-    id = Column(String, primary_key=True, index=True)
-
-# カテゴリーテーブル
-paper_categories = Table('paper_categories', Base.metadata,
-    Column('paper_id', Integer, ForeignKey('paper_meta.id')),
-    Column('category_id', String, ForeignKey('categories.id'))
-)
-class Category(Base):
-    __tablename__ = "categories"
-
-    id = Column(String, primary_key=True, index=True)
-
-# ユーザーアブストテーブル
-class AbstractUser(Base):
-    __tablename__ = "abstract_user"
-
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(String)
-    lang = Column(String,index=True)
-    like = Column(Integer)
-    content = Column(String)
-    created_at = Column(DateTime)
-    paper_meta_id = Column(Integer, ForeignKey("paper_meta.id"))
-    paper_meta = relationship("paper_meta_data", back_populates="abstract_user")
-
-# コメントテーブル
-class Comment(Base):
-    __tablename__ = "comments"
-
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(String)
-    content = Column(String)
-    lang = Column(String,index=True)
-    created_at = Column(DateTime)
-    paper_meta_id = Column(Integer, ForeignKey("paper_meta.id"))
-    paper_meta = relationship("paper_meta_data", back_populates="comments")
-
-# 論文メタデータリスト
-class paper_meta_data(Base):
-    __tablename__ = "paper_meta"
-
-    id = Column(Integer, primary_key=True, index=True)  #2402.10949
-    identifier = Column(String, index=True)             #oai:arXiv.org:2402.10949
-    datestamp = Column(DateTime, index=True)            #2024-02-21
-    setSpec = Column(String)                            #cs
-    created = Column(DateTime)                          #2024-02-09
-    updated = Column(DateTime)                          #2024-02-20
-    authors = relationship("Author", secondary="user_authors") #[{"id": 3,"keyname": "Zhu","forenames": "Lei"},{"id": 4,"keyname": "Wei","forenames": "Fangyun"},{"id": 5,"keyname": "Lu","forenames": "Yanye"}],
-    title = Column(String)                              #"The Unreasonable Effectiveness of Eccentric Automatic Prompts",
-    title_jp = Column(String)
-    categories = Column(String)                         #cs.CL cs.AI cs.LG
-    categories_list = relationship("Category", secondary=paper_categories)
-    license = Column(String)                            #"http://creativecommons.org/licenses/by/4.0/"
-    license_bool =Column(Boolean)
-    abstract = Column(String)                           #"  Large Language Models (LLMs) have demonstrated remarkable
-    abstract_jp = Column(String)                        # Abstract 日本語版
-    abstract_user = relationship("AbstractUser", back_populates="paper_meta")   # Userに提供された Abstract
-    comments = relationship("Comment", back_populates="paper_meta")             # Userによるコメント
-    good = Column(Integer, index=True)
-    bad = Column(Integer)
-    favorite = Column(Integer)
-
-# ---FastAPI 宣言---
+# --------------- FastAPI用 DB型宣言 ---------------
 class AuthorResponse(BaseModel):
     id: str
 
+    class Config:
+        from_attributes = True
+
+class TitleResponse(BaseModel):
+    en: Optional[str]
+    ja: Optional[str]
+    paper_meta_id: Optional[int]
+    
     class Config:
         from_attributes = True
 
@@ -130,8 +56,17 @@ class CommentResponse(BaseModel):
     id: int
     user_id: str
     content: str
-    lang: str
+    lang: Optional[str]
     created_at: datetime
+    paper_meta_id: Optional[int]
+
+    class Config:
+        from_attributes = True
+
+class AbstractResponse(BaseModel):
+    en: Optional[str]
+    ja: Optional[str]
+    paper_meta_id: Optional[int]
 
     class Config:
         from_attributes = True
@@ -139,10 +74,19 @@ class CommentResponse(BaseModel):
 class AbstractUserResponse(BaseModel):
     id: int
     user_id: str
-    lang: str
+    lang: Optional[str]
     like: int
     content: str
     created_at: datetime
+    paper_meta_id: Optional[int]
+
+    class Config:
+        from_attributes = True
+
+class PdfURLResponse(BaseModel):
+    en: Optional[str]
+    ja: Optional[str]
+    paper_meta_id: Optional[int]
 
     class Config:
         from_attributes = True
@@ -156,19 +100,18 @@ class PaperMetaDataResponse(BaseModel):
     created: datetime
     updated: Optional[datetime]
     authors: List[AuthorResponse]
-    title: str
-    title_jp: Optional[str]
+    title: List[TitleResponse]
     categories: str
-    categories_list: List[CategoryResponse]  # 修正
+    categories_list: List[CategoryResponse] 
     license: str
-    license_bool : Optional[bool]
-    abstract: str
-    abstract_jp: Optional[str]
+    license_bool : bool
+    abstract: List[AbstractResponse]
     abstract_user: List[AbstractUserResponse]
+    pdf_url: List[PdfURLResponse]
     comments: List[CommentResponse]
-    good: Optional[int]
-    bad:  Optional[int]
-    favorite: Optional[int]
+    good: int
+    bad:  int
+    favorite: int
 
     class Config:
         from_attributes = True
@@ -184,6 +127,127 @@ def get_db():
     finally:
         db.close()
 
+# --------------- User DB用処理 ---------------
+SECRET_KEY = "09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7"
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
+
+import logging
+logging.getLogger('passlib').setLevel(logging.ERROR)  # 追加
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+class TokenData(BaseModel):
+    username: Union[str, None] = None
+
+class User(BaseModel):
+    username: str
+    email: Union[str, None] = None
+    full_name: Union[str, None] = None
+    disabled: Union[bool, None] = None
+
+class UserInDB(User):
+    hashed_password: str
+
+def verify_password(plain_password, hashed_password):
+    return pwd_context.verify(plain_password, hashed_password)
+
+def get_password_hash(password):
+    return pwd_context.hash(password)
+
+def get_user(db: Session, username: str):
+    return db.query(UserDB).filter(UserDB.username == username).first()
+
+def authenticate_user(db: Session, username: str, password: str):
+    user = get_user(db, username)
+    if not user:
+        return False
+    if not verify_password(password, user.hashed_password):
+        return False
+    return user
+
+def create_access_token(data: dict, expires_delta: Union[timedelta, None] = None):
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.now(timezone.utc) + expires_delta
+    else:
+        expire = datetime.now(timezone.utc) + timedelta(minutes=15)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None:
+            raise credentials_exception
+        token_data = TokenData(username=username)
+    except JWTError:
+        raise credentials_exception
+    user = get_user(db, username=token_data.username)
+    if user is None:
+        raise credentials_exception
+    return user
+
+async def get_current_active_user(current_user: User = Depends(get_current_user)):
+    if current_user.disabled:
+        raise HTTPException(status_code=400, detail="Inactive user")
+    return current_user
+
+# --------------- セキュリティエンドポイント ----------------
+
+@app.post("/token",tags=['UserData'])
+async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)) -> Token:
+    user = authenticate_user(db, form_data.username, form_data.password)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": user.username}, expires_delta=access_token_expires
+    )
+    return Token(access_token=access_token, token_type="bearer")
+
+class UserCreate(BaseModel):
+    username: str
+    email: str
+    full_name: str
+    password: str
+
+@app.post("/users/",tags=['UserData'])
+async def create_user(user: UserCreate, db: Session = Depends(get_db)):
+    # パスワードのハッシュ化
+    hashed_password = get_password_hash(user.password)
+
+    # 新しいユーザーを作成
+    db_user = UserDB(
+        username=user.username,
+        email=user.email,
+        full_name=user.full_name,
+        hashed_password=hashed_password,
+    )
+
+    # ユーザーをデータベースに追加
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+
+    return {"message": "User created successfully"}
+# --------------- Paper meta DB用処理 ---------------
 async def create_paper_meta_data(arxiv_info: dict, db: Session):
     """
     arxiv_info: ArXivから受信した辞書配列情報
@@ -208,9 +272,7 @@ async def create_paper_meta_data(arxiv_info: dict, db: Session):
         categories_list.append(db_category)
     
     # ライセンスの確認
-    # ライセンスデータを読み込み
     license_data = load_license_data()
-    # データベースに問い合わせて、指定された arxiv_id のデータを取得
     license = arxiv_info['license']
     license_ok = license_data.get(license, {}).get("OK", False)
 
@@ -222,15 +284,15 @@ async def create_paper_meta_data(arxiv_info: dict, db: Session):
         created=datetime.strptime(arxiv_info['created'], '%Y-%m-%d') if 'created' in arxiv_info else None,
         updated=datetime.strptime(arxiv_info['updated'], '%Y-%m-%d') if 'updated' in arxiv_info else None,
         authors=authors,
-        title=arxiv_info['title'],
-        title_jp = None,
+        title=[],
         categories=arxiv_info['categories'],
         categories_list=categories_list,
         license=arxiv_info['license'],
         license_bool = license_ok,
-        abstract=arxiv_info['abstract'].replace("\n",""),
-        abstract_jp = None,
+        abstract=[],
         abstract_user = [],
+        pdf_url = [],
+        comments = [],
         good = 0,
         bad = 0,
         favorite = 0
@@ -238,6 +300,25 @@ async def create_paper_meta_data(arxiv_info: dict, db: Session):
 
     # セッションにデータを追加
     db.add(paper_meta)
+    db.commit()
+
+    # Titleインスタンスを作成
+    title = TitleMain(
+        en=arxiv_info['title'].replace("\n", ""),
+        ja=None,
+        paper_meta_id=paper_meta.id  # paper_meta_data の id を使用
+    )
+    db.add(title)
+
+    # AbstractResponseインスタンスを作成
+    abstract = AbstractMain(
+        en=arxiv_info['abstract'].replace("\n", ""),
+        ja=None,
+        paper_meta_id=paper_meta.id  # paper_meta_data の id を使用
+    )
+    db.add(abstract)
+    
+    # セッションにデータを追加
     db.commit()
     db.refresh(paper_meta)
 
@@ -300,15 +381,28 @@ async def add_comment_to_paper(paper_id: int, user_id: str, content: str, lang: 
     return {"message": "Comment added successfully"}
 
 @app.post("/papers/{paper_id}/usr_abstracts")
-async def add_abstract_to_paper(paper_id: int, user_id: str, lang: str, like: int, content: str, db: Session = Depends(get_db)):
+async def add_abstract_to_paper(
+    paper_id: int,
+    lang: str,
+    content: str,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
     """
-    特定の論文に対するユーザー抽象を追加する
+    特定の論文に対するユーザー要約を追加する
     """
     paper = db.query(paper_meta_data).filter(paper_meta_data.id == paper_id).first()
     if not paper:
         raise HTTPException(status_code=404, detail="Paper not found")
 
-    abstract_user = AbstractUser(user_id=user_id, lang=lang, like=like, content=content, created_at=datetime.now(), paper_meta_id=paper_id)
+    abstract_user = AbstractUser(
+        user_id=current_user.username,
+        lang=lang,
+        like=0,
+        content=content,
+        created_at=datetime.now(),
+        paper_meta_id=paper_id,
+    )
     db.add(abstract_user)
     db.commit()
     db.refresh(abstract_user)
@@ -329,22 +423,23 @@ async def traslate_abstract(paper_id:int,target_lang: str = "JA", db: Session = 
     # データベースに問い合わせて、指定された arxiv_id のデータを取得
     paper = db.query(paper_meta_data).filter(paper_meta_data.id == paper_id).first()
     if paper:
+
         # ライセンスが許可されているか検証
         license_ok = license_data.get(paper.license, {}).get("OK", False)
         if not license_ok:
             raise HTTPException(status_code=400, detail="License not permitted for translation")
         
-        if not paper.abstract_jp or not paper.title_jp:
-            if not paper.abstract_jp:
-                translation_result = await translate_text(paper.abstract, target_lang)
+        if not paper.abstract[0].ja or not paper.title[0].ja:
+            if not paper.abstract[0].ja:
+                translation_result = await translate_text(paper.abstract[0].en, target_lang)
                 if translation_result['ok']:
-                    paper.abstract_jp = translation_result['data']
+                    paper.abstract[0].ja = translation_result['data']
                 else:
                     raise HTTPException(status_code=500, detail=translation_result['message'])
-            if not paper.title_jp:
-                translation_result = await translate_text(paper.title, target_lang)
+            if not paper.title[0].ja:
+                translation_result = await translate_text(paper.title[0].en, target_lang)
                 if translation_result['ok']:
-                    paper.title_jp = translation_result['data']
+                    paper.title[0].ja = translation_result['data']
                 else:
                     raise HTTPException(status_code=500, detail=translation_result['message'])
         else:
@@ -357,14 +452,13 @@ async def traslate_abstract(paper_id:int,target_lang: str = "JA", db: Session = 
     else:
         raise HTTPException(status_code=404, detail="Paper not found")
 
-@app.post("/papers/{paper_id}/vote", status_code=status.HTTP_501_NOT_IMPLEMENTED)
+@app.post("/papers/{paper_id}/vote")
 async def update_paper_vote(paper_id: int, vote_type: str, db: Session = Depends(get_db)):
     """
     指定された論文のgood数またはbad数を更新します。呼ばれた際、+1します。(認証追加後実装)
     
     - vote_type: "good" or "bad"
     """
-    raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail="This endpoint is not implemented yet")
     paper = db.query(paper_meta_data).filter(paper_meta_data.id == paper_id).first()
 
     if not paper:
