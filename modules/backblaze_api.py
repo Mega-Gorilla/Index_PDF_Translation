@@ -1,10 +1,11 @@
 import asyncio
 import aiohttp
+import os
 from b2sdk.v2 import InMemoryAccountInfo, B2Api
 
-# Backblaze B2の認証情報
-application_key_id = '005a1a338ee3ba80000000003'
-application_key = 'K00568UXhaXguG9hrWRiuBhZfcPNBTs'
+# Backblaze B2の認証情報blackblaze_key
+application_key_id = os.environ["blackblaze_id"]
+application_key = os.environ["blackblaze_key"]
 bucket_name = 'pdf-public'
 
 async def upload_file(upload_file_path, db_folder_path, db_file_name: str):
