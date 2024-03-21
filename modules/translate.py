@@ -32,12 +32,33 @@ async def translate_text(text: str, target_lang: str) -> str:
             else:
                 return {'ok':False,'message':f"DeepL API request failed with status code {response.status}"}
             
+def calculate_translation_cost(text: str, price_per_character: float) -> float:
+    """
+    翻訳コストを計算する関数。
+
+    Args:
+        text (str): 翻訳するテキスト。
+        price_per_character (float): 1文字あたりの料金。
+
+    Returns:
+        float: 翻訳コスト。
+    """
+    character_count = len(text)
+    translation_cost = character_count * price_per_character
+    return translation_cost
 
 if __name__ == "__main__":
     import asyncio
+
     async def main():
         text = "Hello, how are you?"
-        translated = await translate_text(text, "ja")
+        target_lang = "JA"
+        price_per_character = 0.0025  # 1文字あたりの料金（例: $0.00002）
+
+        translated = await translate_text(text, target_lang)
         print(translated)
+
+        translation_cost = calculate_translation_cost(text, price_per_character)
+        print(f"Translation cost: {translation_cost:.5f}円")
 
     asyncio.run(main())
