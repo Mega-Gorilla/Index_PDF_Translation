@@ -37,7 +37,7 @@ if __name__ == "__main__":
     import asyncio
     async def main():
         text = "Hello, how are you?"
-        translated = await translate_text(text, "JA")
+        translated = await translate_text(text, "ja")
         print(translated)
 
     asyncio.run(main())
