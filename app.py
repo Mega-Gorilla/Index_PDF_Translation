@@ -7,13 +7,15 @@ from pydantic import BaseModel
 from datetime import datetime, timedelta, timezone
 from jose import JWTError, jwt
 import json
+import asyncio
 from queue import Queue
 import psycopg2
 from passlib.context import CryptContext
 
-from modules.arxiv_api import get_arxiv_info_async
+from modules.arxiv_api import get_arxiv_info_async,download_arxiv_pdf
 from modules.translate import translate_text
 from modules.database import *
+from modules.backblaze_api import upload_byte
 
 from sqlalchemy.orm import  Session
 
@@ -415,50 +417,95 @@ async def add_abstract_to_paper(
 
     return {"message": "Abstract added successfully"}
 
-async def translate_pdf(arxiv_id):
-   pass 
+async def process_translate_arxiv_pdf(db,paper_id,target_lang, arxiv_id, db_folder_path, db_file_name):
+    try:
+        # PDFをダウンロードしてバイトデータを取得
+        pdf_data = await download_arxiv_pdf(arxiv_id)
+        
+        # PDFのバイトデータをB2クラウドストレージにアップロード
+        download_url = await upload_byte(pdf_data, db_folder_path, F"{db_file_name}.pdf", content_type='application/pdf')
+        pdf_urls = PdfURL(
+            paper_meta_id = paper_id,
+            en = download_url
+        )
+        #翻訳処理
+        
+        download_url = await upload_byte(pdf_data, db_folder_path, F"{db_file_name}_{target_lang}.pdf", content_type='application/pdf')
+
+        #関数の代入
+        setattr(pdf_urls, target_lang, download_url)
+
+        db.add(pdf_urls)
+        db.commit()
+        db.refresh(pdf_urls)
+        return download_url
+    
+    except Exception as e:
+        db.rollback()
+        print(f"Error processing arxiv_id {arxiv_id}: {str(e)}")
+        raise
 
 def load_license_data():
     with open('data/license.json', 'r') as f:
         return json.load(f)
 
+ALLOWED_LANGUAGES = ['en', 'ja']
+
 @app.post("/papers/{paper_id}/translate")
-async def traslate_paper_data(paper_id:int,target_lang: str = "JA", db: Session = Depends(get_db)):
+async def translate_paper_data(paper_id:int,target_lang: str = "ja", db: Session = Depends(get_db)):
     """
     abstract およびPDF を日本語に翻訳します。
+    - target_lang:ISO 639-1にて記載のこと
     """
-    # ライセンスデータを読み込み
-    license_data = load_license_data()
-    # データベースに問い合わせて、指定された arxiv_id のデータを取得
-    paper = db.query(paper_meta_data).filter(paper_meta_data.id == paper_id).first()
-    if paper:
-
-        # ライセンスが許可されているか検証
-        license_ok = license_data.get(paper.license, {}).get("OK", False)
-        if not license_ok:
-            raise HTTPException(status_code=400, detail="License not permitted for translation")
+    try:
+        # 許可された言語のリストに target_lang が含まれているかを確認
+        if target_lang.lower() not in ALLOWED_LANGUAGES:
+            raise HTTPException(status_code=400, detail=f"Unsupported target language: {target_lang}. Allowed languages: {', '.join(ALLOWED_LANGUAGES)}")
         
-        if not paper.abstract[0].ja or not paper.title[0].ja:
-            if not paper.abstract[0].ja:
-                translation_result = await translate_text(paper.abstract[0].en, target_lang)
-                if translation_result['ok']:
-                    paper.abstract[0].ja = translation_result['data']
-                else:
-                    raise HTTPException(status_code=500, detail=translation_result['message'])
-            if not paper.title[0].ja:
-                translation_result = await translate_text(paper.title[0].en, target_lang)
-                if translation_result['ok']:
-                    paper.title[0].ja = translation_result['data']
-                else:
-                    raise HTTPException(status_code=500, detail=translation_result['message'])
-        else:
+        # ライセンスデータを読み込み
+        license_data = load_license_data()
+        
+        # データベースに問い合わせて、指定された arxiv_id のデータを取得
+        paper = db.query(paper_meta_data).filter(paper_meta_data.id == paper_id).first()
+        
+        if paper:
+            # ライセンスが許可されているか検証
+            license_ok = license_data.get(paper.license, {}).get("OK", False)
+            if not license_ok:
+                raise HTTPException(status_code=400, detail="License not permitted for translation")
+            
+            if not paper.abstract[0].get(target_lang) or not paper.title[0].get(target_lang):
+                if not paper.abstract[0].get(target_lang):
+                    translation_result = await translate_text(paper.abstract[0]['en'], target_lang)
+                    if translation_result['ok']:
+                        paper.abstract[0][target_lang] = translation_result['data']
+                    else:
+                        raise HTTPException(status_code=500, detail=translation_result['message'])
+                
+                if not paper.title[0].get(target_lang):
+                    translation_result = await translate_text(paper.title[0]['en'], target_lang)
+                    if translation_result['ok']:
+                        paper.title[0][target_lang] = translation_result['data']
+                    else:
+                        raise HTTPException(status_code=500, detail=translation_result['message'])
+            
+            else:
+                return paper
+            
+            # データを更新した場合
+            db.commit()
+            db.refresh(paper)
+            
+            # process_translate_arxiv_pdfをバックグラウンドでタスクとして実行
+            arxiv_id = paper.identifier.split(":")[-1]
+            asyncio.create_task(process_translate_arxiv_pdf(db,paper_id,target_lang, arxiv_id, 'arxiv_pdf', arxiv_id))
+        
             return paper
-        # データを更新した場合
-        db.commit()
-        db.refresh(paper)
-        return paper
-    else:
-        raise HTTPException(status_code=404, detail="Paper not found")
+        else:
+            raise HTTPException(status_code=404, detail="Paper not found")
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/papers/{paper_id}/vote")
 async def update_paper_vote(paper_id: int, 
