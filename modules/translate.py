@@ -5,6 +5,7 @@ import fitz  # PyMuPDF
 import asyncio
 from io import BytesIO
 from statistics import median
+from spacy_api import *
 
 async def translate_text(text: str, target_lang: str) -> str:
     """
@@ -118,7 +119,7 @@ def plot_area_distribution(areas, labels_values, title='Distribution of Areas', 
 
     plt.title(title)
     plt.xlabel(xlabel)
-    plt.ylabel(ylabel)
+    plt.ylabel(ylabel,)
     plt.legend()
     plt.tight_layout()
 
@@ -144,7 +145,6 @@ async def remove_blocks_with_few_words(block_info, word_threshold=10):
 
     # boxデータの分割
     bboxs = [item['coordinates'] for sublist in block_info for item in sublist]
-
     # ブロック幅のしきい値を求める
     widths = [x1 - x0 for x0, _, x1, _ in bboxs]
     width_median = median(widths)
@@ -159,27 +159,34 @@ async def remove_blocks_with_few_words(block_info, word_threshold=10):
     width_threshold_low = 0.9 * percentile
     width_threshold_high = 1.1 * percentile
 
-    # 文字数のしきい値を求める
+    #tokenのしきい値を求める
     texts = [item['text'] for sublist in block_info for item in sublist]
-    text_length_list = [len(s) for s in texts]
-
-    # 10以下の数字をすべて除去
-    text_length_list = [num for num in text_length_list if num > 10]
-    texts_median = median(text_length_list)
-    texts_percentile_90 = np.percentile(text_length_list, 90)
-    texts_percentile_75 = np.percentile(text_length_list, 75)
-    texts_percentile_80 = np.percentile(text_length_list, 80)
-    texts_mean = np.mean(text_length_list)
-    text_threshold_low = texts_median *0.9
-    text_threshold_high = texts_median * 1.1
+    tokens = []
+    for text in texts:
+        # 記号と数字を除外し、それ以外の文字だけを含む文字列を生成
+        text = text.replace("\n","")
+        text = ''.join(char for char in text if char not in string.punctuation and char not in string.digits)
+        token = tokenize_text('en', text)
+        tokens.append(len(token))
+    print(tokens)
+    token_median = median(tokens)
+    token_percentile_75 = np.percentile(tokens, 75)
+    token_percentile_25 = np.percentile(tokens, 25)
+    token_mean = np.mean(tokens)
+    token_threshold = 10
 
     save_data = []
     for pages in block_info:
         page_filtered_blocks = []
         page_removed_blocks = []
         for block in pages:
+            #boxを変数化
+            block_text = block["text"]
+            block_coordinates = block['coordinates']
             #widthを計算
             width = (block_coordinates[2] - block_coordinates[0])
+            #tokenを計算
+            token = len(tokenize_text('en', block_text))
 
             #記号と数字が50%を超える場合は、リストから消去
             no_many_symbol = True
@@ -188,67 +195,22 @@ async def remove_blocks_with_few_words(block_info, word_threshold=10):
                 no_many_symbol = symbol_and_digit_count / len(block_text) < 0.5
 
             width_bool = bool(width_threshold_high > width > width_threshold_low)
-            text_count_bool = bool(text_threshold_high > len(block_text) > text_threshold_low)
             no_symbol_bool = bool(no_many_symbol)
+            token_bool = bool(token_threshold<token)
             
-            save_data.append({"Texts": block_text,
-                              "result bool": text_count_bool and no_symbol_bool and width_bool,
+            save_data.append({"Text": block_text,
+                                "result bool": no_symbol_bool and width_bool,
                                 "width bool": width_bool,
+                                "token bool":token_bool,
+                                "no symbol Bool": no_symbol_bool,
                                 "width_threshold_low": float(width_threshold_low),
                                 "this with": float(width),
                                 "width_threshold_high": float(width_threshold_high),
-                                "text threshold low": float(text_threshold_low),
-                                "text count": float(len(block_text)),
-                                "text_threshold high": float(text_threshold_high),
-                                "文字数Bool": text_count_bool,
-                                "シンボルBool": no_symbol_bool})
+                                "this token": token,
+                                "token threshold": token_threshold
+                                })
             
-            if text_count_bool and no_symbol_bool and width_bool:
-                page_filtered_blocks.append(block)
-            else:
-                page_removed_blocks.append(block)
-        filtered_blocks.append(page_filtered_blocks)
-        removed_blocks.append(page_removed_blocks)
-
-    save_data = []
-    for pages in block_info:
-        page_filtered_blocks = []
-        page_removed_blocks = []
-        for block in pages:
-            block_text = block["text"].strip()
-            
-            #面積を換算
-            block_coordinates = block['coordinates']
-            #block_area = (block_coordinates[2] - block_coordinates[0]) * (block_coordinates[3] - block_coordinates[1])
-            #幅を換算
-            width = (block_coordinates[2] - block_coordinates[0])
-
-            #記号と数字が50%を超える場合は、リストから消去
-            no_many_symbol = True
-            symbol_and_digit_count = sum(1 for char in block_text if char in string.punctuation or char in string.digits)
-            if len(block_text)!=0:
-                no_many_symbol = symbol_and_digit_count / len(block_text) < 0.5
-
-            text_count_bool = bool(len(block_text.split()) > word_threshold)
-            width_bool = bool(width_threshold_high > width > width_threshold_low)
-            text_mean_bool = bool(text_threshold_high > len(block_text) > text_threshold_low)
-            no_symbol_bool = bool(no_many_symbol)
-
-            save_data.append({"Texts": block_text,
-                              "result bool": text_count_bool and no_symbol_bool and width_bool,
-                                "width bool": width_bool,
-                                "width_threshold_low": float(width_threshold_low),
-                                "width_threshold_high": float(width_threshold_high),
-                                "text_mean_bool": text_mean_bool,
-                                "text threshold low": float(text_threshold_low),
-                                "text count": float(len(block_text)),
-                                "text_threshold high": float(text_threshold_high),
-                                "this with": float(width),
-                                "文字数":len(block_text),
-                                "単語数Bool": text_count_bool,
-                                "シンボルBool": no_symbol_bool})
-            
-            if text_count_bool and no_symbol_bool and width_bool and text_mean_bool:
+            if no_symbol_bool and width_bool and token_bool:
                 page_filtered_blocks.append(block)
             else:
                 page_removed_blocks.append(block)
@@ -268,13 +230,10 @@ async def remove_blocks_with_few_words(block_info, word_threshold=10):
                                                        {"percentile_75":width_percentile_75},
                                                        {"percentile_80":width_percentile_80},
                                                        {"percentile_90":width_percentile_90}],title="Awidth Mean",xlabel='width size',ylabel='Frequency',save_path='grah_With.png')
-    
-    plot_area_distribution(areas=text_length_list,labels_values=[{"Median":texts_median},
-                                                       {"Mean":texts_mean},
-                                                       {"percentile_75":texts_percentile_75},
-                                                       {"percentile_80":texts_percentile_80},
-                                                       {"percentile_90":texts_percentile_90}],title="Texts Mean",xlabel='texts_num',ylabel='Frequency',save_path='grah_texts.png')
-
+    plot_area_distribution(areas=tokens,labels_values=[{"Median":token_median},
+                                                       {"Mean":token_mean},
+                                                       {"percentile_25":token_percentile_25},
+                                                       {"percentile_75":token_percentile_75}],title="token Mean",xlabel='Token',ylabel='Frequency',save_path='grah_token.png')
     return filtered_blocks, removed_blocks
 
 async def remove_textbox_for_pdf(pdf_data, leave_text_list):
@@ -396,14 +355,15 @@ async def translate_document(document_content):
 
     # XMLに変換
     xml_data,cost = await convert_to_xml(document_content)
-
+    
+    translate_xml = await translate(xml_data)
+    """
     import aiofiles
     async with aiofiles.open('output.xml', 'w', encoding='utf-8') as file:
         await file.write(xml_data)
-    
-    translate_xml = await translate(xml_data)
     async with aiofiles.open('output_translate.xml', 'w', encoding='utf-8') as file:
         await file.write(translate_xml)
+    """
     restored_json_data = await convert_from_xml(document_content,translate_xml)
 
     import json
@@ -491,7 +451,6 @@ async def pdf_translate_test():
         f.write(translate_blocked_pdf_data)
     with open('block_info.json', 'w', encoding='utf-8') as json_file:
         json.dump(block_info, json_file, ensure_ascii=False, indent=2)
-    exit()
     block_info,cost = await translate_document(block_info)
     print(F"翻訳コスト： {cost}円")
     translated_pdf_data = await write_pdf_text(removed_textbox_pdf_data,block_info,font_path,to_lang)
