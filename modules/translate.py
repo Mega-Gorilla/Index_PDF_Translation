@@ -173,18 +173,42 @@ async def remove_blocks_with_few_words(block_info, word_threshold=10):
     text_threshold_low = texts_median *0.9
     text_threshold_high = texts_median * 1.1
 
+    save_data = []
     for pages in block_info:
         page_filtered_blocks = []
         page_removed_blocks = []
         for block in pages:
             #widthを計算
             width = (block_coordinates[2] - block_coordinates[0])
+
             #記号と数字が50%を超える場合は、リストから消去
             no_many_symbol = True
             symbol_and_digit_count = sum(1 for char in block_text if char in string.punctuation or char in string.digits)
             if len(block_text)!=0:
                 no_many_symbol = symbol_and_digit_count / len(block_text) < 0.5
+
+            width_bool = bool(width_threshold_high > width > width_threshold_low)
+            text_count_bool = bool(text_threshold_high > len(block_text) > text_threshold_low)
+            no_symbol_bool = bool(no_many_symbol)
             
+            save_data.append({"Texts": block_text,
+                              "result bool": text_count_bool and no_symbol_bool and width_bool,
+                                "width bool": width_bool,
+                                "width_threshold_low": float(width_threshold_low),
+                                "this with": float(width),
+                                "width_threshold_high": float(width_threshold_high),
+                                "text threshold low": float(text_threshold_low),
+                                "text count": float(len(block_text)),
+                                "text_threshold high": float(text_threshold_high),
+                                "文字数Bool": text_count_bool,
+                                "シンボルBool": no_symbol_bool})
+            
+            if text_count_bool and no_symbol_bool and width_bool:
+                page_filtered_blocks.append(block)
+            else:
+                page_removed_blocks.append(block)
+        filtered_blocks.append(page_filtered_blocks)
+        removed_blocks.append(page_removed_blocks)
 
     save_data = []
     for pages in block_info:
