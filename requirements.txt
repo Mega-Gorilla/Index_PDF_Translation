@@ -5,3 +5,5 @@ python-jose[cryptography]
 passlib
 python-multipart
 bcrypt
+PyMuPDF
+spacy
