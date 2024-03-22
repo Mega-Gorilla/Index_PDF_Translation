@@ -26,11 +26,12 @@ async def translate_text(text: str, target_lang: str) -> str:
     api_url = "https://api-free.deepl.com/v2/translate"
 
     params = {
-        "auth_key": api_key,
-        "text": text,
-        "target_lang": target_lang,
-        'tag_handling': 'xml',
-        "split_sentences": "nonewlines",
+        "auth_key": api_key,           # DeepLの認証キー
+        "text": text,                  # 翻訳するテキスト
+        "target_lang": target_lang,    # 目的の言語コード
+        'tag_handling': 'xml',         # タグの扱い
+        "split_sentences": "nonewlines", # 文章の分割方法
+        "formality": "more"            # 丁寧な口調で翻訳
     }
 
     async with aiohttp.ClientSession() as session:
@@ -128,7 +129,7 @@ def plot_area_distribution(areas, labels_values, title='Distribution of Areas', 
     else:
         plt.show()
 
-async def remove_blocks_with_few_words(block_info, word_threshold=10):
+async def remove_blocks_with_few_words(block_info, token_threshold=10,debug=False):
     import string
     import numpy as np
     """
@@ -136,7 +137,7 @@ async def remove_blocks_with_few_words(block_info, word_threshold=10):
     削除されたブロックも返します。
 
     :param block_info: ブロック情報のリスト
-    :param word_threshold: 単語の数の閾値（この数以下の場合、ブロックを削除）
+    :param token_threshold: 単語トークンしきい値。この値を下回る場合は無視される
     :return: 更新されたブロック情報のリストと削除されたブロック情報のリスト
     """
     #フィルターに基づいて分離する。
@@ -147,33 +148,12 @@ async def remove_blocks_with_few_words(block_info, word_threshold=10):
     bboxs = [item['coordinates'] for sublist in block_info for item in sublist]
     # ブロック幅のしきい値を求める
     widths = [x1 - x0 for x0, _, x1, _ in bboxs]
-    width_median = median(widths)
-    width_percentile_90 = np.percentile(widths, 90)
-    width_percentile_75 = np.percentile(widths, 75)
-    width_percentile_80 = np.percentile(widths, 80)
-    mean_width = np.mean(widths)
     for i in range(100,-1,-25):
         percentile = np.percentile(widths,i)
         if percentile < 300:
             break
     width_threshold_low = 0.9 * percentile
     width_threshold_high = 1.1 * percentile
-
-    #tokenのしきい値を求める
-    texts = [item['text'] for sublist in block_info for item in sublist]
-    tokens = []
-    for text in texts:
-        # 記号と数字を除外し、それ以外の文字だけを含む文字列を生成
-        text = text.replace("\n","")
-        text = ''.join(char for char in text if char not in string.punctuation and char not in string.digits)
-        token = tokenize_text('en', text)
-        tokens.append(len(token))
-    print(tokens)
-    token_median = median(tokens)
-    token_percentile_75 = np.percentile(tokens, 75)
-    token_percentile_25 = np.percentile(tokens, 25)
-    token_mean = np.mean(tokens)
-    token_threshold = 10
 
     save_data = []
     for pages in block_info:
@@ -198,17 +178,18 @@ async def remove_blocks_with_few_words(block_info, word_threshold=10):
             no_symbol_bool = bool(no_many_symbol)
             token_bool = bool(token_threshold<token)
             
-            save_data.append({"Text": block_text,
-                                "result bool": no_symbol_bool and width_bool,
-                                "width bool": width_bool,
-                                "token bool":token_bool,
-                                "no symbol Bool": no_symbol_bool,
-                                "width_threshold_low": float(width_threshold_low),
-                                "this with": float(width),
-                                "width_threshold_high": float(width_threshold_high),
-                                "this token": token,
-                                "token threshold": token_threshold
-                                })
+            if debug:
+                save_data.append({"Text": block_text,
+                                    "result bool": no_symbol_bool and width_bool,
+                                    "width bool": width_bool,
+                                    "token bool":token_bool,
+                                    "no symbol Bool": no_symbol_bool,
+                                    "width_threshold_low": float(width_threshold_low),
+                                    "this with": float(width),
+                                    "width_threshold_high": float(width_threshold_high),
+                                    "this token": token,
+                                    "token threshold": token_threshold
+                                    })
             
             if no_symbol_bool and width_bool and token_bool:
                 page_filtered_blocks.append(block)
@@ -217,23 +198,42 @@ async def remove_blocks_with_few_words(block_info, word_threshold=10):
         filtered_blocks.append(page_filtered_blocks)
         removed_blocks.append(page_removed_blocks)
     
-    import json
-    with open('save_string.json', 'w', encoding='utf-8') as json_file:
-        json.dump(save_data, json_file, ensure_ascii=False, indent=2)
-    
-    
-    # 解析用にデータを保存する
-    plot_area_distribution(areas=widths,labels_values=[{"Median":width_median},
-                                                       {"threshold_low":width_threshold_low},
-                                                       {"threshold_high":width_threshold_high},
-                                                       {"Mean":mean_width},
-                                                       {"percentile_75":width_percentile_75},
-                                                       {"percentile_80":width_percentile_80},
-                                                       {"percentile_90":width_percentile_90}],title="Awidth Mean",xlabel='width size',ylabel='Frequency',save_path='grah_With.png')
-    plot_area_distribution(areas=tokens,labels_values=[{"Median":token_median},
-                                                       {"Mean":token_mean},
-                                                       {"percentile_25":token_percentile_25},
-                                                       {"percentile_75":token_percentile_75}],title="token Mean",xlabel='Token',ylabel='Frequency',save_path='grah_token.png')
+    if debug:
+        import json
+        with open('save_string.json', 'w', encoding='utf-8') as json_file:
+            json.dump(save_data, json_file, ensure_ascii=False, indent=2)
+
+        # 解析用にデータを保存する
+        width_median = median(widths)
+        width_percentile_90 = np.percentile(widths, 90)
+        width_percentile_75 = np.percentile(widths, 75)
+        width_percentile_80 = np.percentile(widths, 80)
+        mean_width = np.mean(widths)
+
+        #tokenのしきい値を求める
+        texts = [item['text'] for sublist in block_info for item in sublist]
+        tokens = []
+        for text in texts:
+            # 記号と数字を除外し、それ以外の文字だけを含む文字列を生成
+            text = text.replace("\n","")
+            text = ''.join(char for char in text if char not in string.punctuation and char not in string.digits)
+            token = tokenize_text('en', text)
+            tokens.append(len(token))
+        token_median = median(tokens)
+        token_percentile_75 = np.percentile(tokens, 75)
+        token_percentile_25 = np.percentile(tokens, 25)
+        token_mean = np.mean(tokens)
+        plot_area_distribution(areas=widths,labels_values=[{"Median":width_median},
+                                                        {"threshold_low":width_threshold_low},
+                                                        {"threshold_high":width_threshold_high},
+                                                        {"Mean":mean_width},
+                                                        {"percentile_75":width_percentile_75},
+                                                        {"percentile_80":width_percentile_80},
+                                                        {"percentile_90":width_percentile_90}],title="Awidth Mean",xlabel='width size',ylabel='Frequency',save_path='grah_With.png')
+        plot_area_distribution(areas=tokens,labels_values=[{"Median":token_median},
+                                                        {"Mean":token_mean},
+                                                        {"percentile_25":token_percentile_25},
+                                                        {"percentile_75":token_percentile_75}],title="token Mean",xlabel='Token',ylabel='Frequency',save_path='grah_token.png')
     return filtered_blocks, removed_blocks
 
 async def remove_textbox_for_pdf(pdf_data, leave_text_list):
