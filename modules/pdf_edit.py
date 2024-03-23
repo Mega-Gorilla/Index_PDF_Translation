@@ -3,6 +3,7 @@ import asyncio
 from io import BytesIO
 from statistics import median
 from spacy_api import *
+import regex as re
 
 async def extract_text_coordinates(pdf_data):
     """
@@ -182,7 +183,7 @@ async def remove_textbox_for_pdf(pdf_data, leave_text_list):
         await asyncio.to_thread(page.apply_redactions)  # レダクションを適用してテキストを削除
 
     output_buffer = BytesIO()
-    await asyncio.to_thread(doc.save, output_buffer)  # 変更をバッファに保存
+    await asyncio.to_thread(doc.save, output_buffer, garbage=4, deflate=True, clean=True)
     await asyncio.to_thread(doc.close)
 
     output_data = output_buffer.getvalue()
@@ -202,7 +203,7 @@ async def pdf_draw_blocks(input_pdf_data, block_info, line_colorRGB=[0, 0, 1], w
             await asyncio.to_thread(page.draw_rect, text_rect, color=line_colorRGB, width=width, fill=fill_colorRGB, fill_opacity=fill_opacity)
 
     output_buffer = BytesIO()
-    await asyncio.to_thread(doc.save, output_buffer)
+    await asyncio.to_thread(doc.save, output_buffer, garbage=4, deflate=True, clean=True)
     await asyncio.to_thread(doc.close)
 
     output_data = output_buffer.getvalue()
@@ -216,64 +217,68 @@ async def write_pdf_text(input_pdf_data, block_info, lang='en', debug=False):
     # フォント選択
     if lang == 'en':
         font_path = 'fonts/TIMES.TTF'
-        lang_a = 'a'
     elif lang == 'ja':
         font_path = 'fonts/MSMINCHO.TTC'
-        lang_a ="あ"
 
     doc = await asyncio.to_thread(fitz.open, stream=input_pdf_data, filetype="pdf")
-    font = await asyncio.to_thread(fitz.Font, fontfile=font_path)
+     # 一時的なPDFの作成
+    temp_doc = fitz.open()
+
+    # 元のPDFと同じページ構成で一時的なPDFを設定
+    for _ in range(len(doc)):
+        temp_doc.new_page()
 
     for i, pages in enumerate(block_info):
         #ページごとのループ
         page = doc[i]
-        await asyncio.to_thread(page.insert_font, fontfile=font_path, fontname="F0")
+        temp_page = temp_doc[i]
+        
+        page.insert_font(fontname="F0", fontfile=font_path)
+        temp_page.insert_font(fontname="F0", fontfile=font_path)
 
         for block in pages:
             #ブロックごとのループ
             # 文字列挿入用ブロックの定義
             text = block["text"]
+            text = text.replace('\n', '')
+            text = text.replace(' ',"\u00A0")
             x0, y0, x1, y1 = block["coordinates"]
-            text_rect = fitz.Rect(x0, y0, x1, y1)
+            text_rect = fitz.Rect(x0, y0, x1, y1+15)
 
             # フォントサイズと行の高さの計算
-            fs_min = 1  # 最小フォントサイズ
+            fs_min = 3  # 最小フォントサイズ
             fs_max = int(y1-y0)  # 最大フォントサイズ
+            fs = 10.5  # 計算開始フォントサイズ
+
+            print(text)
+
+            best_result = float('inf')
+            best_fs = None
 
             while fs_min <= fs_max:
-                fs = (fs_min + fs_max) // 2  # 中間値のフォントサイズを計算
-
-                # text_boxに入力可能な幅文字数を計算
-                lang_a_width = await asyncio.to_thread(font.text_length, lang_a, fontsize=fs)
-                width_tc = int((x1-x0)/lang_a_width)
-
-                # text_boxに入力可能な高さ文字数を計算
-                lh = (font.ascender - font.descender) * fs * lh_factor  # 自然行の高さの計算
-                hight_tc = int((y1-y0)/lh)
-
-                text_no_newlines = text.replace('\n', '')
-                text_length = len(text_no_newlines)
-                n_text_count = text.count('\n')
-
-                if text_length <= width_tc*hight_tc:
-                    if debug:
-                        print(f"文字数:{text_length} <= 入力可能文字数:{width_tc*hight_tc}")
-                        print(f"横文字数:{width_tc} 縦文字数:{hight_tc}")
-                        print(f"改行数:{n_text_count} <= 改行可能数:{hight_tc}")
-                    fs_min = fs + 1
+                result = temp_page.insert_textbox(text_rect, text, fontname="F0", fontsize=fs, align=3, lineheight=lh_factor)
+                print(f"{fs} / {result}")
+                if result < 0:
+                    fs-=1
+                    if best_fs != None:
+                        print(F"{best_result}/best_fs:{best_fs}")
+                        fs = best_fs
+                        break
+                elif result > 10:
+                    if result < best_result:
+                        best_result = result
+                        best_fs = fs
+                    fs+=0.01
                 else:
-                    fs_max = fs - 1
-
-            fs = fs_max  # 適切なフォントサイズを設定
-
-            if fs > 0:  # 適切なフォントサイズが見つかった場合
-                # テキストをページに追加
-                result = await asyncio.to_thread(page.insert_textbox, text_rect, text_no_newlines, fontsize=fs, fontname="F0", lineheight=lh_factor)
-                print(result)
+                    print(F"{result}/ Font_Size: {fs}")
+                    break
+            #正規のpdfに描画
+            page.insert_textbox(text_rect, text, fontname="F0", fontsize=fs, align=3, lineheight=lh_factor)
 
     output_buffer = BytesIO()
-    await asyncio.to_thread(doc.save, output_buffer)
+    await asyncio.to_thread(doc.save, output_buffer, garbage=4, deflate=True, clean=True)
     await asyncio.to_thread(doc.close)
+    await asyncio.to_thread(temp_doc.close)
     output_data = output_buffer.getvalue()
 
     return output_data
@@ -306,7 +311,6 @@ def plot_area_distribution(areas, labels_values, title='Distribution of Areas', 
     else:
         plt.show()
 
-
 async def text_draw_test():
     import json
     to_lang = 'ja'
@@ -315,9 +319,9 @@ async def text_draw_test():
         input_pdf_data = f.read()
 
     block_info = await extract_text_coordinates(input_pdf_data)
-    blocked_pdf_data = await pdf_draw_blocks(input_pdf_data,block_info,width=0,fill_opacity=0.3)
 
     block_info,removed_blocks = await remove_blocks_with_few_words(block_info,10)
+    blocked_pdf_data = await pdf_draw_blocks(input_pdf_data,block_info,width=0,fill_opacity=0.3)
 
     # removed_blockをリストに分解
     leave_str_list = [item['text'] for sublist in removed_blocks for item in sublist]
@@ -331,7 +335,7 @@ async def text_draw_test():
         block_info = json.load(json_file)
     
     translated_pdf_data = await write_pdf_text(removed_textbox_pdf_data,block_info,to_lang)
-
+    
     with open("output.pdf", "wb") as f:
         f.write(translated_pdf_data)
 
