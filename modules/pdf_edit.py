@@ -5,7 +5,7 @@ from statistics import median
 from spacy_api import *
 import regex as re
 
-async def extract_text_coordinates(pdf_data):
+async def extract_text_coordinates(pdf_data,lang='en'):
     """
     pdf バイトデータのテキストファイル座標を取得します
     """
@@ -30,11 +30,13 @@ async def extract_text_coordinates(pdf_data):
         # 各テキストブロックからテキスト、画像と座標を抽出
         for b in blocks:
             x0, y0, x1, y1, content_text, block_no, block_type = b[:7]
+            tokens = tokenize_text(lang,content_text)
 
             if block_type == 0:  # テキストブロック
                 block_info = {
                     "page_num": page_num,
                     "text": content_text,
+                    "token": tokens,
                     "coordinates": (x0, y0, x1, y1),
                     "block_no": block_no,
                     "block_type": block_type,
@@ -52,11 +54,18 @@ async def extract_text_coordinates(pdf_data):
 
     return content
 
-async def remove_blocks_with_few_words(block_info, token_threshold=10,debug=False):
+def check_first_three_tokens(input_list, keywords):
+    for item in input_list[:3]:
+        for keyword in keywords:
+            if keyword.lower() in item.lower():
+                return True
+    return False
+
+async def remove_blocks(block_info, token_threshold=10,debug=False):
     import string
     import numpy as np
     """
-    英単語数が指定された閾値以下のブロックをリストから削除します。更にブロックの面積中央値を求め中央値以下のブロックもリストから消去します。
+    トークン数が指定された閾値以下のブロックをリストから削除します。更にブロックの幅のパーセンタイルを求め、幅300以上のパーセンタイルブロックをリストから消去します。
     削除されたブロックも返します。
 
     :param block_info: ブロック情報のリスト
@@ -65,6 +74,7 @@ async def remove_blocks_with_few_words(block_info, token_threshold=10,debug=Fals
     """
     #フィルターに基づいて分離する。
     filtered_blocks = []
+    fig_table_blocks = []
     removed_blocks = []
 
     # boxデータの分割
@@ -81,6 +91,7 @@ async def remove_blocks_with_few_words(block_info, token_threshold=10,debug=Fals
     save_data = []
     for pages in block_info:
         page_filtered_blocks = []
+        page_fig_table_blocks = []
         page_removed_blocks = []
         for block in pages:
             #boxを変数化
@@ -89,7 +100,7 @@ async def remove_blocks_with_few_words(block_info, token_threshold=10,debug=Fals
             #widthを計算
             width = (block_coordinates[2] - block_coordinates[0])
             #tokenを計算
-            token = len(tokenize_text('en', block_text))
+            token = len(block['token'])
 
             #記号と数字が50%を超える場合は、リストから消去
             no_many_symbol = True
@@ -97,6 +108,11 @@ async def remove_blocks_with_few_words(block_info, token_threshold=10,debug=Fals
             if len(block_text)!=0:
                 no_many_symbol = symbol_and_digit_count / len(block_text) < 0.5
 
+            # tokenリスト３番目までに特定ワードが入ってる場合はグラフ表として認識する
+            keyword = ['fig','table']
+            table_bool = check_first_three_tokens(block['token'],keyword)
+            
+            #文字列として認識するBool関数
             width_bool = bool(width_threshold_high > width > width_threshold_low)
             no_symbol_bool = bool(no_many_symbol)
             token_bool = bool(token_threshold<token)
@@ -113,11 +129,13 @@ async def remove_blocks_with_few_words(block_info, token_threshold=10,debug=Fals
                                     "this token": token,
                                     "token threshold": token_threshold
                                     })
-            
-            if no_symbol_bool and width_bool and token_bool:
+            if table_bool:
+                page_fig_table_blocks.append(block)
+            elif no_symbol_bool and width_bool and token_bool:
                 page_filtered_blocks.append(block)
             else:
                 page_removed_blocks.append(block)
+        fig_table_blocks.append(page_fig_table_blocks)
         filtered_blocks.append(page_filtered_blocks)
         removed_blocks.append(page_removed_blocks)
     
@@ -157,7 +175,7 @@ async def remove_blocks_with_few_words(block_info, token_threshold=10,debug=Fals
                                                         {"Mean":token_mean},
                                                         {"percentile_25":token_percentile_25},
                                                         {"percentile_75":token_percentile_75}],title="token Mean",xlabel='Token',ylabel='Frequency',save_path='grah_token.png')
-    return filtered_blocks, removed_blocks
+    return filtered_blocks,fig_table_blocks, removed_blocks
 
 async def remove_textbox_for_pdf(pdf_data, leave_text_list):
     """
@@ -257,11 +275,11 @@ async def write_pdf_text(input_pdf_data, block_info, lang='en', debug=False):
 
             while fs_min <= fs_max:
                 result = temp_page.insert_textbox(text_rect, text, fontname="F0", fontsize=fs, align=3, lineheight=lh_factor)
-                print(f"{fs} / {result}")
+                #print(f"{fs} / {result}")
                 if result < 0:
                     fs-=1
                     if best_fs != None:
-                        print(F"{best_result}/best_fs:{best_fs}")
+                        #print(F"{best_result}/best_fs:{best_fs}")
                         fs = best_fs
                         break
                 elif result > 10:
@@ -270,7 +288,7 @@ async def write_pdf_text(input_pdf_data, block_info, lang='en', debug=False):
                         best_fs = fs
                     fs+=0.01
                 else:
-                    print(F"{result}/ Font_Size: {fs}")
+                    #print(F"{result}/ Font_Size: {fs}")
                     break
             #正規のpdfに描画
             page.insert_textbox(text_rect, text, fontname="F0", fontsize=fs, align=3, lineheight=lh_factor)
@@ -320,7 +338,7 @@ async def text_draw_test():
 
     block_info = await extract_text_coordinates(input_pdf_data)
 
-    block_info,removed_blocks = await remove_blocks_with_few_words(block_info,10)
+    block_info,fig_blocks,removed_blocks = await remove_blocks(block_info,10)
     blocked_pdf_data = await pdf_draw_blocks(input_pdf_data,block_info,width=0,fill_opacity=0.3)
 
     # removed_blockをリストに分解
