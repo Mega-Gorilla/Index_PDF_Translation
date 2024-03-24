@@ -1,11 +1,7 @@
 import aiohttp
 import os
 import re
-import fitz  # PyMuPDF
 import asyncio
-from io import BytesIO
-from statistics import median
-from spacy_api import *
 from pdf_edit import *
 
 async def translate_text(text: str, target_lang: str) -> str:
@@ -24,7 +20,7 @@ async def translate_text(text: str, target_lang: str) -> str:
         Exception: APIリクエストが失敗した場合。
     """
     api_key = os.environ["DEEPL_API_KEY"]  # 環境変数からDeepL APIキーを取得
-    api_url = "https://api-free.deepl.com/v2/translate"
+    api_url = "https://api.deepl.com/v2/translate"
 
     params = {
         "auth_key": api_key,           # DeepLの認証キー
@@ -39,7 +35,8 @@ async def translate_text(text: str, target_lang: str) -> str:
         async with session.post(api_url, data=params) as response:
             if response.status == 200:
                 result = await response.json()
-                return {'ok':True,'data':result["translations"][0]["text"]}
+                result = result["translations"][0]["text"]
+                return {'ok':True,'data':result}
             else:
                 return {'ok':False,'message':f"DeepL API request failed with status code {response.status}"}
             
@@ -65,20 +62,13 @@ async def translate_document(document_content,lang='ja'):
 
     # XMLに変換
     xml_data,cost = await deepl_convert_xml_calc_cost(document_content)
-    
+
     translate_xml = await translate(xml_data,lang)
     """
-    import aiofiles
-    async with aiofiles.open('output.xml', 'w', encoding='utf-8') as file:
-        await file.write(xml_data)
     async with aiofiles.open('output_translate.xml', 'w', encoding='utf-8') as file:
         await file.write(translate_xml)
     """
     restored_json_data = await convert_from_xml(document_content,translate_xml)
-
-    import json
-    with open('block_info_translated.json', 'w', encoding='utf-8') as json_file:
-        json.dump(restored_json_data, json_file, ensure_ascii=False, indent=2)
 
     return restored_json_data, cost
 
@@ -95,7 +85,10 @@ async def deepl_convert_xml_calc_cost(json_data):
     xml_output = ""
     for page in json_data:
         for block in page:
-            text = block['text'].replace('\n', '') #改行キーの消去
+            text = block['text']
+            # 翻訳にて問題になる文字列を変換
+            text = text.replace('\n', '')
+
             xml_output += f"<div>{text}</div>\n"
             temp_cost = calculate_translation_cost(text,price_per_character)
             cost += temp_cost
@@ -133,32 +126,50 @@ async def deepl_translate_test():
     print(f"Translation cost: {translation_cost:.5f}円")
 
 async def pdf_translate_test():
-    import json
+    source_lang = 'en'
     to_lang = 'ja'
+    debug =True
 
     with open("input.pdf", "rb") as f:
         input_pdf_data = f.read()
+    block_info = await extract_text_coordinates(input_pdf_data,source_lang)
 
-    block_info = await extract_text_coordinates(input_pdf_data)
-
-    blocked_pdf_data = await pdf_draw_blocks(input_pdf_data,block_info,width=0,fill_opacity=0.3)
-
-    block_info,removed_blocks = await remove_blocks_with_few_words(block_info,10)
+    text_blocks,fig_blocks,removed_blocks = await remove_blocks(block_info,10)
 
     # removed_blockをリストに分解
     leave_str_list = [item['text'] for sublist in removed_blocks for item in sublist]
-    translate_blocked_pdf_data = await pdf_draw_blocks(input_pdf_data,block_info,width=0,fill_opacity=0.3)
     removed_textbox_pdf_data = await remove_textbox_for_pdf(input_pdf_data,leave_str_list)
-    
-    with open("draw_block.pdf", "wb") as f:
-        f.write(blocked_pdf_data)
-    with open("draw_block_translation.pdf", "wb") as f:
-        f.write(translate_blocked_pdf_data)
-    with open('block_info.json', 'w', encoding='utf-8') as json_file:
-        json.dump(block_info, json_file, ensure_ascii=False, indent=2)
-    block_info,cost = await translate_document(block_info)
+
+    if debug:
+        """
+        with open('all_blocks.json', 'w', encoding='utf-8') as json_file:
+            json.dump(block_info, json_file, ensure_ascii=False, indent=2)
+        with open('text_block.json', 'w', encoding='utf-8') as json_file:
+            json.dump(text_blocks, json_file, ensure_ascii=False, indent=2)
+        with open('fig_blocks.json', 'w', encoding='utf-8') as json_file:
+            json.dump(fig_blocks, json_file, ensure_ascii=False, indent=2)
+        """
+        text_block_pdf_data = await pdf_draw_blocks(input_pdf_data,text_blocks,width=0,fill_opacity=0.3,fill_colorRGB=[0,0,1])
+        fig_block_pdf_data = await pdf_draw_blocks(text_block_pdf_data,fig_blocks,width=0,fill_opacity=0.3,fill_colorRGB=[0,1,0])
+        all_block_pdf_data = await pdf_draw_blocks(fig_block_pdf_data,removed_blocks,width=0,fill_opacity=0.3,fill_colorRGB=[1,0,0])
+        with open("show_blocks.pdf", "wb") as f:
+            f.write(all_block_pdf_data)
+
+    # 翻訳
+    text_blocks,text_cost = await translate_document(text_blocks)
+    fig_blocks,fig_cost = await translate_document(fig_blocks)
+    cost = text_cost + fig_cost
     print(F"翻訳コスト： {cost}円")
-    translated_pdf_data = await write_pdf_text(removed_textbox_pdf_data,block_info,to_lang)
+    
+    # 翻訳したブロックを結合
+    combined_blocks =[]
+    for page1, page2 in zip(text_blocks,fig_blocks):
+        combined_page = page1 + page2
+        sorted_page = sorted(combined_page, key=lambda x: x['block_no'])
+        combined_blocks.append(sorted_page)
+    
+    # 翻訳したPDFを作成
+    translated_pdf_data = await write_pdf_text(removed_textbox_pdf_data,combined_blocks,to_lang)
 
     with open("output.pdf", "wb") as f:
         f.write(translated_pdf_data)
