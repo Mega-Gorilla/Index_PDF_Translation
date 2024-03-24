@@ -4,7 +4,7 @@ import re
 import asyncio
 from modules.pdf_edit import *
 
-async def translate_text(key: str,text: str, target_lang: str) -> str:
+async def translate_text(key: str,text: str, target_lang: str,api_url:str) -> str:
     """
     DeepL APIを使用して、入力されたテキストを指定の言語に翻訳する非同期関数。
     タグハンドリングがXML向けになっているので注意
@@ -20,7 +20,6 @@ async def translate_text(key: str,text: str, target_lang: str) -> str:
         Exception: APIリクエストが失敗した場合。
     """
     api_key = key  # 環境変数からDeepL APIキーを取得
-    api_url = "https://api.deepl.com/v2/translate"
 
     params = {
         "auth_key": api_key,           # DeepLの認証キー
@@ -56,14 +55,14 @@ def calculate_translation_cost(text: str, price_per_character: float) -> float:
     return translation_cost
 
 
-async def translate_document(key,document_content,lang='ja'):
+async def translate_document(key,document_content,lang='ja',api_url="https://api.deepl.com/v2/translate"):
     # 翻訳後のページごとのテキストを格納するリスト
     cost = 0
 
     # XMLに変換
     xml_data,cost = await deepl_convert_xml_calc_cost(document_content)
 
-    translate_xml = await translate(key,xml_data,lang)
+    translate_xml = await translate(key,xml_data,lang,api_url)
     """
     async with aiofiles.open('output_translate.xml', 'w', encoding='utf-8') as file:
         await file.write(translate_xml)
@@ -72,8 +71,8 @@ async def translate_document(key,document_content,lang='ja'):
 
     return restored_json_data, cost
 
-async def translate(key,text,lang):
-    result = await translate_text(key,text, lang)
+async def translate(key,text,lang,api_url):
+    result = await translate_text(key,text,lang,api_url)
     if result['ok']:
         return result['data']
     else:
@@ -125,7 +124,7 @@ async def deepl_translate_test():
     translation_cost = calculate_translation_cost(text, price_per_character)
     print(f"Translation cost: {translation_cost:.5f}円")
 
-async def pdf_translate(key,pdf_data,source_lang = 'en',to_lang = 'ja',debug =False):
+async def pdf_translate(key,pdf_data,source_lang = 'en',to_lang = 'ja',debug =False,api_url="https://api.deepl.com/v2/translate"):
 
     block_info = await extract_text_coordinates(pdf_data,source_lang)
 
@@ -151,8 +150,8 @@ async def pdf_translate(key,pdf_data,source_lang = 'en',to_lang = 'ja',debug =Fa
             f.write(all_block_pdf_data)
 
     # 翻訳
-    text_blocks,text_cost = await translate_document(key,text_blocks)
-    fig_blocks,fig_cost = await translate_document(key,fig_blocks)
+    text_blocks,text_cost = await translate_document(key,text_blocks,to_lang,api_url)
+    fig_blocks,fig_cost = await translate_document(key,fig_blocks,to_lang,api_url)
     cost = text_cost + fig_cost
     print(F"翻訳コスト： {cost}円")
     
