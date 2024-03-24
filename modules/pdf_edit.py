@@ -2,8 +2,7 @@ import fitz  # PyMuPDF
 import asyncio
 from io import BytesIO
 from statistics import median
-from spacy_api import *
-import regex as re
+from modules.spacy_api import *
 
 async def extract_text_coordinates(pdf_data,lang='en'):
     """
