@@ -1,24 +1,10 @@
-from fastapi import FastAPI, BackgroundTasks, Depends, HTTPException,status
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
-from typing import List,Optional,Union
-from pydantic import BaseModel
-from datetime import datetime, timedelta, timezone
-from jose import JWTError, jwt
 import json
-import asyncio
-from queue import Queue
-import psycopg2
-from passlib.context import CryptContext
 
 from modules.arxiv_api import get_arxiv_info_async,download_arxiv_pdf
-from modules.translate import translate_text
-from modules.database import *
-from modules.backblaze_api import upload_byte
 from modules.translate import pdf_translate
-
-from sqlalchemy.orm import  Session
 
 app = FastAPI()
 
