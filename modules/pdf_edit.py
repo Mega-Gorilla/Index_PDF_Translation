@@ -54,14 +54,14 @@ async def extract_text_coordinates(pdf_data,lang='en'):
 
     return content
 
-def check_first_three_tokens(input_list, keywords):
-    for item in input_list[:3]:
+def check_first_num_tokens(input_list, keywords, num=2):
+    for item in input_list[:num]:
         for keyword in keywords:
             if keyword.lower() in item.lower():
                 return True
     return False
 
-async def remove_blocks(block_info, token_threshold=10,debug=False):
+async def remove_blocks(block_info, token_threshold=10,debug=False,lang='en'):
     import string
     import numpy as np
     """
@@ -109,8 +109,11 @@ async def remove_blocks(block_info, token_threshold=10,debug=False):
                 no_many_symbol = symbol_and_digit_count / len(block_text) < 0.5
 
             # tokenリスト３番目までに特定ワードが入ってる場合はグラフ表として認識する
-            keyword = ['fig','table']
-            table_bool = check_first_three_tokens(block['token'],keyword)
+            if lang == 'ja':
+                keyword = ['表','グラフ']
+            else:
+                keyword = ['fig','table']
+            table_bool = check_first_num_tokens(block['token'],keyword)
             
             #文字列として認識するBool関数
             width_bool = bool(width_threshold_high > width > width_threshold_low)
@@ -268,7 +271,7 @@ async def write_pdf_text(input_pdf_data, block_info, lang='en', debug=False):
             fs_max = int(y1-y0)  # 最大フォントサイズ
             fs = 10.5  # 計算開始フォントサイズ
 
-            print(text)
+            #print(text)
 
             best_result = float('inf')
             best_fs = None
