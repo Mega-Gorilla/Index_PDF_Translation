@@ -7,6 +7,8 @@ python-multipart
 bcrypt
 PyMuPDF
 spacy
+https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1.tar.gz#egg=en_core_web_sm
+https://github.com/explosion/spacy-models/releases/download/ja_core_news_sm-3.7.0/ja_core_news_sm-3.7.0.tar.gz#egg=ja_core_news_sm
 psycopg2
 aiohttp
 b2sdk
