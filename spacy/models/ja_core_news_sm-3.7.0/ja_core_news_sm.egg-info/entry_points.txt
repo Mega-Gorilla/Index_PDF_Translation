@@ -1,0 +1,2 @@
+[spacy_models]
+ja_core_news_sm = ja_core_news_sm
