@@ -2,10 +2,8 @@ import spacy
 
 # サポートされている言語とそのモデルのマッピング
 supported_languages = {
-    'en': 'en_core_web_sm',
-    'ja': 'ja_core_news_sm',
-    'fr': 'fr_core_news_sm',
-    'de': 'de_core_news_sm'
+    'en': 'spacy\models\en_core_web_sm-3.7.1\en_core_web_sm\en_core_web_sm-3.7.1',
+    'ja': 'spacy\models\ja_core_news_sm-3.7.0\ja_core_news_sm\ja_core_news_sm-3.7.0'
 }
 
 # spaCyモデルをロードし、キャッシュしておく辞書
