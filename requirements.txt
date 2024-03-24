@@ -9,4 +9,3 @@ PyMuPDF
 spacy
 psycopg2
 aiohttp
-sqlalchemy-asyncio
