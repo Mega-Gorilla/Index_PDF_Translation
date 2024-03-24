@@ -10,6 +10,7 @@ app = FastAPI()
 
 origins = [
     "http://localhost:5173",
+    'https://indqx-demo-front.onrender.com'
 ]
 
 app.add_middleware(
@@ -22,13 +23,13 @@ app.add_middleware(
 
 # --------------- Paper meta DB用処理 ---------------
 
-async def process_translate_arxiv_pdf(target_lang, arxiv_id):
+async def process_translate_arxiv_pdf(target_lang, arxiv_id,api_url):
     try:
         # PDFをダウンロードしてバイトデータを取得
         pdf_data = await download_arxiv_pdf(arxiv_id)
         
         #翻訳処理
-        translate_data = await pdf_translate(pdf_data,to_lang=target_lang)
+        translate_data = await pdf_translate(pdf_data,to_lang=target_lang,api_url=api_url)
         
         return translate_data
     
@@ -43,7 +44,7 @@ def load_license_data():
 ALLOWED_LANGUAGES = ['en', 'ja']
 
 @app.post("/arxiv/translate/{arxiv_id}")
-async def translate_paper_data(arxiv_id: str, deepl_key: str, target_lang: str = "ja"):
+async def translate_paper_data(arxiv_id: str,deepl_url:str, deepl_key: str, target_lang: str = "ja"):
     """
     abstract およびPDF を日本語に翻訳します。
     - target_lang:ISO 639-1にて記載のこと
@@ -64,7 +65,7 @@ async def translate_paper_data(arxiv_id: str, deepl_key: str, target_lang: str =
         if not license_ok:
             raise HTTPException(status_code=400, detail="License not permitted for translation")
         
-        translate_pdf_data = await process_translate_arxiv_pdf(target_lang, arxiv_id,deepl_key)
+        translate_pdf_data = await process_translate_arxiv_pdf(target_lang, arxiv_id,deepl_key,deepl_url)
             
         return translate_pdf_data
     
