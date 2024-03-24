@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 
 import json
 from modules.backblaze_api import upload_byte
@@ -45,36 +46,37 @@ def load_license_data():
 
 ALLOWED_LANGUAGES = ['en', 'ja']
 
+class TranslateRequest(BaseModel):
+    deepl_url: str
+    deepl_key: str
+    target_lang: str = "ja"
+
 @app.post("/arxiv/translate/{arxiv_id}")
-async def translate_paper_data(arxiv_id: str,deepl_url:str, deepl_key: str, target_lang: str = "ja"):
+async def translate_paper_data(arxiv_id: str, request: TranslateRequest):
     """
     abstract およびPDF を日本語に翻訳します。
     - target_lang:ISO 639-1にて記載のこと
     """
-    print("処理開始 - 1")
+    target_lang = request.target_lang
+    deepl_key = request.deepl_key
+    deepl_url = request.deepl_url
     try:
         # 許可された言語のリストに target_lang が含まれているかを確認
         if target_lang.lower() not in ALLOWED_LANGUAGES:
             raise HTTPException(status_code=400, detail=f"Unsupported target language: {target_lang}. Allowed languages: {', '.join(ALLOWED_LANGUAGES)}")
-        print("翻訳言語確認 -2")
         # ライセンスデータを読み込み
         license_data = load_license_data()
-        print("ライセンスデータ取得 -3" )
         # Arxiv_データを読み込み
         arxiv_info = await get_arxiv_info_async(arxiv_id)
-        print("Arxiv問い合わせ -4")
         paper_license = arxiv_info['license']
 
         license_ok = license_data.get(paper_license, {}).get("OK", False)
-        print("ライセンス確認 -5")
 
         if not license_ok:
             raise HTTPException(status_code=400, detail="License not permitted for translation")
         
-        print("翻訳開始 -6")
         pdf_dl_url = await process_translate_arxiv_pdf(deepl_key,target_lang, arxiv_id,deepl_url)
             
-        print("翻訳終了 -7")
         return pdf_dl_url
     
     except Exception as e:
