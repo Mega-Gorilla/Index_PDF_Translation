@@ -51,24 +51,30 @@ async def translate_paper_data(arxiv_id: str,deepl_url:str, deepl_key: str, targ
     abstract およびPDF を日本語に翻訳します。
     - target_lang:ISO 639-1にて記載のこと
     """
+    print("処理開始 - 1")
     try:
         # 許可された言語のリストに target_lang が含まれているかを確認
         if target_lang.lower() not in ALLOWED_LANGUAGES:
             raise HTTPException(status_code=400, detail=f"Unsupported target language: {target_lang}. Allowed languages: {', '.join(ALLOWED_LANGUAGES)}")
-        
+        print("翻訳言語確認 -2")
         # ライセンスデータを読み込み
         license_data = load_license_data()
+        print("ライセンスデータ取得 -3" )
         # Arxiv_データを読み込み
         arxiv_info = await get_arxiv_info_async(arxiv_id)
+        print("Arxiv問い合わせ -4")
         paper_license = arxiv_info['license']
 
         license_ok = license_data.get(paper_license, {}).get("OK", False)
+        print("ライセンス確認 -5")
 
         if not license_ok:
             raise HTTPException(status_code=400, detail="License not permitted for translation")
         
+        print("翻訳開始 -6")
         pdf_dl_url = await process_translate_arxiv_pdf(deepl_key,target_lang, arxiv_id,deepl_url)
             
+        print("翻訳終了 -7")
         return pdf_dl_url
     
     except Exception as e:
