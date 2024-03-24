@@ -9,3 +9,4 @@ PyMuPDF
 spacy
 psycopg2
 aiohttp
+b2sdk
