@@ -2,9 +2,9 @@ import aiohttp
 import os
 import re
 import asyncio
-from pdf_edit import *
+from modules.pdf_edit import *
 
-async def translate_text(text: str, target_lang: str) -> str:
+async def translate_text(key: str,text: str, target_lang: str) -> str:
     """
     DeepL APIを使用して、入力されたテキストを指定の言語に翻訳する非同期関数。
     タグハンドリングがXML向けになっているので注意
@@ -19,7 +19,7 @@ async def translate_text(text: str, target_lang: str) -> str:
     Raises:
         Exception: APIリクエストが失敗した場合。
     """
-    api_key = os.environ["DEEPL_API_KEY"]  # 環境変数からDeepL APIキーを取得
+    api_key = key  # 環境変数からDeepL APIキーを取得
     api_url = "https://api.deepl.com/v2/translate"
 
     params = {
@@ -56,14 +56,14 @@ def calculate_translation_cost(text: str, price_per_character: float) -> float:
     return translation_cost
 
 
-async def translate_document(document_content,lang='ja'):
+async def translate_document(key,document_content,lang='ja'):
     # 翻訳後のページごとのテキストを格納するリスト
     cost = 0
 
     # XMLに変換
     xml_data,cost = await deepl_convert_xml_calc_cost(document_content)
 
-    translate_xml = await translate(xml_data,lang)
+    translate_xml = await translate(key,xml_data,lang)
     """
     async with aiofiles.open('output_translate.xml', 'w', encoding='utf-8') as file:
         await file.write(translate_xml)
@@ -72,8 +72,8 @@ async def translate_document(document_content,lang='ja'):
 
     return restored_json_data, cost
 
-async def translate(text,lang):
-    result = await translate_text(text, lang)
+async def translate(key,text,lang):
+    result = await translate_text(key,text, lang)
     if result['ok']:
         return result['data']
     else:
@@ -125,20 +125,15 @@ async def deepl_translate_test():
     translation_cost = calculate_translation_cost(text, price_per_character)
     print(f"Translation cost: {translation_cost:.5f}円")
 
-async def pdf_translate_test():
-    source_lang = 'en'
-    to_lang = 'ja'
-    debug =True
+async def pdf_translate(key,pdf_data,source_lang = 'en',to_lang = 'ja',debug =False):
 
-    with open("input.pdf", "rb") as f:
-        input_pdf_data = f.read()
-    block_info = await extract_text_coordinates(input_pdf_data,source_lang)
+    block_info = await extract_text_coordinates(pdf_data,source_lang)
 
     text_blocks,fig_blocks,removed_blocks = await remove_blocks(block_info,10)
 
     # removed_blockをリストに分解
     leave_str_list = [item['text'] for sublist in removed_blocks for item in sublist]
-    removed_textbox_pdf_data = await remove_textbox_for_pdf(input_pdf_data,leave_str_list)
+    removed_textbox_pdf_data = await remove_textbox_for_pdf(pdf_data,leave_str_list)
 
     if debug:
         """
@@ -149,15 +144,15 @@ async def pdf_translate_test():
         with open('fig_blocks.json', 'w', encoding='utf-8') as json_file:
             json.dump(fig_blocks, json_file, ensure_ascii=False, indent=2)
         """
-        text_block_pdf_data = await pdf_draw_blocks(input_pdf_data,text_blocks,width=0,fill_opacity=0.3,fill_colorRGB=[0,0,1])
+        text_block_pdf_data = await pdf_draw_blocks(pdf_data,text_blocks,width=0,fill_opacity=0.3,fill_colorRGB=[0,0,1])
         fig_block_pdf_data = await pdf_draw_blocks(text_block_pdf_data,fig_blocks,width=0,fill_opacity=0.3,fill_colorRGB=[0,1,0])
         all_block_pdf_data = await pdf_draw_blocks(fig_block_pdf_data,removed_blocks,width=0,fill_opacity=0.3,fill_colorRGB=[1,0,0])
         with open("show_blocks.pdf", "wb") as f:
             f.write(all_block_pdf_data)
 
     # 翻訳
-    text_blocks,text_cost = await translate_document(text_blocks)
-    fig_blocks,fig_cost = await translate_document(fig_blocks)
+    text_blocks,text_cost = await translate_document(key,text_blocks)
+    fig_blocks,fig_cost = await translate_document(key,fig_blocks)
     cost = text_cost + fig_cost
     print(F"翻訳コスト： {cost}円")
     
@@ -171,8 +166,17 @@ async def pdf_translate_test():
     # 翻訳したPDFを作成
     translated_pdf_data = await write_pdf_text(removed_textbox_pdf_data,combined_blocks,to_lang)
 
+    return translated_pdf_data
+
+async def translate_test():
+    with open("input.pdf", "rb") as f:
+        input_pdf_data = f.read()
+
+    reslut_pdf = await pdf_translate(os.environ["DEEPL_API_KEY"],input_pdf_data)
+
     with open("output.pdf", "wb") as f:
-        f.write(translated_pdf_data)
+        f.write(reslut_pdf)
+
 
 if __name__ == "__main__":
-    asyncio.run(pdf_translate_test())
+    asyncio.run(translate_test())
