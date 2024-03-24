@@ -7,3 +7,4 @@ python-multipart
 bcrypt
 PyMuPDF
 spacy
+psycopg2
