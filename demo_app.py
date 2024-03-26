@@ -8,13 +8,7 @@ from modules.backblaze_api import upload_byte
 
 from modules.arxiv_api import get_arxiv_info_async,download_arxiv_pdf
 from modules.translate import pdf_translate
-
-import resource
-
-# メモリ制限を512MBに設定
-memory_limit = 512 * 1024 * 1024  # 512MB
-resource.setrlimit(resource.RLIMIT_AS, (memory_limit, memory_limit))
-
+import psutil
 app = FastAPI(timeout=300)
 
 origins = [
@@ -29,6 +23,7 @@ app.add_middleware(
     allow_methods=["*"], 
     allow_headers=["*"], #ブラウザからアクセスできるようにするレスポンスヘッダーを示します
 )
+
 
 async def process_translate_arxiv_pdf(key,target_lang, arxiv_id,api_url):
     try:
@@ -48,7 +43,15 @@ async def process_translate_arxiv_pdf(key,target_lang, arxiv_id,api_url):
 def load_license_data():
     with open('data/license.json', 'r') as f:
         return json.load(f)
-
+    
+async def check_deepl_key(deepl_key, deepl_url, session):
+    headers = {"Authorization": f"DeepL-Auth-Key {deepl_key}"}
+    async with session.get(f"{deepl_url}/v2/usage", headers=headers) as response:
+        if response.status == 403:
+            raise web.HTTPBadRequest(reason="Invalid DeepL API Key.")
+        elif response.status != 200:
+            raise web.HTTPInternalServerError(reason="Error checking DeepL API key.")
+        
 ALLOWED_LANGUAGES = ['en', 'ja']
 
 class TranslateRequest(BaseModel):
@@ -65,21 +68,15 @@ async def translate_paper_data(arxiv_id: str, request: TranslateRequest):
     target_lang = request.target_lang
     deepl_key = request.deepl_key
     deepl_url = request.deepl_url
+    
     # arxiv_idの形式をチェック
     if not re.match(r'^\d{4}\.\d{5}$', arxiv_id):
         raise HTTPException(status_code=400, detail="Invalid arxiv URL.")
     
     # DeepL APIキーの有効性をチェック
-    headers = {"Authorization": f"DeepL-Auth-Key {deepl_key}"}
-    
     async with ClientSession() as session:
-        headers = {"Authorization": f"DeepL-Auth-Key {deepl_key}"}
-        async with session.get(f"{deepl_url}/v2/usage", headers=headers) as response:
-            if response.status == 403:
-                raise web.HTTPBadRequest(reason="Invalid DeepL API Key.")
-            elif response.status != 200:
-                raise web.HTTPInternalServerError(reason="Error checking DeepL API key.")
-
+        await check_deepl_key(deepl_key, deepl_url, session)
+        
     try:
         # 許可された言語のリストに target_lang が含まれているかを確認
         if target_lang.lower() not in ALLOWED_LANGUAGES:
