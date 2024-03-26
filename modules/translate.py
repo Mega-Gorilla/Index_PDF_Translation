@@ -54,6 +54,12 @@ def calculate_translation_cost(text: str, price_per_character: float) -> float:
     translation_cost = character_count * price_per_character
     return translation_cost
 
+async def translate_xml(key,xml_data,lang='ja',api_url="https://api.deepl.com/v2/translate"):
+    # 翻訳後のページごとのテキストを格納するリスト
+
+    translate_xml = await translate(key,xml_data,lang,api_url)
+
+    return translate_xml
 
 async def translate_document(key,document_content,lang='ja',api_url="https://api.deepl.com/v2/translate"):
     # 翻訳後のページごとのテキストを格納するリスト
@@ -150,10 +156,18 @@ async def pdf_translate(key,pdf_data,source_lang = 'en',to_lang = 'ja',debug =Fa
             f.write(all_block_pdf_data)
 
     # 翻訳
-    #text_blocks,text_cost = await translate_document(key,text_blocks,to_lang,api_url)
-    #fig_blocks,fig_cost = await translate_document(key,fig_blocks,to_lang,api_url)
-    #cost = text_cost + fig_cost
-    #print(F"翻訳コスト： {cost}円")
+    sum_cost = 0
+    xml_data,cost = await deepl_convert_xml_calc_cost(text_blocks)
+    sum_cost += cost
+    #xml_data = await translate_xml(key,xml_data,to_lang,api_url)
+    text_blocks = await convert_from_xml(text_blocks,xml_data)
+
+    xml_data,cost = await deepl_convert_xml_calc_cost(fig_blocks)
+    sum_cost += cost
+    #xml_data = await translate_xml(key,xml_data,to_lang,api_url)
+    fig_blocks = await convert_from_xml(fig_blocks,xml_data)
+
+    #print(F"翻訳コスト： {sum_cost}円")
     
     # 翻訳したブロックを結合
     combined_blocks =[]
