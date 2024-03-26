@@ -90,6 +90,8 @@ async def translate_paper_data(arxiv_id: str, request: TranslateRequest):
         except Exception as e:
             error_message = str(e)
             if "DeepL API request failed with status code" in error_message:
+                if "403" in error_message:
+                    raise HTTPException(status_code=400, detail="DeepL認証に失敗しました。APIキーと登録ステータスを確認してください。")
                 raise HTTPException(status_code=400, detail=error_message)
             else:
                 raise e
