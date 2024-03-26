@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-import json,re
+import json,re,requests
 from modules.backblaze_api import upload_byte
 
 from modules.arxiv_api import get_arxiv_info_async,download_arxiv_pdf
@@ -47,7 +47,7 @@ def load_license_data():
 ALLOWED_LANGUAGES = ['en', 'ja']
 
 class TranslateRequest(BaseModel):
-    deepl_url: str
+    deepl_url: str = "https://api.deepl.com/v2/translate"
     deepl_key: str
     target_lang: str = "ja"
 
@@ -63,6 +63,12 @@ async def translate_paper_data(arxiv_id: str, request: TranslateRequest):
     # arxiv_idの形式をチェック
     if not re.match(r'^\d{4}\.\d{5}$', arxiv_id):
         raise HTTPException(status_code=400, detail="Invalid arxiv URL.")
+    
+    # DeepL APIキーの有効性をチェック
+    headers = {"Authorization": f"DeepL-Auth-Key {deepl_key}"}
+    test_response = requests.get(f"{deepl_url}/v2/usage", headers=headers)
+    if test_response.status_code != 200:
+        raise HTTPException(status_code=400, detail="Invalid DeepL API Key.")
 
     try:
         # 許可された言語のリストに target_lang が含まれているかを確認
