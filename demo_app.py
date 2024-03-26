@@ -66,9 +66,11 @@ async def translate_paper_data(arxiv_id: str, request: TranslateRequest):
     
     # DeepL APIキーの有効性をチェック
     headers = {"Authorization": f"DeepL-Auth-Key {deepl_key}"}
-    test_response = requests.get(f"{deepl_url}/v2/usage", headers=headers)
-    if test_response.status_code != 200:
+    test_response = requests.get(f"{deepl_url}/usage", headers=headers)
+    if test_response.status_code == 403:
         raise HTTPException(status_code=400, detail="Invalid DeepL API Key.")
+    elif test_response.status_code != 200:
+        raise HTTPException(status_code=500, detail="Error checking DeepL API key.")
 
     try:
         # 許可された言語のリストに target_lang が含まれているかを確認
