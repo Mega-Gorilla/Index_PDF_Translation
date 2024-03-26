@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-import json
+import json,re
 from modules.backblaze_api import upload_byte
 
 from modules.arxiv_api import get_arxiv_info_async,download_arxiv_pdf
@@ -60,6 +60,10 @@ async def translate_paper_data(arxiv_id: str, request: TranslateRequest):
     target_lang = request.target_lang
     deepl_key = request.deepl_key
     deepl_url = request.deepl_url
+    # arxiv_idの形式をチェック
+    if not re.match(r'^\d{4}\.\d{5}$', arxiv_id):
+        raise HTTPException(status_code=400, detail="Invalid arxiv URL.")
+
     try:
         # 許可された言語のリストに target_lang が含まれているかを確認
         if target_lang.lower() not in ALLOWED_LANGUAGES:
@@ -68,6 +72,10 @@ async def translate_paper_data(arxiv_id: str, request: TranslateRequest):
         license_data = load_license_data()
         # Arxiv_データを読み込み
         arxiv_info = await get_arxiv_info_async(arxiv_id)
+        # 存在しないArxiv IDの場合エラー
+        if arxiv_info=={'authors': []}:
+            raise HTTPException(status_code=400, detail="Invalid arxiv URL.")
+        
         paper_license = arxiv_info['license']
 
         license_ok = license_data.get(paper_license, {}).get("OK", False)
@@ -75,9 +83,20 @@ async def translate_paper_data(arxiv_id: str, request: TranslateRequest):
         if not license_ok:
             raise HTTPException(status_code=400, detail="License not permitted for translation")
         
-        pdf_dl_url = await process_translate_arxiv_pdf(deepl_key,target_lang, arxiv_id,deepl_url)
-            
-        return pdf_dl_url
+        try:
+            pdf_dl_url = await process_translate_arxiv_pdf(deepl_key,target_lang, arxiv_id,deepl_url)
+            return pdf_dl_url
+        
+        except Exception as e:
+            error_message = str(e)
+            if "DeepL API request failed with status code" in error_message:
+                raise HTTPException(status_code=400, detail=error_message)
+            else:
+                raise e
+    
+    except HTTPException as e:
+        # HTTPExceptionはそのまま投げる
+        raise e
     
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
