@@ -2,7 +2,8 @@ from fastapi import FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-import json,re,requests
+import json,re
+from aiohttp import web, ClientSession
 from modules.backblaze_api import upload_byte
 
 from modules.arxiv_api import get_arxiv_info_async,download_arxiv_pdf
@@ -66,11 +67,15 @@ async def translate_paper_data(arxiv_id: str, request: TranslateRequest):
     
     # DeepL APIキーの有効性をチェック
     headers = {"Authorization": f"DeepL-Auth-Key {deepl_key}"}
-    test_response = requests.get(f"{deepl_url}/v2/usage", headers=headers)
-    if test_response.status_code == 403:
-        raise HTTPException(status_code=400, detail="Invalid DeepL API Key.")
-    elif test_response.status_code != 200:
-        raise HTTPException(status_code=500, detail="Error checking DeepL API key.")
+    
+    async with ClientSession() as session:
+        headers = {"Authorization": f"DeepL-Auth-Key {deepl_key}"}
+        async with session.get(f"{deepl_url}/v2/usage", headers=headers) as response:
+            if response.status == 403:
+                raise web.HTTPBadRequest(reason="Invalid DeepL API Key.")
+            elif response.status != 200:
+                raise web.HTTPInternalServerError(reason="Error checking DeepL API key.")
+
     try:
         # 許可された言語のリストに target_lang が含まれているかを確認
         if target_lang.lower() not in ALLOWED_LANGUAGES:
