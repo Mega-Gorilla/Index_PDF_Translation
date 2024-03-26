@@ -9,6 +9,12 @@ from modules.backblaze_api import upload_byte
 from modules.arxiv_api import get_arxiv_info_async,download_arxiv_pdf
 from modules.translate import pdf_translate
 
+import resource
+
+# メモリ制限を512MBに設定
+memory_limit = 512 * 1024 * 1024  # 512MB
+resource.setrlimit(resource.RLIMIT_AS, (memory_limit, memory_limit))
+
 app = FastAPI(timeout=300)
 
 origins = [
@@ -24,19 +30,13 @@ app.add_middleware(
     allow_headers=["*"], #ブラウザからアクセスできるようにするレスポンスヘッダーを示します
 )
 
-# --------------- Paper meta DB用処理 ---------------
-
 async def process_translate_arxiv_pdf(key,target_lang, arxiv_id,api_url):
     try:
-        print("Get Arxiv PDF")
         # PDFをダウンロードしてバイトデータを取得
         pdf_data = await download_arxiv_pdf(arxiv_id)
         
-        print("PDF translate")
         #翻訳処理
         translate_data = await pdf_translate(key,pdf_data,to_lang=target_lang,api_url=api_url)
-        
-        print("upload pdf data")
         download_url = await upload_byte(translate_data, 'arxiv_pdf', F"{arxiv_id}_{target_lang}.pdf", content_type='application/pdf')
 
         return download_url
@@ -101,7 +101,6 @@ async def translate_paper_data(arxiv_id: str, request: TranslateRequest):
         
         try:
             deepl_url = F"{deepl_url}/v2/translate"
-            print("start tranlsate")
             pdf_dl_url = await process_translate_arxiv_pdf(deepl_key,target_lang, arxiv_id,deepl_url)
             return pdf_dl_url
         
