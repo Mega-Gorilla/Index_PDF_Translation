@@ -150,10 +150,10 @@ async def pdf_translate(key,pdf_data,source_lang = 'en',to_lang = 'ja',debug =Fa
             f.write(all_block_pdf_data)
 
     # 翻訳
-    text_blocks,text_cost = await translate_document(key,text_blocks,to_lang,api_url)
-    fig_blocks,fig_cost = await translate_document(key,fig_blocks,to_lang,api_url)
-    cost = text_cost + fig_cost
-    print(F"翻訳コスト： {cost}円")
+    #text_blocks,text_cost = await translate_document(key,text_blocks,to_lang,api_url)
+    #fig_blocks,fig_cost = await translate_document(key,fig_blocks,to_lang,api_url)
+    #cost = text_cost + fig_cost
+    #print(F"翻訳コスト： {cost}円")
     
     # 翻訳したブロックを結合
     combined_blocks =[]

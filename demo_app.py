@@ -30,8 +30,8 @@ async def process_translate_arxiv_pdf(key,target_lang, arxiv_id,api_url):
         pdf_data = await download_arxiv_pdf(arxiv_id)
         
         #翻訳処理
-        #translate_data = await pdf_translate(key,pdf_data,to_lang=target_lang,api_url=api_url)
-        download_url = await upload_byte(pdf_data, 'arxiv_pdf', F"{arxiv_id}_{target_lang}.pdf", content_type='application/pdf')
+        translate_data = await pdf_translate(key,pdf_data,to_lang=target_lang,api_url=api_url)
+        download_url = await upload_byte(translate_data, 'arxiv_pdf', F"{arxiv_id}_{target_lang}.pdf", content_type='application/pdf')
 
         return download_url
     
