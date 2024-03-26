@@ -8,7 +8,6 @@ from modules.backblaze_api import upload_byte
 
 from modules.arxiv_api import get_arxiv_info_async,download_arxiv_pdf
 from modules.translate import pdf_translate
-import psutil
 app = FastAPI(timeout=300)
 
 origins = [
