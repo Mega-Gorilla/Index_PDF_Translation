@@ -8,7 +8,7 @@ from modules.backblaze_api import upload_byte
 
 from modules.arxiv_api import get_arxiv_info_async,download_arxiv_pdf
 from modules.translate import pdf_translate
-app = FastAPI(timeout=300)
+app = FastAPI(timeout=300,version="0.1.1")
 
 origins = [
     "http://localhost:5173",
