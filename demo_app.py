@@ -47,7 +47,7 @@ def load_license_data():
 ALLOWED_LANGUAGES = ['en', 'ja']
 
 class TranslateRequest(BaseModel):
-    deepl_url: str = "https://api.deepl.com/v2/translate"
+    deepl_url: str = "https://api.deepl.com"
     deepl_key: str
     target_lang: str = "ja"
 
@@ -66,12 +66,11 @@ async def translate_paper_data(arxiv_id: str, request: TranslateRequest):
     
     # DeepL APIキーの有効性をチェック
     headers = {"Authorization": f"DeepL-Auth-Key {deepl_key}"}
-    test_response = requests.get(f"{deepl_url}/usage", headers=headers)
+    test_response = requests.get(f"{deepl_url}/v2/usage", headers=headers)
     if test_response.status_code == 403:
         raise HTTPException(status_code=400, detail="Invalid DeepL API Key.")
     elif test_response.status_code != 200:
         raise HTTPException(status_code=500, detail="Error checking DeepL API key.")
-
     try:
         # 許可された言語のリストに target_lang が含まれているかを確認
         if target_lang.lower() not in ALLOWED_LANGUAGES:
@@ -92,17 +91,12 @@ async def translate_paper_data(arxiv_id: str, request: TranslateRequest):
             raise HTTPException(status_code=400, detail="License not permitted for translation")
         
         try:
+            deepl_url = F"{deepl_url}/v2/translate"
             pdf_dl_url = await process_translate_arxiv_pdf(deepl_key,target_lang, arxiv_id,deepl_url)
             return pdf_dl_url
         
         except Exception as e:
-            error_message = str(e)
-            if "DeepL API request failed with status code" in error_message:
-                if "403" in error_message:
-                    raise HTTPException(status_code=400, detail="DeepL認証に失敗しました。APIキーと登録ステータスを確認してください。")
-                raise HTTPException(status_code=400, detail=error_message)
-            else:
-                raise e
+            raise e
     
     except HTTPException as e:
         # HTTPExceptionはそのまま投げる
