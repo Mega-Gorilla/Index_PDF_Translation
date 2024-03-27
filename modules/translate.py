@@ -159,15 +159,15 @@ async def pdf_translate(key,pdf_data,source_lang = 'en',to_lang = 'ja',debug =Fa
     sum_cost = 0
     xml_data,cost = await deepl_convert_xml_calc_cost(text_blocks)
     sum_cost += cost
-    #xml_data = await translate_xml(key,xml_data,to_lang,api_url)
+    xml_data = await translate_xml(key,xml_data,to_lang,api_url)
     text_blocks = await convert_from_xml(text_blocks,xml_data)
 
     xml_data,cost = await deepl_convert_xml_calc_cost(fig_blocks)
     sum_cost += cost
-    #xml_data = await translate_xml(key,xml_data,to_lang,api_url)
+    xml_data = await translate_xml(key,xml_data,to_lang,api_url)
     fig_blocks = await convert_from_xml(fig_blocks,xml_data)
 
-    #print(F"翻訳コスト： {sum_cost}円")
+    print(F"翻訳コスト： {sum_cost}円")
     
     # 翻訳したブロックを結合
     combined_blocks =[]
