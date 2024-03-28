@@ -104,6 +104,7 @@ class paper_meta_data(Base):
     bad = Column(Integer)
     favorite = Column(Integer)
 
+# ユーザーテーブル
 class UserDB(Base):
     __tablename__ = "user_db"
 
@@ -114,3 +115,13 @@ class UserDB(Base):
     full_name = Column(String)
     hashed_password = Column(String)
     disabled = Column(Boolean, default=False)
+
+# DeepL翻訳テーブル
+class Deepl_Translate_Task(Base):
+    __tablename__ = "translate_db"
+
+    id = Column(Integer, primary_key=True, index=True)
+    arxiv_id = Column(String)
+    deepl_hash_key = Column(String)
+    datestamp = Column(DateTime)
+    responce = Column(String)
