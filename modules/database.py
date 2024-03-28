@@ -1,13 +1,83 @@
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, Table, ForeignKey, Boolean, UUID
 from sqlalchemy.orm import sessionmaker, relationship
 from sqlalchemy.ext.declarative import declarative_base
-import os
+from sqlalchemy.orm import  Session
+import os,json
+from datetime import datetime
 
 SQLALCHEMY_DATABASE_URL = os.environ.get('render-db-url')
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()
+
+def load_license_data():
+    with open('data/license.json', 'r') as f:
+        return json.load(f)
+    
+async def create_paper_meta_data(arxiv_info: dict, db: Session):
+    """
+    arxiv_info: ArXivから受信した辞書配列情報
+    db: データベース
+    """
+
+    # ヘルパー関数: リストの作成
+    def create_or_get(model, data, key_name='id'):
+        instances = []
+        for item in data:
+            item_id = item if isinstance(item, str) else f"{item['forenames']} {item['keyname']}"
+            db_instance = db.query(model).filter(getattr(model, key_name) == item_id).first()
+            if not db_instance:
+                db_instance = model(**{key_name: item_id})
+            instances.append(db_instance)
+        return instances
+
+    # 著者データの作成
+    authors = create_or_get(Author, arxiv_info['authors'])
+
+    # カテゴリーリストを作成
+    categories_list = create_or_get(Category, arxiv_info['categories'].split(), 'id')
+    
+    # ライセンスの確認
+    license_data = load_license_data()
+    license_ok = license_data.get(arxiv_info['license'], {}).get("OK", False)
+
+    # paper_meta_dataの作成
+    paper_meta = paper_meta_data(
+        identifier=arxiv_info['identifier'],
+        datestamp=datetime.strptime(arxiv_info['datestamp'], '%Y-%m-%d') if 'datestamp' in arxiv_info else None,
+        setSpec=arxiv_info['setSpec'],
+        created=datetime.strptime(arxiv_info['created'], '%Y-%m-%d') if 'created' in arxiv_info else None,
+        updated=datetime.strptime(arxiv_info['updated'], '%Y-%m-%d') if 'updated' in arxiv_info else None,
+        authors=authors,
+        title=[],
+        categories=arxiv_info['categories'],
+        categories_list=categories_list,
+        license=arxiv_info['license'],
+        license_bool=license_ok,
+        abstract=[],
+        abstract_user=[],
+        pdf_url=[],
+        comments=[],
+        good=0,
+        bad=0,
+        favorite=0
+    )
+
+    # paper_meta_dataとそれに関連するタイトルとアブストラクトをデータベースに追加
+    db.add(paper_meta)
+    db.commit()
+    db.refresh(paper_meta)
+
+    # Titleインスタンスを作成して追加
+    title = TitleMain(en=arxiv_info['title'].replace("\n", ""), ja=None, paper_meta_id=paper_meta.id)
+    abstract = AbstractMain(en=arxiv_info['abstract'].replace("\n", ""), ja=None, paper_meta_id=paper_meta.id)
+
+    # 一度に追加してコミット
+    db.add_all([title, abstract])
+    db.commit()
+
+    return paper_meta
 
 # --------------- SQL テーブル ---------------
 # Arxiv論文用テーブル
@@ -124,4 +194,5 @@ class Deepl_Translate_Task(Base):
     uuid = Column(UUID,index=True)
     arxiv_id = Column(String)
     deepl_hash_key = Column(String)
+    target_lang = Column(String)
     responce = Column(String)
