@@ -72,9 +72,9 @@ async def create_paper_meta_data(arxiv_info: dict, db: Session):
     # Titleインスタンスを作成して追加
     title = TitleMain(en=arxiv_info['title'].replace("\n", ""), ja=None, paper_meta_id=paper_meta.id)
     abstract = AbstractMain(en=arxiv_info['abstract'].replace("\n", ""), ja=None, paper_meta_id=paper_meta.id)
-
+    pdf_url = PdfURL(en=None,ja=None, paper_meta_id=paper_meta.id)
     # 一度に追加してコミット
-    db.add_all([title, abstract])
+    db.add_all([title, abstract,pdf_url])
     db.commit()
 
     return paper_meta
@@ -194,5 +194,6 @@ class Deepl_Translate_Task(Base):
     uuid = Column(UUID,index=True)
     arxiv_id = Column(String)
     deepl_hash_key = Column(String)
+    deepl_url = Column(String)
     target_lang = Column(String)
     responce = Column(String)
