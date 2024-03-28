@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import asyncio
@@ -9,7 +9,7 @@ from datetime import datetime,timedelta
 
 from modules.backblaze_api import upload_byte
 from modules.arxiv_api import get_arxiv_info_async,download_arxiv_pdf
-from modules.translate import pdf_translate
+from modules.translate import pdf_translate,translate_text
 from modules.database import *
 
 from Crypto.PublicKey import RSA
@@ -20,7 +20,7 @@ import uuid
 from typing import List, Optional
 
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import  Session
+from sqlalchemy.orm import  Session,selectinload
 
 app = FastAPI(timeout=300,version="0.1.2")
 
@@ -100,7 +100,7 @@ class translate_task_payload(BaseModel):
 ALLOWED_LANGUAGES = ['en', 'ja']
 
 @app.post("/add_translate_task")
-async def add_user_translate_task(payload: translate_task_payload,db: Session = Depends(get_db)):
+async def add_user_translate_task(payload: translate_task_payload, background_tasks: BackgroundTasks,db: Session = Depends(get_db)):
     """
     DB にユーザーから入力された翻訳リクエストを記録する
     """
@@ -109,8 +109,10 @@ async def add_user_translate_task(payload: translate_task_payload,db: Session = 
         raise HTTPException(status_code=400, detail=f"Unsupported target language: {payload.target_lang}. Allowed languages: {', '.join(ALLOWED_LANGUAGES)}")
     # ----- DBに該当Arxivがあるか -----
     existing_paper = db.query(paper_meta_data).filter(paper_meta_data.identifier == f"oai:arXiv.org:{payload.arxiv_id}").first()
+    
     if existing_paper:
-        return {"OK":True,"message":"翻訳済みデータが見つかりました","link":F"https://indqx-demo-front.onrender.com/abs/{payload.arxiv_id}"}
+        if getattr(existing_paper.pdf_url[0], payload.target_lang.lower(), None):
+            return {"OK":True,"message":"翻訳済みデータが見つかりました","link":F"https://indqx-demo-front.onrender.com/abs/{payload.arxiv_id}"}
     # ----- ライセンスチェック -----
     license_data = load_license_data()
     try:
@@ -162,6 +164,7 @@ async def add_user_translate_task(payload: translate_task_payload,db: Session = 
         deepl_translate = Deepl_Translate_Task(
             arxiv_id=payload.arxiv_id,
             deepl_hash_key=payload.deepl_hash_key,
+            deepl_url = payload.deepl_url,
             uuid=payload.id,
             target_lang =payload.target_lang
         )
@@ -170,31 +173,88 @@ async def add_user_translate_task(payload: translate_task_payload,db: Session = 
         db.commit()
         db.refresh(deepl_translate)
 
+        background_tasks.add_task(background_trasnlate_task,payload.id,db)
+
     except SQLAlchemyError as e:
         db.rollback()  # エラー発生時には変更をロールバック
         print(e)
         raise HTTPException(status_code=500, detail="Failed to connect to the database. Please try your request again after some time.") from e
 
-    return {"ok":True,"message": "翻訳タスクを追加しました。", "arxiv_id": payload.arxiv_id,"link":F"https://indqx-demo-front.onrender.com/abs/{payload.arxiv_id}"}
+    return {"ok":True,"message": "翻訳を開始しました。", "arxiv_id": payload.arxiv_id,"link":F"https://indqx-demo-front.onrender.com/abs/{payload.arxiv_id}"}
 
-async def process_translate_arxiv_pdf(key,target_lang, arxiv_id,api_url):
-    """
-    PDFを翻訳する
-    """
-    try:
-        # PDFをダウンロードしてバイトデータを取得
-        pdf_data = await download_arxiv_pdf(arxiv_id)
-        
-        #翻訳処理
-        translate_data = await pdf_translate(key,pdf_data,to_lang=target_lang,api_url=api_url)
-        download_url = await upload_byte(translate_data, 'arxiv_pdf', F"{arxiv_id}_{target_lang}.pdf", content_type='application/pdf')
-
-        return download_url
+async def background_trasnlate_task(uuid,db: Session):
+    task_data = db.query(Deepl_Translate_Task).filter(Deepl_Translate_Task.uuid==uuid).first()
+    if task_data == None:
+        print("taskdata_none")
+        return #error
+    deepl_url = task_data.deepl_url + "/v2/translate"
+    paper = db.query(paper_meta_data).filter(paper_meta_data.identifier == f"oai:arXiv.org:{task_data.arxiv_id}").first()
     
-    except Exception as e:
-        print(f"Error processing arxiv_id {arxiv_id}: {str(e)}")
-        raise
+    # DeepL Key 復号化
+    private_key = None  # 抜き出されるprivate_keyを初期化
+    for index, item in enumerate(private_key_memory):
+        if item['id'] == uuid:
+            private_key = item['private_key']
+            private_key_memory.pop(index)  # 見つかった項目をリストから削除
+            break  # 最初に見つかった項目を処理した後はループを抜ける
+    if private_key is None:
+        print("private key none")
+        return #error
+    await remove_expired_keys() #古いデータを消去
+    private_key = RSA.import_key(private_key)
+    cipher = PKCS1_OAEP.new(private_key, hashAlgo=SHA256)
+    decrypted_deepl_key = cipher.decrypt(base64.b64decode(task_data.deepl_hash_key)).decode()
+    # アブストとタイトルを翻訳する
+    if not getattr(paper.abstract[0], task_data.target_lang, None):
+        translation_result = await translate_text(decrypted_deepl_key,paper.abstract[0].en, task_data.target_lang,deepl_url)
+        if translation_result['ok']:
+            setattr(paper.abstract[0], task_data.target_lang, translation_result['data'])
+        else:
+            print(translation_result)
+            print("abstract error")
+            return #error
+    
+    if not getattr(paper.title[0], task_data.target_lang, None):
+        translation_result = await translate_text(decrypted_deepl_key,paper.title[0].en, task_data.target_lang,deepl_url)
+        if translation_result['ok']:
+            setattr(paper.title[0], task_data.target_lang, translation_result['data'])
+        else:
+            print("title error")
+            return #error
+    db.commit()
+    db.refresh(paper)
+    # PDFをダウンロードしてバイトデータを取得
+    pdf_data = await download_arxiv_pdf(task_data.arxiv_id)
+    download_url = await upload_byte(pdf_data, 'arxiv_pdf', F"{task_data.arxiv_id}_en.pdf", content_type='application/pdf')
+    #翻訳処理
+    translate_data = await pdf_translate(decrypted_deepl_key,pdf_data,to_lang=task_data.target_lang,api_url=deepl_url)
+    translate_download_url = await upload_byte(translate_data, 'arxiv_pdf', F"{task_data.arxiv_id}_{task_data.target_lang}.pdf", content_type='application/pdf')
+    setattr(paper.pdf_url[0], "en", download_url)
+    setattr(paper.pdf_url[0], task_data.target_lang, translate_download_url)
+    print(F"TranslateDone: {translate_download_url}")
 
+    db.delete(task_data)
+    db.commit()
+    db.refresh(paper)
+
+@app.get("/arxiv/metadata/{arxiv_id}")
+async def Get_Paper_Data(arxiv_id: str, db: Session = Depends(get_db)):
+    """
+    ArXiv IDより、自社DBのデータを参照します。存在しない場合はArXiv APIに問い合わせ実施する。
+    """
+    # 自社データベースに問い合わせて、指定された arxiv_id のデータを取得
+    existing_paper = db.query(paper_meta_data).options(
+        selectinload(paper_meta_data.authors),
+        selectinload(paper_meta_data.title),
+        selectinload(paper_meta_data.categories_list),
+        selectinload(paper_meta_data.abstract),
+        selectinload(paper_meta_data.abstract_user),
+        selectinload(paper_meta_data.pdf_url),
+        selectinload(paper_meta_data.comments),
+    ).filter(paper_meta_data.identifier == f"oai:arXiv.org:{arxiv_id}").first()
+    #print(existing_paper.abstract)
+    return existing_paper
+    
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("demo_app:app", host="0.0.0.0", port=8001,reload=True)
