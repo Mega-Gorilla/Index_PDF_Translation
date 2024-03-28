@@ -1,10 +1,11 @@
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+import asyncio
 
 import json,re
 from aiohttp import web, ClientSession
-from datetime import datetime
+from datetime import datetime,timedelta
 
 from modules.backblaze_api import upload_byte
 from modules.arxiv_api import get_arxiv_info_async,download_arxiv_pdf
@@ -15,6 +16,8 @@ from Crypto.PublicKey import RSA
 from Crypto.Cipher import PKCS1_OAEP
 from Crypto.Hash import SHA256
 import base64
+import uuid
+from typing import List, Optional
 
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import  Session
@@ -35,61 +38,33 @@ app.add_middleware(
     allow_headers=["*"], #ブラウザからアクセスできるようにするレスポンスヘッダーを示します
 )
 # RSA設定 -----
-def pseudo_random_generator(seed):
+
+# メモリ上に保持するリストを定義
+private_key_memory: List[dict] = []
+
+async def generate_key_pair():
+    key = RSA.generate(2048)
+    private_key = key.export_key()
+    public_key = key.publickey().export_key()
+    return public_key, private_key
+
+async def remove_expired_keys():
     """
-    再現性のある疑似乱数生成器。
-    指定されたシードに基づいて、必要に応じてランダムバイト列を生成します。
+    リクエストされて20以上経過しているprivate_key_memoryのデータを消去
     """
-    while True:
-        seed = SHA256.new(seed).digest()  # 新しいシードを生成
-        for byte in seed:
-            yield byte
-
-def transform_date(current_date):
-    """
-    current_dateを変換して再現性のある値を生成します。
-    この変換はハッシュ関数を使用して行います。
-    """
-    hash = SHA256.new(current_date.encode()).digest()
-    return hash
-
-async def generate_public_key(current_date):
-    FIXED_KEY = os.environ["indqx_userdeepl_key"]
-    transformed_date = transform_date(current_date)  # 日付を変換
-    combined_key = f"{transformed_date.hex()}_{FIXED_KEY}"
-    seed = SHA256.new(combined_key.encode()).digest()
-
-    # 疑似乱数生成器を初期化
-    rng = pseudo_random_generator(seed)
-    randfunc = lambda n: bytes([next(rng) for _ in range(n)])
-    
-    rsa_key = RSA.generate(2048, randfunc=randfunc)
-    public_key = rsa_key.publickey().export_key()
-    return public_key
-
-async def generate_private_key(current_date):
-    FIXED_KEY = os.environ["indqx_userdeepl_key"]
-    transformed_date = transform_date(current_date)  # 日付を変換
-    combined_key = f"{transformed_date.hex()}_{FIXED_KEY}"
-    seed = SHA256.new(combined_key.encode()).digest()
-
-    # 疑似乱数生成器を初期化
-    rng = pseudo_random_generator(seed)
-    randfunc = lambda n: bytes([next(rng) for _ in range(n)])
-    
-    rsa_key = RSA.generate(2048, randfunc=randfunc)
-    private_key = rsa_key.export_key()
-    return private_key
+    current_time = datetime.now()
+    global private_key_memory
+    private_key_memory = [item for item in private_key_memory if current_time - datetime.strptime(item["datestamp"], "%Y%m%d%H%M%S") <= timedelta(minutes=20)]
 
 @app.get("/public-key")
 async def get_public_key():
-    #　日付に基づいてRSAキーを自動生成
-    import time
-    process_time = time.time()
     current_date = datetime.now().strftime("%Y%m%d%H%M%S")
-    public_key = await generate_public_key(current_date)
-    print(F"GenerateKey:{time.time()-process_time}")
-    return {"datestamp":current_date,"public_key": public_key.decode()}
+    public_key, private_key = await generate_key_pair()
+    unique_id = str(uuid.uuid4())  # ランダムなUUIDを生成し、文字列に変換
+    private_key_memory.append({"id": unique_id, "datestamp": current_date, "private_key": private_key})
+    
+    # UUIDを返す場合も含め、適宜レスポンスを調整
+    return {"id": unique_id, "datestamp": current_date, "public_key": public_key.decode()}
 
 # DB設定 -----
 Base.metadata.create_all(bind=engine)   #テーブルの作成
@@ -117,9 +92,9 @@ async def check_deepl_key(deepl_key, deepl_url, session):
         
 class translate_task_payload(BaseModel):
     arxiv_id: str
-    deepl_url: str
+    deepl_url: str = "https://api.deepl.com"
     deepl_hash_key: str
-    datestamp: str
+    id: str
 
 @app.post("/add_translate_task")
 async def add_user_translate_task(payload: translate_task_payload,db: Session = Depends(get_db)):
@@ -138,7 +113,6 @@ async def add_user_translate_task(payload: translate_task_payload,db: Session = 
     # 存在しないArxiv IDの場合エラー
     if arxiv_info=={'authors': []}:
         raise HTTPException(status_code=400, detail="Invalid arxiv URL.")
-    
     paper_license = arxiv_info['license']
     license_ok = license_data.get(paper_license, {}).get("OK", False)
     if not license_ok:
@@ -146,22 +120,34 @@ async def add_user_translate_task(payload: translate_task_payload,db: Session = 
     
     # ----- DeepL ライセンス 確認 -----
     try:
-        private_key = await generate_private_key(payload.datestamp)
-        cipher = PKCS1_OAEP.new(RSA.import_key(private_key))
+        # DeepL Key 復号化
+        private_key = None  # 抜き出されるprivate_keyを初期化
+        for index, item in enumerate(private_key_memory):
+            if item['id'] == payload.id:
+                private_key = item['private_key']
+                private_key_memory.pop(index)  # 見つかった項目をリストから削除
+                break  # 最初に見つかった項目を処理した後はループを抜ける
+        if private_key is None:
+            raise HTTPException(status_code=400, detail="The request has not been sent.")
+        await remove_expired_keys() #古いデータを消去
+        private_key = RSA.import_key(private_key)
+        cipher = PKCS1_OAEP.new(private_key, hashAlgo=SHA256)
         decrypted_deepl_key = cipher.decrypt(base64.b64decode(payload.deepl_hash_key)).decode()
     except ValueError:
         # 復号化できなかった場合のエラーハンドリング
         raise HTTPException(status_code=400, detail="Key decryption failed. Please check the encryption key and try again.")
     # DeepL APIに問い合わせしキーが存在するか確認
-    async with ClientSession() as session:
-        await check_deepl_key(decrypted_deepl_key, payload.deepl_url, session)
-
+    try:
+        async with ClientSession() as session:
+            await check_deepl_key(decrypted_deepl_key, payload.deepl_url, session)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Failed to check DeepL API key.") from e
     # ----- タスクの追加 -----
     try:
         deepl_translate = Deepl_Translate_Task(
             arxiv_id=payload.arxiv_id,
             deepl_hash_key=payload.deepl_hash_key,
-            datestamp=payload.datestamp  # 現在の時刻を設定
+            uuid=payload.id
         )
 
         db.add(deepl_translate)
@@ -170,6 +156,7 @@ async def add_user_translate_task(payload: translate_task_payload,db: Session = 
 
     except SQLAlchemyError as e:
         db.rollback()  # エラー発生時には変更をロールバック
+        print(e)
         raise HTTPException(status_code=500, detail="Failed to connect to the database. Please try your request again after some time.") from e
 
     return {"ok":True,"message": "翻訳タスクを追加しました。", "arxiv_id": payload.arxiv_id}
@@ -192,8 +179,6 @@ async def process_translate_arxiv_pdf(key,target_lang, arxiv_id,api_url):
         print(f"Error processing arxiv_id {arxiv_id}: {str(e)}")
         raise
 
-    
-        
 ALLOWED_LANGUAGES = ['en', 'ja']
 
 class TranslateRequest(BaseModel):
