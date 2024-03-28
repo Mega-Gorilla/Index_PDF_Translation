@@ -95,13 +95,22 @@ class translate_task_payload(BaseModel):
     deepl_url: str = "https://api.deepl.com"
     deepl_hash_key: str
     id: str
+    target_lang: str = "ja"
+
+ALLOWED_LANGUAGES = ['en', 'ja']
 
 @app.post("/add_translate_task")
 async def add_user_translate_task(payload: translate_task_payload,db: Session = Depends(get_db)):
     """
     DB にユーザーから入力された翻訳リクエストを記録する
     """
-    
+    # --- 許可された翻訳言語か確認---
+    if payload.target_lang.lower() not in ALLOWED_LANGUAGES:
+        raise HTTPException(status_code=400, detail=f"Unsupported target language: {payload.target_lang}. Allowed languages: {', '.join(ALLOWED_LANGUAGES)}")
+    # ----- DBに該当Arxivがあるか -----
+    existing_paper = db.query(paper_meta_data).filter(paper_meta_data.identifier == f"oai:arXiv.org:{payload.arxiv_id}").first()
+    if existing_paper:
+        return {"OK":True,"message":"翻訳済みデータが見つかりました","link":F"https://indqx-demo-front.onrender.com/abs/{payload.arxiv_id}"}
     # ----- ライセンスチェック -----
     license_data = load_license_data()
     try:
@@ -125,7 +134,7 @@ async def add_user_translate_task(payload: translate_task_payload,db: Session = 
         for index, item in enumerate(private_key_memory):
             if item['id'] == payload.id:
                 private_key = item['private_key']
-                private_key_memory.pop(index)  # 見つかった項目をリストから削除
+                #private_key_memory.pop(index)  # 見つかった項目をリストから削除
                 break  # 最初に見つかった項目を処理した後はループを抜ける
         if private_key is None:
             raise HTTPException(status_code=400, detail="The request has not been sent.")
@@ -136,18 +145,25 @@ async def add_user_translate_task(payload: translate_task_payload,db: Session = 
     except ValueError:
         # 復号化できなかった場合のエラーハンドリング
         raise HTTPException(status_code=400, detail="Key decryption failed. Please check the encryption key and try again.")
+    
     # DeepL APIに問い合わせしキーが存在するか確認
     try:
         async with ClientSession() as session:
             await check_deepl_key(decrypted_deepl_key, payload.deepl_url, session)
     except Exception as e:
         raise HTTPException(status_code=500, detail="Failed to check DeepL API key.") from e
-    # ----- タスクの追加 -----
+    # ----- DBに翻訳タスクの追加 -----
     try:
+        # arxiv情報をPaperデータベースに追加
+        add_paper = await create_paper_meta_data(arxiv_info,db)
+        if not add_paper:
+            raise HTTPException(status_code=500, detail="Failed to connect to the database. Please try your request again after some time.") from e
+        # 翻訳情報をtaskDBに追加
         deepl_translate = Deepl_Translate_Task(
             arxiv_id=payload.arxiv_id,
             deepl_hash_key=payload.deepl_hash_key,
-            uuid=payload.id
+            uuid=payload.id,
+            target_lang =payload.target_lang
         )
 
         db.add(deepl_translate)
@@ -159,7 +175,7 @@ async def add_user_translate_task(payload: translate_task_payload,db: Session = 
         print(e)
         raise HTTPException(status_code=500, detail="Failed to connect to the database. Please try your request again after some time.") from e
 
-    return {"ok":True,"message": "翻訳タスクを追加しました。", "arxiv_id": payload.arxiv_id}
+    return {"ok":True,"message": "翻訳タスクを追加しました。", "arxiv_id": payload.arxiv_id,"link":F"https://indqx-demo-front.onrender.com/abs/{payload.arxiv_id}"}
 
 async def process_translate_arxiv_pdf(key,target_lang, arxiv_id,api_url):
     """
@@ -178,65 +194,6 @@ async def process_translate_arxiv_pdf(key,target_lang, arxiv_id,api_url):
     except Exception as e:
         print(f"Error processing arxiv_id {arxiv_id}: {str(e)}")
         raise
-
-ALLOWED_LANGUAGES = ['en', 'ja']
-
-class TranslateRequest(BaseModel):
-    deepl_url: str = "https://api.deepl.com"
-    deepl_key: str
-    target_lang: str = "ja"
-
-@app.post("/arxiv/translate/{arxiv_id}")
-async def translate_paper_data(arxiv_id: str, request: TranslateRequest):
-    """
-    abstract およびPDF を日本語に翻訳します。
-    - target_lang:ISO 639-1にて記載のこと
-    """
-    target_lang = request.target_lang
-    deepl_key = request.deepl_key
-    deepl_url = request.deepl_url
-    
-    # arxiv_idの形式をチェック
-    if not re.match(r'^\d{4}\.\d{5}$', arxiv_id):
-        raise HTTPException(status_code=400, detail="Invalid arxiv URL.")
-    
-    # DeepL APIキーの有効性をチェック
-    async with ClientSession() as session:
-        await check_deepl_key(deepl_key, deepl_url, session)
-        
-    try:
-        # 許可された言語のリストに target_lang が含まれているかを確認
-        if target_lang.lower() not in ALLOWED_LANGUAGES:
-            raise HTTPException(status_code=400, detail=f"Unsupported target language: {target_lang}. Allowed languages: {', '.join(ALLOWED_LANGUAGES)}")
-        # ライセンスデータを読み込み
-        license_data = load_license_data()
-        # Arxiv_データを読み込み
-        arxiv_info = await get_arxiv_info_async(arxiv_id)
-        # 存在しないArxiv IDの場合エラー
-        if arxiv_info=={'authors': []}:
-            raise HTTPException(status_code=400, detail="Invalid arxiv URL.")
-        
-        paper_license = arxiv_info['license']
-
-        license_ok = license_data.get(paper_license, {}).get("OK", False)
-
-        if not license_ok:
-            raise HTTPException(status_code=400, detail="License not permitted for translation")
-        
-        try:
-            deepl_url = F"{deepl_url}/v2/translate"
-            pdf_dl_url = await process_translate_arxiv_pdf(deepl_key,target_lang, arxiv_id,deepl_url)
-            return pdf_dl_url
-        
-        except Exception as e:
-            raise e
-    
-    except HTTPException as e:
-        # HTTPExceptionはそのまま投げる
-        raise e
-    
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn
