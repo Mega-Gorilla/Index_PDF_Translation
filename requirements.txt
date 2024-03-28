@@ -12,3 +12,4 @@ https://github.com/explosion/spacy-models/releases/download/ja_core_news_sm-3.7.
 psycopg2
 aiohttp
 b2sdk
+pycryptodome
