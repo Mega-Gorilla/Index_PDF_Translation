@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, Table, ForeignKey, Boolean
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, Table, ForeignKey, Boolean, UUID
 from sqlalchemy.orm import sessionmaker, relationship
 from sqlalchemy.ext.declarative import declarative_base
 import os
@@ -121,7 +121,7 @@ class Deepl_Translate_Task(Base):
     __tablename__ = "translate_db"
 
     id = Column(Integer, primary_key=True, index=True)
+    uuid = Column(UUID,index=True)
     arxiv_id = Column(String)
     deepl_hash_key = Column(String)
-    datestamp = Column(DateTime)
     responce = Column(String)
