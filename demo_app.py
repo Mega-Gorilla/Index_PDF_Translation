@@ -19,7 +19,7 @@ import base64
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import  Session
 
-app = FastAPI(timeout=300,version="0.1.1")
+app = FastAPI(timeout=300,version="0.1.2")
 
 # 接続許可設定 -----
 origins = [
@@ -145,8 +145,14 @@ async def add_user_translate_task(payload: translate_task_payload,db: Session = 
         raise HTTPException(status_code=400, detail="License not permitted for translation")
     
     # ----- DeepL ライセンス 確認 -----
-    cipher = PKCS1_OAEP.new(RSA.import_key(generate_private_key(payload.datestamp)))
-    decrypted_deepl_key = cipher.decrypt(base64.b64decode(payload.deepl_hash_key)).decode()
+    try:
+        private_key = await generate_private_key(payload.datestamp)
+        cipher = PKCS1_OAEP.new(RSA.import_key(private_key))
+        decrypted_deepl_key = cipher.decrypt(base64.b64decode(payload.deepl_hash_key)).decode()
+    except ValueError:
+        # 復号化できなかった場合のエラーハンドリング
+        raise HTTPException(status_code=400, detail="Key decryption failed. Please check the encryption key and try again.")
+    # DeepL APIに問い合わせしキーが存在するか確認
     async with ClientSession() as session:
         await check_deepl_key(decrypted_deepl_key, payload.deepl_url, session)
 
@@ -167,17 +173,6 @@ async def add_user_translate_task(payload: translate_task_payload,db: Session = 
         raise HTTPException(status_code=500, detail="Failed to connect to the database. Please try your request again after some time.") from e
 
     return {"ok":True,"message": "翻訳タスクを追加しました。", "arxiv_id": payload.arxiv_id}
-
-@app.post("/check/{arxiv_id}")
-async def check_arxiv_id(arxiv_id: str):
-    """
-    ArXiv IDのフォーマットを確認
-    """
-    # arxiv_idの形式をチェック
-    if not re.match(r'^\d{4}\.\d{5}$', arxiv_id):
-        raise HTTPException(status_code=400, detail="Invalid arxiv ID.")
-    
-    return {"ok":True,"message":"The data format of the ArXiv ID was correct."}
 
 async def process_translate_arxiv_pdf(key,target_lang, arxiv_id,api_url):
     """
