@@ -127,7 +127,7 @@ async def add_user_translate_task(payload: translate_task_payload, background_ta
     paper_license = arxiv_info['license']
     license_ok = license_data.get(paper_license, {}).get("OK", False)
     if not license_ok:
-        raise HTTPException(status_code=400, detail="License not permitted for translation")
+        raise HTTPException(status_code=400, detail="This paper cannot be translated as the license does not permit modifications.")
     
     # ----- DeepL ライセンス 確認 -----
     try:
@@ -231,7 +231,9 @@ async def background_trasnlate_task(uuid,db: Session):
     translate_download_url = await upload_byte(translate_data, 'arxiv_pdf', F"{task_data.arxiv_id}_{task_data.target_lang}.pdf", content_type='application/pdf')
     setattr(paper.pdf_url[0], "en", download_url)
     setattr(paper.pdf_url[0], task_data.target_lang, translate_download_url)
-    print(F"TranslateDone: {translate_download_url}")
+    #データリセット
+    translate_data = None
+    pdf_data = None
 
     db.delete(task_data)
     db.commit()
