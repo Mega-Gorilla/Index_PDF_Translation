@@ -172,11 +172,13 @@ async def add_user_translate_task(payload: translate_task_payload, background_ta
         db.add(deepl_translate)
         db.commit()
         db.refresh(deepl_translate)
+        db.close()
 
         background_tasks.add_task(background_trasnlate_task,payload.id,db)
 
     except SQLAlchemyError as e:
         db.rollback()  # エラー発生時には変更をロールバック
+        db.close()
         print(e)
         raise HTTPException(status_code=500, detail="Failed to connect to the database. Please try your request again after some time.") from e
 
@@ -234,10 +236,12 @@ async def background_trasnlate_task(uuid,db: Session):
     #データリセット
     translate_data = None
     pdf_data = None
+    await remove_expired_keys()
 
     db.delete(task_data)
     db.commit()
     db.refresh(paper)
+    db.close()
 
 @app.get("/arxiv/metadata/{arxiv_id}")
 async def Get_Paper_Data(arxiv_id: str, db: Session = Depends(get_db)):
