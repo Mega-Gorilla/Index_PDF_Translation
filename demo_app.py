@@ -185,6 +185,7 @@ async def add_user_translate_task(payload: translate_task_payload, background_ta
     return {"ok":True,"message": "翻訳を開始しました。", "arxiv_id": payload.arxiv_id,"link":F"https://indqx-demo-front.onrender.com/abs/{payload.arxiv_id}"}
 
 async def background_trasnlate_task(uuid,db: Session):
+    print(F"Back Ground Task: {task_data.arxiv_id}")
     task_data = db.query(Deepl_Translate_Task).filter(Deepl_Translate_Task.uuid==uuid).first()
     if task_data == None:
         print("taskdata_none")
@@ -237,7 +238,7 @@ async def background_trasnlate_task(uuid,db: Session):
     translate_data = None
     pdf_data = None
     await remove_expired_keys()
-
+    
     db.delete(task_data)
     db.commit()
     db.refresh(paper)
