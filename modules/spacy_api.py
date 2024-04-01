@@ -1,10 +1,8 @@
 import spacy
+from config import SPACY_CONFIG
 
 # サポートされている言語とそのモデルのマッピング
-supported_languages = {
-    'en': 'en_core_web_sm',
-    'ja': 'ja_core_news_sm'
-}
+supported_languages = SPACY_CONFIG['supported_languages']
 
 # spaCyモデルをロードし、キャッシュしておく辞書
 loaded_models = {}

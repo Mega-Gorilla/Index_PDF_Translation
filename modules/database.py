@@ -197,3 +197,14 @@ class Deepl_Translate_Task(Base):
     deepl_url = Column(String)
     target_lang = Column(String)
     responce = Column(String)
+
+# 翻訳完了データを収納するテーブル
+class Translate_logs(Base):
+    __tablename__ = "translate_log"
+
+    id = Column(Integer, primary_key=True, index=True)
+    uuid = Column(UUID,index=True)
+    deepl_hash_key = Column(String,index=True)
+    mode = Column(String)
+    link = Column(String)
+    datestamp = Column(DateTime, index=True)
