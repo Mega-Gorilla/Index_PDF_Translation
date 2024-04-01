@@ -149,7 +149,7 @@ async def add_user_translate_task(payload: translate_task_payload, background_ta
     if existing_paper:
         if getattr(existing_paper.pdf_url[0], payload.target_lang.lower(), None):
             db.close()
-            return {"OK":True,"message":"翻訳済みデータが見つかりました","link":F"{URL_LIST['papers_link']}{payload.arxiv_id}"}
+            return {"OK":True,"found":True,"message":"翻訳済みデータが見つかりました","link":F"{URL_LIST['papers_link']}{payload.arxiv_id}"}
     # ----- Arxiv ライセンスチェック -----
     license_data = load_license_data()
     try:
@@ -204,7 +204,7 @@ async def add_user_translate_task(payload: translate_task_payload, background_ta
         print(e)
         raise HTTPException(status_code=500, detail="Failed to connect to the database. Please try your request again after some time.") from e
 
-    return {"ok":True,"message": "翻訳を開始しました。画面をリロードしないでください。翻訳が完了すると自動的に翻訳リンクが表示されます。", "arxiv_id": payload.arxiv_id,"link":F"{URL_LIST['papers_link']}{payload.arxiv_id}"}
+    return {"ok":True,"found":False,"message": "翻訳を開始しました。画面をリロードしないでください。翻訳が完了すると自動的に翻訳リンクが表示されます。", "arxiv_id": payload.arxiv_id,"link":F"{URL_LIST['papers_link']}{payload.arxiv_id}"}
 
 class translate_pdf_file_payload(BaseModel):
     deepl_url: str = "https://api-free.deepl.com"
@@ -273,7 +273,10 @@ async def get_translate_tasks(payload:get_translate_tasks_payload,db: Session = 
                 )
                 ).first()
         if serch_result:
-            return {'ok':True,'link':serch_result.link}
+            if serch_result.done:
+                return {'ok':True,'done':True,'link':serch_result.link}
+            else:
+                {'ok':True,'done':False,'error':serch_result.link}
         else:
             return {'ok':False,'link':None}
     except Exception as e:
@@ -305,6 +308,7 @@ def delete_expired_translate_logs(db):
         print(f"An error occurred: {e}")
 
 async def Arxiv_back_gorund_task(arxiv_id, target_lang, decrypted_deepl_key, deepl_url,db):
+    message = None
     paper = db.query(paper_meta_data).filter(paper_meta_data.identifier == f"oai:arXiv.org:{arxiv_id}").first()
     # DBのアブストとタイトルを翻訳
     if not getattr(paper.abstract[0], target_lang, None):
@@ -333,7 +337,13 @@ async def Arxiv_back_gorund_task(arxiv_id, target_lang, decrypted_deepl_key, dee
     download_url = await upload_byte(BLACK_BLAZE_CONFIG['public_key_id'],BLACK_BLAZE_CONFIG['public_key'],BLACK_BLAZE_CONFIG['public_bucket'],
                                      pdf_data, 'arxiv_pdf', F"{arxiv_id}_en.pdf", content_type='application/pdf')
     #翻訳処理
-    translate_data = await pdf_translate(decrypted_deepl_key,pdf_data,to_lang= target_lang,api_url=deepl_url)
+    try:
+        translate_data = await pdf_translate(decrypted_deepl_key,pdf_data,to_lang= target_lang,api_url=deepl_url)
+    except Exception as e:
+        message = str(e)
+        print(f"翻訳中にエラーが発生しました: {message} / {arxiv_id}")
+        return
+    
     translate_download_url = await upload_byte(BLACK_BLAZE_CONFIG['public_key_id'],BLACK_BLAZE_CONFIG['public_key'],BLACK_BLAZE_CONFIG['public_bucket'],
                                                translate_data, 'arxiv_pdf', F"{arxiv_id}_{target_lang}.pdf", content_type='application/pdf')
     #翻訳PDF保存後不要データのリセット
@@ -346,7 +356,8 @@ async def Arxiv_back_gorund_task(arxiv_id, target_lang, decrypted_deepl_key, dee
     
     db.commit()
     db.refresh(paper)
-    return F"{URL_LIST['papers_link']}{arxiv_id}"
+    download_url = F"{URL_LIST['papers_link']}{arxiv_id}"
+    return download_url, message
 
 async def pdf_back_ground_task(file_name, target_lang, decrypted_deepl_key, deepl_url):
     """
@@ -356,6 +367,8 @@ async def pdf_back_ground_task(file_name, target_lang, decrypted_deepl_key, deep
     id = BLACK_BLAZE_CONFIG['private_key_id']
     key= BLACK_BLAZE_CONFIG['private_key']
     bucket_name = BLACK_BLAZE_CONFIG['private_bucket']
+    message = None
+
     # フォルダー内にある古いデータを消去
     #list_file_data = await list_files_in_folder(id,key,bucket_name,'temp')
     #list_file_data = await find_recent_files(list_file_data,600) #現在時刻より10分以内でないファイルリストを作成
@@ -364,11 +377,16 @@ async def pdf_back_ground_task(file_name, target_lang, decrypted_deepl_key, deep
     auth_token = create_download_auth_token(id,key,bucket_name,file_path,600) # 10分有効なキーを発行
     pdf_byte = await download_file(id,key,bucket_name,file_path,auth_token)
     #翻訳実施
-    translate_data = await pdf_translate(decrypted_deepl_key,pdf_byte,to_lang= target_lang,api_url=deepl_url)
+    try:
+        translate_data = await pdf_translate(decrypted_deepl_key,pdf_byte,to_lang= target_lang,api_url=deepl_url)
+    except Exception as e:
+        message = str(e)
+        print(f"翻訳中にエラーが発生しました: {message} / {file_name}")
+        return
     #翻訳データのダウンロードURLを発行
     download_url = await upload_byte(id,key,bucket_name,translate_data,'temp',file_name,'application/pdf')
     download_url = F"{download_url}?Authorization={auth_token}"
-    return download_url
+    return download_url, message
 
 async def background_trasnlate_task(uuid,db):
     """
@@ -405,17 +423,27 @@ async def background_trasnlate_task(uuid,db):
     # サービスに応じて翻訳分岐する
     mode,translate_parts=task_data.arxiv_id.split('_', 1)
     if mode == "axv":
-        link = await Arxiv_back_gorund_task(translate_parts,task_data.target_lang,decrypted_deepl_key,deepl_url,db)
+        link,mes = await Arxiv_back_gorund_task(translate_parts,task_data.target_lang,decrypted_deepl_key,deepl_url,db)
     elif mode == "pdf":
-        link = await pdf_back_ground_task(translate_parts,task_data.target_lang,decrypted_deepl_key,deepl_url)
-
-    done_flag = Translate_logs(
-        uuid = uuid,
-        deepl_hash_key = task_data.deepl_hash_key,
-        mode = mode,
-        link = link,
-        datestamp = datetime.now()
-    )
+        link,mes = await pdf_back_ground_task(translate_parts,task_data.target_lang,decrypted_deepl_key,deepl_url)
+    if mes:
+        done_flag = Translate_logs(
+            done = False,
+            uuid = uuid,
+            deepl_hash_key = task_data.deepl_hash_key,
+            mode = mode,
+            link = mes,
+            datestamp = datetime.now()
+        )
+    else:
+        done_flag = Translate_logs(
+            done = True,
+            uuid = uuid,
+            deepl_hash_key = task_data.deepl_hash_key,
+            mode = mode,
+            link = link,
+            datestamp = datetime.now()
+        )
     db.add(done_flag)
     # 最後、翻訳taskDBからタスクを消去 & プライベートメモリーリストより使われていないデータがある場合消去
     await remove_expired_keys() #古いデータをリストから消去
