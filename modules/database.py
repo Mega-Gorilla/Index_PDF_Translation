@@ -203,6 +203,7 @@ class Translate_logs(Base):
     __tablename__ = "translate_log"
 
     id = Column(Integer, primary_key=True, index=True)
+    done = Column(Boolean)
     uuid = Column(UUID,index=True)
     deepl_hash_key = Column(String,index=True)
     mode = Column(String)
