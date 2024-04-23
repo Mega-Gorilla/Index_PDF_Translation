@@ -24,6 +24,7 @@ app = FastAPI()
 
 origins = [
     "http://localhost:5173",
+    'https://indqx-demo-front.onrender.com'
 ]
 
 app.add_middleware(
