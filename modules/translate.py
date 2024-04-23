@@ -2,6 +2,7 @@ import aiohttp
 import os
 import re
 import asyncio
+from config import *
 from modules.pdf_edit import *
 
 async def translate_text(key: str,text: str, target_lang: str,api_url:str) -> str:
@@ -85,6 +86,9 @@ async def translate(key,text,lang,api_url):
         raise Exception(result['message'])
     
 async def deepl_convert_xml_calc_cost(json_data):
+    """
+    翻訳コストを算出します。
+    """
     cost =0
     price_per_character = 0.0025  # 1文字あたりの料金(円)
     xml_output = ""
@@ -141,19 +145,22 @@ async def pdf_translate(key,pdf_data,source_lang = 'en',to_lang = 'ja',debug =Fa
     removed_textbox_pdf_data = await remove_textbox_for_pdf(pdf_data,leave_str_list)
 
     if debug:
-        """
-        with open('all_blocks.json', 'w', encoding='utf-8') as json_file:
+        import json
+        with open(Debug_folder_path+'all_blocks.json', 'w', encoding='utf-8') as json_file:
             json.dump(block_info, json_file, ensure_ascii=False, indent=2)
-        with open('text_block.json', 'w', encoding='utf-8') as json_file:
+        with open(Debug_folder_path+'text_block.json', 'w', encoding='utf-8') as json_file:
             json.dump(text_blocks, json_file, ensure_ascii=False, indent=2)
-        with open('fig_blocks.json', 'w', encoding='utf-8') as json_file:
+        with open(Debug_folder_path+'fig_blocks.json', 'w', encoding='utf-8') as json_file:
             json.dump(fig_blocks, json_file, ensure_ascii=False, indent=2)
-        """
+        with open(Debug_folder_path+'remove_blocks.json', 'w', encoding='utf-8') as json_file:
+            json.dump(removed_blocks, json_file, ensure_ascii=False, indent=2)
         text_block_pdf_data = await pdf_draw_blocks(pdf_data,text_blocks,width=0,fill_opacity=0.3,fill_colorRGB=[0,0,1])
         fig_block_pdf_data = await pdf_draw_blocks(text_block_pdf_data,fig_blocks,width=0,fill_opacity=0.3,fill_colorRGB=[0,1,0])
         all_block_pdf_data = await pdf_draw_blocks(fig_block_pdf_data,removed_blocks,width=0,fill_opacity=0.3,fill_colorRGB=[1,0,0])
-        with open("show_blocks.pdf", "wb") as f:
+        with open(Debug_folder_path+"show_blocks.pdf", "wb") as f:
             f.write(all_block_pdf_data)
+        with open(Debug_folder_path+"removed_pdf.pdf", "wb") as f:
+            f.write(removed_textbox_pdf_data)
 
     # 翻訳
     sum_cost = 0
@@ -167,6 +174,12 @@ async def pdf_translate(key,pdf_data,source_lang = 'en',to_lang = 'ja',debug =Fa
     xml_data = await translate_xml(key,xml_data,to_lang,api_url)
     fig_blocks = await convert_from_xml(fig_blocks,xml_data)
 
+    if debug:
+        with open(Debug_folder_path+'translate_text_blocks.json', 'w', encoding='utf-8') as json_file:
+            json.dump(text_blocks, json_file, ensure_ascii=False, indent=2)
+        with open(Debug_folder_path+'translate_fig_blocks.json', 'w', encoding='utf-8') as json_file:
+            json.dump(fig_blocks, json_file, ensure_ascii=False, indent=2)
+    
     print(F"翻訳コスト： {sum_cost}円")
     
     # 翻訳したブロックを結合
@@ -178,6 +191,24 @@ async def pdf_translate(key,pdf_data,source_lang = 'en',to_lang = 'ja',debug =Fa
     
     # 翻訳したPDFを作成
     translated_pdf_data = await write_pdf_text(removed_textbox_pdf_data,combined_blocks,to_lang)
+
+    return translated_pdf_data
+
+
+async def pdf_draw_dev(pdf_data,translated_text_blocks,translated_fig_blocks,to_lang = 'ja'):
+
+    text_blocks= translated_text_blocks
+    fig_blocks = translated_fig_blocks
+    
+    # 翻訳したブロックを結合
+    combined_blocks =[]
+    for page1, page2 in zip(text_blocks,fig_blocks):
+        combined_page = page1 + page2
+        sorted_page = sorted(combined_page, key=lambda x: x['block_no'])
+        combined_blocks.append(sorted_page)
+    
+    # 翻訳したPDFを作成
+    translated_pdf_data = await write_pdf_text(pdf_data,combined_blocks,to_lang)
 
     return translated_pdf_data
 

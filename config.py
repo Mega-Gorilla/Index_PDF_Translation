@@ -34,5 +34,7 @@ SPACY_CONFIG = {
         'en': 'en_core_web_sm',
         'ja': 'ja_core_news_sm'
         }
-
 }
+
+# デバッグ用ファイル位置
+Debug_folder_path = "./debug/"
