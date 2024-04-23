@@ -96,7 +96,7 @@ async def deepl_convert_xml_calc_cost(json_data):
         for block in page:
             text = block['text']
             # 翻訳にて問題になる文字列を変換
-            text = text.replace('\n', '')
+            #text = text.replace('\n', '')
 
             xml_output += f"<div>{text}</div>\n"
             temp_cost = calculate_translation_cost(text,price_per_character)
@@ -136,9 +136,10 @@ async def deepl_translate_test():
 
 async def pdf_translate(key,pdf_data,source_lang = 'en',to_lang = 'ja',debug =False,api_url="https://api.deepl.com/v2/translate"):
 
-    block_info = await extract_text_coordinates(pdf_data,source_lang)
+    block_info = await extract_text_coordinates_xml(pdf_data)
+    #block_info = await extract_text_coordinates_blocks(pdf_data)
 
-    text_blocks,fig_blocks,removed_blocks = await remove_blocks(block_info,10)
+    text_blocks,fig_blocks,removed_blocks = await remove_blocks(block_info,10,lang=source_lang)
 
     # removed_blockをリストに分解
     leave_str_list = [item['text'] for sublist in removed_blocks for item in sublist]
@@ -161,7 +162,6 @@ async def pdf_translate(key,pdf_data,source_lang = 'en',to_lang = 'ja',debug =Fa
             f.write(all_block_pdf_data)
         with open(Debug_folder_path+"removed_pdf.pdf", "wb") as f:
             f.write(removed_textbox_pdf_data)
-
     # 翻訳
     sum_cost = 0
     xml_data,cost = await deepl_convert_xml_calc_cost(text_blocks)
