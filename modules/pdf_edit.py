@@ -1,10 +1,63 @@
 import fitz  # PyMuPDF
 import asyncio
+import math,re,html
 from io import BytesIO
 from statistics import median
 from modules.spacy_api import *
 
-async def extract_text_coordinates(pdf_data,lang='en'):
+async def extract_text_coordinates_xml(pdf_data):
+
+    # PDFファイルを開く
+    document = await asyncio.to_thread(fitz.open, stream=pdf_data, filetype="pdf")
+    result_list = []
+    xml = ""
+    y_value_log = None
+
+    for page_num in range(len(document)):
+
+        # ページを取得
+        page = await asyncio.to_thread(document.load_page, page_num)
+
+        # ページからテキストブロックを取得
+        blocks = await asyncio.to_thread(page.get_text, "xml")
+        xml+= blocks + "\n"
+        temp_text = ""
+        temp_list = []
+        block_no = 0
+        for line in blocks.split('\n'):
+            if "block bbox" in line:
+                if temp_text != "":
+                    temp_text = html.unescape(temp_text)
+                    font_dict["block_no"] = block_no
+                    font_dict["text"] = temp_text
+                    font_dict["coordinates"] = coordinates
+                    temp_list.append(font_dict)
+                    temp_text = ""
+                    y_value_log = None
+                    block_no += 1
+
+                bbox_values = re.search(r'bbox="([^"]*)"', line)
+                coordinates = [float(num) for num in bbox_values.group(1).split()]
+
+            if "font name" in line:
+                attributes = re.findall(r'(\w+)="([^"]*)"', line)
+                font_dict = {attr_name: attr_value for attr_name, attr_value in attributes}
+                font_dict['size'] = float(font_dict['size'])
+            if "char quad" in line:
+                #x_value = re.search(r'x="([^"]*)"', line)
+                y_value = re.search(r'y="([^"]*)"', line).group(1)
+                c_value = re.search(r'c="([^"]*)"', line).group(1)
+                if y_value_log != None and y_value != y_value_log:
+                    temp_text += "\n"
+                temp_text += c_value
+                y_value_log = y_value
+
+        result_list.append(temp_list)
+    await asyncio.to_thread(document.close)
+
+    return result_list
+
+async def extract_text_coordinates_blocks(pdf_data):
     """
     pdf バイトデータのテキストファイル座標を取得します
     """
@@ -29,18 +82,21 @@ async def extract_text_coordinates(pdf_data,lang='en'):
         # 各テキストブロックからテキスト、画像と座標を抽出
         for b in blocks:
             x0, y0, x1, y1, content_text, block_no, block_type = b[:7]
-            tokens = tokenize_text(lang,content_text)
+            
+            # フォントサイズ　逆算
+            count_lines = content_text.count('\n')
+            if count_lines != 0:
+                calc_fs=(y1-y0)/count_lines*0.98
+            else:
+                calc_fs = y1-y0
+            calc_fs = math.floor(calc_fs * 100) / 100
 
             if block_type == 0:  # テキストブロック
                 block_info = {
-                    "page_num": page_num,
-                    "text": content_text,
-                    "token": tokens,
-                    "coordinates": (x0, y0, x1, y1),
                     "block_no": block_no,
-                    "block_type": block_type,
-                    "page_width": width,
-                    "page_height": height
+                    "text": content_text,
+                    "size": calc_fs,
+                    "coordinates": (x0, y0, x1, y1)
                 }
                 page_content.append(block_info)
             else:
@@ -99,7 +155,8 @@ async def remove_blocks(block_info, token_threshold=10,debug=False,lang='en'):
             #widthを計算
             width = (block_coordinates[2] - block_coordinates[0])
             #tokenを計算
-            token = len(block['token'])
+            tokens_list = tokenize_text(lang,block_text)
+            token = len(tokens_list)
 
             #記号と数字が50%を超える場合は、リストから消去
             no_many_symbol = True
@@ -112,7 +169,7 @@ async def remove_blocks(block_info, token_threshold=10,debug=False,lang='en'):
                 keyword = ['表','グラフ']
             else:
                 keyword = ['fig','table']
-            table_bool = check_first_num_tokens(block['token'],keyword)
+            table_bool = check_first_num_tokens(tokens_list,keyword)
             
             #文字列として認識するBool関数
             width_bool = bool(width_threshold_high > width > width_threshold_low)
@@ -260,15 +317,16 @@ async def write_pdf_text(input_pdf_data, block_info, lang='en', debug=False):
             #ブロックごとのループ
             # 文字列挿入用ブロックの定義
             text = block["text"]
-            text = text.replace('\n', '')
-            text = text.replace(' ',"\u00A0")
             x0, y0, x1, y1 = block["coordinates"]
+            fs = block["size"]
+
+            #text = text.replace('\n', '')
+            text = text.replace(' ',"\u00A0")
             text_rect = fitz.Rect(x0, y0, x1, y1+15)
 
             # フォントサイズと行の高さの計算
             fs_min = 3  # 最小フォントサイズ
             fs_max = int(y1-y0)  # 最大フォントサイズ
-            fs = 10.5  # 計算開始フォントサイズ
 
             #print(text)
 
@@ -284,11 +342,6 @@ async def write_pdf_text(input_pdf_data, block_info, lang='en', debug=False):
                         #print(F"{best_result}/best_fs:{best_fs}")
                         fs = best_fs
                         break
-                elif result > 10:
-                    if result < best_result:
-                        best_result = result
-                        best_fs = fs
-                    fs+=0.01
                 else:
                     #print(F"{result}/ Font_Size: {fs}")
                     break
@@ -330,34 +383,3 @@ def plot_area_distribution(areas, labels_values, title='Distribution of Areas', 
         plt.savefig(save_path)
     else:
         plt.show()
-
-async def text_draw_test():
-    import json
-    to_lang = 'ja'
-
-    with open("input.pdf", "rb") as f:
-        input_pdf_data = f.read()
-
-    block_info = await extract_text_coordinates(input_pdf_data)
-
-    block_info,fig_blocks,removed_blocks = await remove_blocks(block_info,10)
-    blocked_pdf_data = await pdf_draw_blocks(input_pdf_data,block_info,width=0,fill_opacity=0.3)
-
-    # removed_blockをリストに分解
-    leave_str_list = [item['text'] for sublist in removed_blocks for item in sublist]
-    removed_textbox_pdf_data = await remove_textbox_for_pdf(blocked_pdf_data,leave_str_list)
-    
-    with open('block_info.json', 'w', encoding='utf-8') as json_file:
-        json.dump(block_info, json_file, ensure_ascii=False, indent=2)
-
-    
-    with open('block_info_translated.json', 'r', encoding='utf-8') as json_file:
-        block_info = json.load(json_file)
-    
-    translated_pdf_data = await write_pdf_text(removed_textbox_pdf_data,block_info,to_lang)
-    
-    with open("output.pdf", "wb") as f:
-        f.write(translated_pdf_data)
-
-if __name__ == "__main__":
-    asyncio.run(text_draw_test())
