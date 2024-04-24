@@ -1,5 +1,5 @@
 from modules.translate import pdf_translate,pdf_draw_dev
-import os, asyncio
+import os, asyncio,time
 import tkinter as tk
 from tkinter import filedialog
 from config import *
@@ -36,6 +36,8 @@ async def translate_test():
 
     result_pdf = await pdf_translate(os.environ["DEEPL_API_KEY"], input_pdf_data,debug=True)
 
+    if result_pdf is None:
+        return
     _, file_name = os.path.split(file_path)
     output_path = Debug_folder_path + "result_"+file_name
 
@@ -57,5 +59,7 @@ async def generate_pdf_test():
         f.write(result_pdf)
 
 if __name__ == "__main__":
-    #asyncio.run(translate_test())
-    asyncio.run(generate_pdf_test())
+    process_time = time.time()
+    asyncio.run(translate_test())
+    #asyncio.run(generate_pdf_test())
+    print(F"Time:{time.time()-process_time}")
