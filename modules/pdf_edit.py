@@ -5,58 +5,6 @@ from io import BytesIO
 from statistics import median
 from modules.spacy_api import *
 
-async def extract_text_coordinates_xml(pdf_data):
-
-    # PDFファイルを開く
-    document = await asyncio.to_thread(fitz.open, stream=pdf_data, filetype="pdf")
-    result_list = []
-    xml = ""
-    y_value_log = None
-
-    for page_num in range(len(document)):
-
-        # ページを取得
-        page = await asyncio.to_thread(document.load_page, page_num)
-
-        # ページからテキストブロックを取得
-        blocks = await asyncio.to_thread(page.get_text, "xml")
-        xml+= blocks + "\n"
-        temp_text = ""
-        temp_list = []
-        block_no = 0
-        for line in blocks.split('\n'):
-            if "block bbox" in line:
-                if temp_text != "":
-                    temp_text = html.unescape(temp_text)
-                    font_dict["block_no"] = block_no
-                    font_dict["text"] = temp_text
-                    font_dict["coordinates"] = coordinates
-                    temp_list.append(font_dict)
-                    temp_text = ""
-                    y_value_log = None
-                    block_no += 1
-
-                bbox_values = re.search(r'bbox="([^"]*)"', line)
-                coordinates = [float(num) for num in bbox_values.group(1).split()]
-
-            if "font name" in line:
-                attributes = re.findall(r'(\w+)="([^"]*)"', line)
-                font_dict = {attr_name: attr_value for attr_name, attr_value in attributes}
-                font_dict['size'] = float(font_dict['size'])
-            if "char quad" in line:
-                #x_value = re.search(r'x="([^"]*)"', line)
-                y_value = re.search(r'y="([^"]*)"', line).group(1)
-                c_value = re.search(r'c="([^"]*)"', line).group(1)
-                if y_value_log != None and y_value != y_value_log:
-                    temp_text += "\n"
-                temp_text += c_value
-                y_value_log = y_value
-
-        result_list.append(temp_list)
-    await asyncio.to_thread(document.close)
-
-    return result_list
-
 async def extract_text_coordinates_blocks(pdf_data):
     """
     pdf バイトデータのテキストファイル座標を取得します
@@ -107,6 +55,41 @@ async def extract_text_coordinates_blocks(pdf_data):
 
     await asyncio.to_thread(document.close)
 
+    return content
+
+async def extract_text_coordinates_dict(pdf_data):
+    # PDFファイルを開く
+    document = await asyncio.to_thread(fitz.open, stream=pdf_data, filetype="pdf")
+
+    content = []
+    for page_num in range(len(document)):
+        # ページを取得
+        page = await asyncio.to_thread(document.load_page, page_num)
+        # ページからテキストブロックを取得
+        text_instances_dict = await asyncio.to_thread(page.get_text, "dict")
+        text_instances = text_instances_dict["blocks"]
+        page_content = []
+        
+        for lines in text_instances:
+            block = {}
+            if lines["type"] != 0:
+                # テキストブロック以外はスキップ
+                continue
+            block["block_no"] = lines["number"]
+            block["coordinates"] = lines["bbox"]
+            block["text"] = ""
+            for line in lines['lines']:
+                for span in line['spans']:
+                    if block["text"] == "":
+                        block["text"]+=span["text"]
+                    else:
+                        block["text"]+="\n" + span["text"]
+                    block["size"]=span['size']
+                    block["font"]=span['font']
+            page_content.append(block)
+        
+        content.append(page_content)
+    await asyncio.to_thread(document.close)
     return content
 
 def check_first_num_tokens(input_list, keywords, num=2):
@@ -236,27 +219,16 @@ async def remove_blocks(block_info, token_threshold=10,debug=False,lang='en'):
                                                         {"percentile_75":token_percentile_75}],title="token Mean",xlabel='Token',ylabel='Frequency',save_path='grah_token.png')
     return filtered_blocks,fig_table_blocks, removed_blocks
 
-async def remove_textbox_for_pdf(pdf_data, leave_text_list):
+async def remove_textbox_for_pdf(pdf_data, remove_list):
     """
     読み込んだPDFより、すべてのテキストデータを消去します。
     leave_text_listが設定されている場合、該当リストに含まれる文字列(部分一致)は保持します。
     """
     doc = await asyncio.to_thread(fitz.open, stream=pdf_data, filetype="pdf")
-
-    for page in doc:  # ドキュメント内の各ページに対して
-        text_instances_dict = await asyncio.to_thread(page.get_text, "dict")
-        text_instances = text_instances_dict["blocks"]  # ページ内のテキストブロックを取得
-
-        for inst in text_instances:
-            if inst["type"] == 0:  # テキストブロックの場合
-                for line in inst['lines']:
-                    for span in line['spans']:
-                        if any(span['text'] in data for data in leave_text_list):
-                            pass
-                        else:
-                            rect = fitz.Rect(inst["bbox"])  # テキストブロックの領域を取得
-                            await asyncio.to_thread(page.add_redact_annot, rect)  # レダクションアノテーションを追加
-
+    for remove_data,page in zip(remove_list,doc):
+        for remove_item in remove_data:
+            rect = fitz.Rect(remove_item["coordinates"])  # テキストブロックの領域を取得
+            await asyncio.to_thread(page.add_redact_annot, rect)
         await asyncio.to_thread(page.apply_redactions)  # レダクションを適用してテキストを削除
 
     output_buffer = BytesIO()

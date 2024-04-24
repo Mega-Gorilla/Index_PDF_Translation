@@ -136,14 +136,13 @@ async def deepl_translate_test():
 
 async def pdf_translate(key,pdf_data,source_lang = 'en',to_lang = 'ja',debug =False,api_url="https://api.deepl.com/v2/translate"):
 
-    block_info = await extract_text_coordinates_xml(pdf_data)
+    block_info = await extract_text_coordinates_dict(pdf_data)
     #block_info = await extract_text_coordinates_blocks(pdf_data)
 
-    text_blocks,fig_blocks,removed_blocks = await remove_blocks(block_info,10,lang=source_lang)
+    text_blocks,fig_blocks,leave_blocks = await remove_blocks(block_info,10,lang=source_lang)
 
-    # removed_blockをリストに分解
-    leave_str_list = [item['text'] for sublist in removed_blocks for item in sublist]
-    removed_textbox_pdf_data = await remove_textbox_for_pdf(pdf_data,leave_str_list)
+    removed_textbox_pdf_data = await remove_textbox_for_pdf(pdf_data,text_blocks)
+    removed_textbox_pdf_data = await remove_textbox_for_pdf(removed_textbox_pdf_data,fig_blocks)
 
     if debug:
         import json
@@ -154,14 +153,15 @@ async def pdf_translate(key,pdf_data,source_lang = 'en',to_lang = 'ja',debug =Fa
         with open(Debug_folder_path+'fig_blocks.json', 'w', encoding='utf-8') as json_file:
             json.dump(fig_blocks, json_file, ensure_ascii=False, indent=2)
         with open(Debug_folder_path+'remove_blocks.json', 'w', encoding='utf-8') as json_file:
-            json.dump(removed_blocks, json_file, ensure_ascii=False, indent=2)
+            json.dump(leave_blocks, json_file, ensure_ascii=False, indent=2)
         text_block_pdf_data = await pdf_draw_blocks(pdf_data,text_blocks,width=0,fill_opacity=0.3,fill_colorRGB=[0,0,1])
         fig_block_pdf_data = await pdf_draw_blocks(text_block_pdf_data,fig_blocks,width=0,fill_opacity=0.3,fill_colorRGB=[0,1,0])
-        all_block_pdf_data = await pdf_draw_blocks(fig_block_pdf_data,removed_blocks,width=0,fill_opacity=0.3,fill_colorRGB=[1,0,0])
+        all_block_pdf_data = await pdf_draw_blocks(fig_block_pdf_data,leave_blocks,width=0,fill_opacity=0.3,fill_colorRGB=[1,0,0])
         with open(Debug_folder_path+"show_blocks.pdf", "wb") as f:
             f.write(all_block_pdf_data)
         with open(Debug_folder_path+"removed_pdf.pdf", "wb") as f:
             f.write(removed_textbox_pdf_data)
+    #return None
     # 翻訳
     sum_cost = 0
     xml_data,cost = await deepl_convert_xml_calc_cost(text_blocks)
@@ -213,10 +213,22 @@ async def pdf_draw_dev(pdf_data,translated_text_blocks,translated_fig_blocks,to_
     return translated_pdf_data
 
 async def translate_test():
-    with open("input.pdf", "rb") as f:
+    import tkinter as tk
+    from tkinter import filedialog
+
+    # GUIでファイル選択のための設定
+    root = tk.Tk()
+    root.withdraw()  # GUIのメインウィンドウを表示しない
+    file_path = filedialog.askopenfilename(filetypes=[("PDF files", "*.pdf")])  # PDFファイルのみ選択
+
+    if not file_path:
+        print("ファイルが選択されませんでした。")
+        return
+    
+    with open(file_path, "rb") as f:
         input_pdf_data = f.read()
 
-    reslut_pdf = await pdf_translate(os.environ["DEEPL_API_KEY"],input_pdf_data)
+    reslut_pdf = await pdf_translate(os.environ["DEEPL_API_KEY"],input_pdf_data,debug=True)
 
     with open("output.pdf", "wb") as f:
         f.write(reslut_pdf)
