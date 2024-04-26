@@ -58,6 +58,9 @@ async def extract_text_coordinates_blocks(pdf_data):
     return content
 
 async def extract_text_coordinates_dict(pdf_data):
+    """
+    pdf バイトデータのテキストファイル座標を取得します。
+    """
     # PDFファイルを開く
     document = await asyncio.to_thread(fitz.open, stream=pdf_data, filetype="pdf")
 
@@ -83,12 +86,40 @@ async def extract_text_coordinates_dict(pdf_data):
                     if block["text"] == "":
                         block["text"]+=span["text"]
                     else:
-                        block["text"]+="\n" + span["text"]
+                        block["text"]+=" " + span["text"]
                     block["size"]=span['size']
                     block["font"]=span['font']
+            # block["text_count"] = len(block["text"])
             page_content.append(block)
         
         content.append(page_content)
+    await asyncio.to_thread(document.close)
+    return content
+
+async def extract_text_coordinates_dict_dev(pdf_data):
+    """
+    デバッグ用。dictで取得したデータを出力します。
+    """
+    # PDFファイルを開く
+    document = await asyncio.to_thread(fitz.open, stream=pdf_data, filetype="pdf")
+
+    content = []
+    for page_num in range(len(document)):
+        # ページを取得
+        page = await asyncio.to_thread(document.load_page, page_num)
+        # ページからテキストブロックを取得
+        text_instances_dict = await asyncio.to_thread(page.get_text, "dict")
+        text_instances = text_instances_dict["blocks"]
+        page_content = []
+        
+        for lines in text_instances:
+            if lines["type"] != 0:
+                # テキストブロック以外はスキップ
+                continue
+            page_content.append(lines)
+        
+        content.append(page_content)
+
     await asyncio.to_thread(document.close)
     return content
 
