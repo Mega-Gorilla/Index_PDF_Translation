@@ -38,3 +38,4 @@ SPACY_CONFIG = {
 
 # デバッグ用ファイル位置
 Debug_folder_path = "./debug/"
+bach_process_path = "./Test Bench/result/"
