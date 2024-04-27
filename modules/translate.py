@@ -117,8 +117,6 @@ async def deepl_convert_xml_calc_cost(json_data):
             #text = text.replace('\n', '')
 
             xml_output += f"<div>{text}</div>\n"
-            temp_cost = calculate_translation_cost(text,price_per_character)
-            cost += temp_cost
     return xml_output,cost
 
 # ---------------　以下テストコード(不要)------------------------
