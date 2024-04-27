@@ -147,7 +147,7 @@ async def pdf_translate(key,pdf_data,source_lang = 'en',to_lang = 'ja',debug =Fa
         translated_pdf_data = await write_pdf_text(removed_textbox_pdf_data,write_text_blocks,to_lang,True)
     if write_fig_blocks != []:
         translated_pdf_data = await write_pdf_text(translated_pdf_data,write_fig_blocks,to_lang,True)
-    
+    """
     if debug:
         import json
         raw_blocks = await extract_text_coordinates_dict_dev(pdf_data)
@@ -174,7 +174,7 @@ async def pdf_translate(key,pdf_data,source_lang = 'en',to_lang = 'ja',debug =Fa
         with open(Debug_folder_path+"show_blocks.pdf", "wb") as f:
             f.write(all_block_pdf_data)
         with open(Debug_folder_path+"removed_pdf.pdf", "wb") as f:
-            f.write(removed_textbox_pdf_data)
+            f.write(removed_textbox_pdf_data)"""
     
     return translated_pdf_data
 
