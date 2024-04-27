@@ -342,7 +342,8 @@ async def Arxiv_back_gorund_task(arxiv_id, target_lang, decrypted_deepl_key, dee
     except Exception as e:
         message = str(e)
         print(f"翻訳中にエラーが発生しました: {message} / {arxiv_id}")
-        return "error", f"翻訳中にエラーが発生しました: {message}"
+        message = F"翻訳中にエラーが発生しました: {message} / {arxiv_id}"
+        return "error", message
     
     translate_download_url = await upload_byte(BLACK_BLAZE_CONFIG['public_key_id'],BLACK_BLAZE_CONFIG['public_key'],BLACK_BLAZE_CONFIG['public_bucket'],
                                                translate_data, 'arxiv_pdf', F"{arxiv_id}_{target_lang}.pdf", content_type='application/pdf')
@@ -381,8 +382,9 @@ async def pdf_back_ground_task(file_name, target_lang, decrypted_deepl_key, deep
         translate_data = await pdf_translate(decrypted_deepl_key,pdf_byte,to_lang= target_lang,api_url=deepl_url)
     except Exception as e:
         message = str(e)
+        message = F"翻訳中にエラーが発生しました: {message} / {file_name}"
         print(f"翻訳中にエラーが発生しました: {message} / {file_name}")
-        return "error", f"翻訳中にエラーが発生しました: {message} / {file_name}"
+        return "error", message
     #翻訳データのダウンロードURLを発行
     download_url = await upload_byte(id,key,bucket_name,translate_data,'temp',file_name,'application/pdf')
     download_url = F"{download_url}?Authorization={auth_token}"
