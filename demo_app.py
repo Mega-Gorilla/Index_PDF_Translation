@@ -342,7 +342,7 @@ async def Arxiv_back_gorund_task(arxiv_id, target_lang, decrypted_deepl_key, dee
     except Exception as e:
         message = str(e)
         print(f"翻訳中にエラーが発生しました: {message} / {arxiv_id}")
-        return
+        return "error", f"翻訳中にエラーが発生しました: {message}"
     
     translate_download_url = await upload_byte(BLACK_BLAZE_CONFIG['public_key_id'],BLACK_BLAZE_CONFIG['public_key'],BLACK_BLAZE_CONFIG['public_bucket'],
                                                translate_data, 'arxiv_pdf', F"{arxiv_id}_{target_lang}.pdf", content_type='application/pdf')
