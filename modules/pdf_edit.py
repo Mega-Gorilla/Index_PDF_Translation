@@ -4,6 +4,7 @@ import math,re,html
 from io import BytesIO
 from statistics import median
 from modules.spacy_api import *
+from collections import defaultdict
 
 async def extract_text_coordinates_blocks(pdf_data):
     """
@@ -78,6 +79,7 @@ async def extract_text_coordinates_dict(pdf_data):
             if lines["type"] != 0:
                 # テキストブロック以外はスキップ
                 continue
+            block["page_no"] = page_num
             block["block_no"] = lines["number"]
             block["coordinates"] = lines["bbox"]
             block["text"] = ""
@@ -289,72 +291,142 @@ async def pdf_draw_blocks(input_pdf_data, block_info, line_colorRGB=[0, 0, 1], w
     output_data = output_buffer.getvalue()
     return output_data
 
-async def write_pdf_text(input_pdf_data, block_info, lang='en', debug=False):
+
+async def preprocess_write_blocks(block_info, to_lang='ja'):
+    lh_calc_factor = 1.3
+
+    # フォント選択
+    if to_lang == 'en':
+        font_path = 'fonts/TIMES.TTF'
+        a_text = 'a'
+    elif to_lang == 'ja':
+        font_path = 'fonts/MSMINCHO.TTC'
+        a_text = 'あ'
+
+    # フォントサイズを逆算+ブロックごとにテキストを分割
+    any_blocks = []
+    for page in block_info:
+        for box in page:
+
+            font_size = box["size"][0]
+
+            while True:
+                #初期化
+                max_chars_per_boxes = []
+
+                # フォントサイズ計算
+                font = fitz.Font("F0",font_path)
+                a_width=font.text_length(a_text,font_size)
+
+                # BOXに収まるテキスト数を行ごとにリストに格納
+                max_chars_per_boxes = []
+                for coordinates in box["coordinates"]:
+                    x1,y1,x2,y2 = coordinates
+                    hight = y2-y1
+                    width = x2-x1
+
+                    num_colums = int(hight/(font_size*lh_calc_factor))
+                    num_raw = int(width/a_width)
+                    max_chars_per_boxes.append([num_raw]*num_colums)
+                
+                # 文字列を改行ごとに分割してリストに格納
+                #text_all = box["text"].replace(' ', '\u00A0') #スペースを改行されないノーブレークスペースに置き換え
+                text_all = box["text"]
+                text_list = text_all.split('\n')
+
+                text = text_list.pop(0)
+                text_num = len(text)
+                box_texts = []
+                exit_flag = False
+
+                for chars_per_box in max_chars_per_boxes:
+                    #各箱ごとを摘出
+                    if exit_flag:
+                        break
+                    box_text = ""
+
+                    for chars_per_line in chars_per_box:
+                        #1行あたりに代入できる文字数 : chars_per_line
+                        if exit_flag:
+                            break
+                        # 行に文字を代入した際の残り文字数を計算
+                        text_num = text_num - chars_per_line
+                        print(F"{chars_per_line}/{text_num}")
+                        if text_num <= 0:
+                            #その行にて収まる場合は、次の文字列を取り出す
+                            box_text += text + "\n"
+                            print("add str to box")
+                            if text_list == []:
+                                #次の文字列がない場合はbreak
+                                exit_flag = True
+                                text = ""
+                                break
+                            text = text_list.pop(0)
+                            text_num = len(text)
+                    
+                    if len(text) != text_num:
+                        cut_length = len(text) - text_num
+                        box_text += text[:cut_length]
+                        text = text[cut_length:]
+                    box_texts.append(box_text)
+                if text_list == [] and text == "":
+                    break
+                else:
+                    font_size-=0.1
+            box_texts = [text.lstrip().rstrip('\n') for text in box_texts]
+            for page_no,block_no,coordinates,text in zip(box["page_no"],box["block_no"],box["coordinates"],box_texts):
+                result_block = {"page_no":page_no,
+                                "block_no":block_no,
+                                "coordinates":coordinates,
+                                "text":text,
+                                "size":font_size}
+                any_blocks.append(result_block)
+    page_groups = defaultdict(list)
+    for block in any_blocks:
+        page_groups[block["page_no"]].append(block)
+    # 結果としてのリストのリスト
+    grouped_pages = list(page_groups.values())
+    return grouped_pages
+
+async def write_pdf_text(input_pdf_data, block_info, to_lang='en', debug=False):
     """
     指定されたフォントで、文字を作画します。
     """
     lh_factor = 1.5  # 行の高さの係数
+
     # フォント選択
-    if lang == 'en':
+    if to_lang == 'en':
         font_path = 'fonts/TIMES.TTF'
-    elif lang == 'ja':
+    elif to_lang == 'ja':
         font_path = 'fonts/MSMINCHO.TTC'
 
     doc = await asyncio.to_thread(fitz.open, stream=input_pdf_data, filetype="pdf")
-     # 一時的なPDFの作成
-    temp_doc = fitz.open()
 
-    # 元のPDFと同じページ構成で一時的なPDFを設定
-    for _ in range(len(doc)):
-        temp_doc.new_page()
-
-    for i, pages in enumerate(block_info):
-        #ページごとのループ
-        page = doc[i]
-        temp_page = temp_doc[i]
+    for page_block in block_info:
         
-        page.insert_font(fontname="F0", fontfile=font_path)
-        temp_page.insert_font(fontname="F0", fontfile=font_path)
-
-        for block in pages:
-            #ブロックごとのループ
-            # 文字列挿入用ブロックの定義
+        for block in page_block:
+            #ページ設定
+            page_num = block["page_no"]
+            page = doc[page_num]
+            page.insert_font(fontname="F0", fontfile=font_path)
+            # 書き込み実施
+            coordinates = list(block["coordinates"])
             text = block["text"]
-            x0, y0, x1, y1 = block["coordinates"]
-            fs = block["size"]
-
-            #text = text.replace('\n', '')
-            text = text.replace(' ',"\u00A0")
-            text_rect = fitz.Rect(x0, y0, x1, y1+15)
-
-            # フォントサイズと行の高さの計算
-            fs_min = 3  # 最小フォントサイズ
-            fs_max = int(y1-y0)  # 最大フォントサイズ
-
-            #print(text)
-
-            best_result = float('inf')
-            best_fs = None
-
-            while fs_min <= fs_max:
-                result = temp_page.insert_textbox(text_rect, text, fontname="F0", fontsize=fs, align=3, lineheight=lh_factor)
-                #print(f"{fs} / {result}")
-                if result < 0:
-                    fs-=1
-                    if best_fs != None:
-                        #print(F"{best_result}/best_fs:{best_fs}")
-                        fs = best_fs
-                        break
+            font_size = block["size"]
+            if debug:
+                rect = fitz.Rect(coordinates)
+                page.draw_rect(rect,color=[0, 0, 1],width=0,fill=[0,0,1],fill_opacity=0.3)
+            while True:
+                rect = fitz.Rect(coordinates)
+                result = page.insert_textbox(rect, text, fontsize=font_size, fontname="F0", align=3, lineheight=lh_factor)
+                if result >=0:
+                    break   
                 else:
-                    #print(F"{result}/ Font_Size: {fs}")
-                    break
-            #正規のpdfに描画
-            page.insert_textbox(text_rect, text, fontname="F0", fontsize=fs, align=3, lineheight=lh_factor)
-
+                    coordinates[3]+=1
+        
     output_buffer = BytesIO()
     await asyncio.to_thread(doc.save, output_buffer, garbage=4, deflate=True, clean=True)
     await asyncio.to_thread(doc.close)
-    await asyncio.to_thread(temp_doc.close)
     output_data = output_buffer.getvalue()
 
     return output_data
