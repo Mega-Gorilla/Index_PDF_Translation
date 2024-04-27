@@ -330,8 +330,8 @@ async def preprocess_write_blocks(block_info, to_lang='ja'):
                     max_chars_per_boxes.append([num_raw]*num_colums)
                 
                 # 文字列を改行ごとに分割してリストに格納
-                #text_all = box["text"].replace(' ', '\u00A0') #スペースを改行されないノーブレークスペースに置き換え
-                text_all = box["text"]
+                text_all = box["text"].replace(' ', '\u00A0') #スペースを改行されないノーブレークスペースに置き換え
+                #text_all = box["text"]
                 text_list = text_all.split('\n')
 
                 text = text_list.pop(0)
