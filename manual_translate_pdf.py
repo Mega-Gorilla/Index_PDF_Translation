@@ -30,7 +30,8 @@ async def translate_test():
     if not file_path:
         print("ファイルが選択されませんでした。")
         return
-
+    
+    process_time = time.time()
     with open(file_path, "rb") as f:
         input_pdf_data = f.read()
 
@@ -43,6 +44,39 @@ async def translate_test():
 
     with open(output_path, "wb") as f:
         f.write(result_pdf)
+    print(F"Time:{time.time()-process_time}")
+
+async def test_bench():
+    original_directory = os.getcwd()
+    directory = ".\Test Bench\\raw"
+    import glob
+    # カレントディレクトリに変更する場合
+    os.chdir(directory)
+    # PDFファイルのフルパスを取得
+    pdf_files = glob.glob('**/*.pdf', recursive=True)
+    # ディレクトリをフルパスで取得するには、以下のように結合する
+    pdf_files = [os.path.join(directory, file) for file in pdf_files]
+    pdf_files = glob.glob('**/*.pdf', recursive=True)
+
+    # ディレクトリー移動
+    os.chdir(original_directory)
+
+    for file_path in pdf_files:
+        file_path = directory + "\\"+ file_path
+        with open(file_path, "rb") as f:
+            input_pdf_data = f.read()
+        print(F"Loaded: {file_path}")
+
+        result_pdf = await pdf_translate(os.environ["DEEPL_API_KEY"], input_pdf_data,debug=True)
+
+        if result_pdf is None:
+            continue
+        _, file_name = os.path.split(file_path)
+        output_path = bach_process_path + "result_"+file_name
+
+        with open(output_path, "wb") as f:
+            f.write(result_pdf)
+        print(F"Saved: {output_path}")
 
 async def generate_pdf_test():
     # 翻訳済みリストを読み込み
@@ -59,7 +93,7 @@ async def generate_pdf_test():
         f.write(result_pdf)
 
 if __name__ == "__main__":
-    process_time = time.time()
     asyncio.run(translate_test())
+    #asyncio.run(test_bench())
     #asyncio.run(generate_pdf_test())
-    print(F"Time:{time.time()-process_time}")
+    
