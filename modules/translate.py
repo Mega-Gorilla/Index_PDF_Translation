@@ -144,9 +144,9 @@ async def pdf_translate(key,pdf_data,source_lang = 'en',to_lang = 'ja',debug =Fa
     print("4.Generate wirte Blocks")
     # pdfの作成
     if write_text_blocks != []:
-        translated_pdf_data = await write_pdf_text(removed_textbox_pdf_data,write_text_blocks,to_lang,True)
+        translated_pdf_data = await write_pdf_text(removed_textbox_pdf_data,write_text_blocks,to_lang,debug)
     if write_fig_blocks != []:
-        translated_pdf_data = await write_pdf_text(translated_pdf_data,write_fig_blocks,to_lang,True)
+        translated_pdf_data = await write_pdf_text(translated_pdf_data,write_fig_blocks,to_lang,debug)
     print("5.Generate PDF Data")
     """
     if debug:
