@@ -9,7 +9,7 @@ from datetime import datetime,timedelta
 
 from modules.backblaze_api import *
 from modules.arxiv_api import get_arxiv_info_async,download_arxiv_pdf
-from modules.translate import pdf_translate,translate_text
+from modules.translate import pdf_translate,translate_str_data
 from modules.database import *
 
 from Crypto.PublicKey import RSA
@@ -312,7 +312,7 @@ async def Arxiv_back_gorund_task(arxiv_id, target_lang, decrypted_deepl_key, dee
     paper = db.query(paper_meta_data).filter(paper_meta_data.identifier == f"oai:arXiv.org:{arxiv_id}").first()
     # DBのアブストとタイトルを翻訳
     if not getattr(paper.abstract[0], target_lang, None):
-        translation_result = await translate_text(decrypted_deepl_key, paper.abstract[0].en, target_lang, deepl_url)
+        translation_result = await translate_str_data(decrypted_deepl_key, paper.abstract[0].en, target_lang, deepl_url)
         if translation_result['ok']:
             setattr(paper.abstract[0], target_lang, translation_result['data'])
         else:
@@ -321,7 +321,7 @@ async def Arxiv_back_gorund_task(arxiv_id, target_lang, decrypted_deepl_key, dee
             return "error"  # DBにエラー追加するコードを後ほど追加
 
     if not getattr(paper.title[0], target_lang, None):
-        translation_result = await translate_text(decrypted_deepl_key, paper.title[0].en, target_lang, deepl_url)
+        translation_result = await translate_str_data(decrypted_deepl_key, paper.title[0].en, target_lang, deepl_url)
         if translation_result['ok']:
             setattr(paper.title[0], target_lang, translation_result['data'])
         else:
