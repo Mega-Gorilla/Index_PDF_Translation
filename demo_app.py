@@ -382,7 +382,7 @@ async def pdf_back_ground_task(file_name, target_lang, decrypted_deepl_key, deep
     except Exception as e:
         message = str(e)
         print(f"翻訳中にエラーが発生しました: {message} / {file_name}")
-        return
+        return "error", f"翻訳中にエラーが発生しました: {message} / {file_name}"
     #翻訳データのダウンロードURLを発行
     download_url = await upload_byte(id,key,bucket_name,translate_data,'temp',file_name,'application/pdf')
     download_url = F"{download_url}?Authorization={auth_token}"
