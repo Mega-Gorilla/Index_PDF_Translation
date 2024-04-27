@@ -351,11 +351,11 @@ async def preprocess_write_blocks(block_info, to_lang='ja'):
                             break
                         # 行に文字を代入した際の残り文字数を計算
                         text_num = text_num - chars_per_line
-                        print(F"{chars_per_line}/{text_num}")
+                        #print(F"{chars_per_line}/{text_num}")
                         if text_num <= 0:
                             #その行にて収まる場合は、次の文字列を取り出す
                             box_text += text + "\n"
-                            print("add str to box")
+                            #print("add str to box")
                             if text_list == []:
                                 #次の文字列がない場合はbreak
                                 exit_flag = True

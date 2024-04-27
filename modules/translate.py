@@ -35,7 +35,7 @@ async def translate_str_data(key: str,text: str, target_lang: str,api_url:str) -
             if response.status == 200:
                 result = await response.json()
                 result = result["translations"][0]["text"]
-                print(F"Translate :{result}")
+                #print(F"Translate :{result}")
                 return {'ok':True,'data':result}
             else:
                 return {'ok':False,'message':f"DeepL API request failed with status code {response.status}"}
