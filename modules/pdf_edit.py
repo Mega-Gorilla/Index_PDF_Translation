@@ -431,6 +431,28 @@ async def write_pdf_text(input_pdf_data, block_info, to_lang='en', debug=False):
 
     return output_data
 
+async def write_logo_data(input_pdf_data):
+    """
+    PDFにサービスロゴを描画します
+    """
+    doc = await asyncio.to_thread(fitz.open, stream=input_pdf_data, filetype="pdf")
+    rect = (5,5,35,35)
+    logo_path = "./data/indqx_qr.png"
+    font_path = 'fonts/TIMES.TTF'
+    for page in doc:
+        page.insert_font(fontname="F0", fontfile=font_path)
+        page.insert_image(rect,filename=logo_path)
+        page.insert_textbox((37,5,100,35),"Translated by.",fontsize=5,fontname="F0")
+        page.insert_textbox((37, 12, 100, 35), "IndQx", fontsize=10, fontname="F0")
+        page.insert_textbox((37,25,100,35),"Translation.",fontsize=5,fontname="F0")
+
+    output_buffer = BytesIO()
+    await asyncio.to_thread(doc.save, output_buffer, garbage=4, deflate=True, clean=True)
+    await asyncio.to_thread(doc.close)
+    output_data = output_buffer.getvalue()
+
+    return output_data
+
 def plot_area_distribution(areas, labels_values, title='Distribution of Areas', xlabel='Area', ylabel='Frequency', save_path=None):
     """
     デバッグ用、グラフを作画する
