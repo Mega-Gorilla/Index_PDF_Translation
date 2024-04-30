@@ -147,6 +147,7 @@ async def pdf_translate(key,pdf_data,source_lang = 'en',to_lang = 'ja',debug =Fa
     if write_fig_blocks != []:
         translated_pdf_data = await write_pdf_text(translated_pdf_data,write_fig_blocks,to_lang,debug)
     translated_pdf_data = await write_logo_data(translated_pdf_data)
+    marged_pdf_data = await create_viewing_pdf(pdf_data,translated_pdf_data)
     print("5.Generate PDF Data")
     """
     if debug:
@@ -177,7 +178,7 @@ async def pdf_translate(key,pdf_data,source_lang = 'en',to_lang = 'ja',debug =Fa
         with open(Debug_folder_path+"removed_pdf.pdf", "wb") as f:
             f.write(removed_textbox_pdf_data)"""
     
-    return translated_pdf_data
+    return marged_pdf_data
 
 async def PDF_block_check(pdf_data,source_lang = 'en'):
 
