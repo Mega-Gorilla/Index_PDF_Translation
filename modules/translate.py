@@ -119,7 +119,6 @@ async def deepl_convert_xml_calc_cost(json_data):
             xml_output += f"<div>{text}</div>\n"
     return xml_output,cost
 
-# ---------------　以下テストコード(不要)------------------------
 async def pdf_translate(key,pdf_data,source_lang = 'en',to_lang = 'ja',debug =False,api_url="https://api.deepl.com/v2/translate"):
 
     block_info = await extract_text_coordinates_dict(pdf_data)
@@ -147,6 +146,7 @@ async def pdf_translate(key,pdf_data,source_lang = 'en',to_lang = 'ja',debug =Fa
         translated_pdf_data = await write_pdf_text(removed_textbox_pdf_data,write_text_blocks,to_lang,debug)
     if write_fig_blocks != []:
         translated_pdf_data = await write_pdf_text(translated_pdf_data,write_fig_blocks,to_lang,debug)
+    translated_pdf_data = await write_logo_data(translated_pdf_data)
     print("5.Generate PDF Data")
     """
     if debug:
@@ -179,44 +179,14 @@ async def pdf_translate(key,pdf_data,source_lang = 'en',to_lang = 'ja',debug =Fa
     
     return translated_pdf_data
 
-async def pdf_draw_dev(pdf_data,translated_text_blocks,translated_fig_blocks,to_lang = 'ja'):
+async def PDF_block_check(pdf_data,source_lang = 'en'):
 
-    text_blocks= translated_text_blocks
-    fig_blocks = translated_fig_blocks
-    
-    # 翻訳したブロックを結合
-    combined_blocks =[]
-    for page1, page2 in zip(text_blocks,fig_blocks):
-        combined_page = page1 + page2
-        sorted_page = sorted(combined_page, key=lambda x: x['block_no'])
-        combined_blocks.append(sorted_page)
-    
-    # 翻訳したPDFを作成
-    translated_pdf_data = await write_pdf_text(pdf_data,combined_blocks,to_lang)
+    block_info = await extract_text_coordinates_dict(pdf_data)
 
-    return translated_pdf_data
+    text_blocks,fig_blocks,leave_blocks = await remove_blocks(block_info,10,lang=source_lang)
+        
+    text_block_pdf_data = await pdf_draw_blocks(pdf_data,text_blocks,width=0,fill_opacity=0.3,fill_colorRGB=[0,0,1])
+    fig_block_pdf_data = await pdf_draw_blocks(text_block_pdf_data,fig_blocks,width=0,fill_opacity=0.3,fill_colorRGB=[0,1,0])
+    all_block_pdf_data = await pdf_draw_blocks(fig_block_pdf_data,leave_blocks,width=0,fill_opacity=0.3,fill_colorRGB=[1,0,0])
 
-async def translate_test():
-    import tkinter as tk
-    from tkinter import filedialog
-
-    # GUIでファイル選択のための設定
-    root = tk.Tk()
-    root.withdraw()  # GUIのメインウィンドウを表示しない
-    file_path = filedialog.askopenfilename(filetypes=[("PDF files", "*.pdf")])  # PDFファイルのみ選択
-
-    if not file_path:
-        print("ファイルが選択されませんでした。")
-        return
-    
-    with open(file_path, "rb") as f:
-        input_pdf_data = f.read()
-
-    reslut_pdf = await pdf_translate(os.environ["DEEPL_API_KEY"],input_pdf_data,debug=True)
-
-    with open("output.pdf", "wb") as f:
-        f.write(reslut_pdf)
-
-
-if __name__ == "__main__":
-    asyncio.run(translate_test())
+    return all_block_pdf_data
