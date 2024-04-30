@@ -453,6 +453,48 @@ async def write_logo_data(input_pdf_data):
 
     return output_data
 
+async def create_viewing_pdf(base_pdf_path, translated_pdf_path):
+    # PDFドキュメントを開く
+    doc_base = await asyncio.to_thread(fitz.open, stream=base_pdf_path, filetype="pdf")
+    doc_translate = await asyncio.to_thread(fitz.open, stream=translated_pdf_path, filetype="pdf")
+
+    # 新しいPDFドキュメントを作成
+    new_doc = fitz.open()
+
+    # 各ページをループ処理
+    for page_num in range(len(doc_base)):
+        # base_pdfとtranslated_pdfからページを取得
+        page_base = doc_base.load_page(page_num)
+        page_translate = doc_translate.load_page(page_num)
+
+        # 新しい見開きページを作成
+        # ページサイズはそれぞれのPDFの1ページの幅と高さを使う
+        rect_base = page_base.rect
+        rect_translate = page_translate.rect
+        
+        # 両ページの高さが異なる場合、高い方に合わせる
+        max_height = max(rect_base.height, rect_translate.height)
+
+        # base_pdfのページを左ページに追加
+        new_page = new_doc.new_page(width=rect_base.width, height=max_height)
+        new_page.show_pdf_page(new_page.rect, doc_base, page_num)
+        
+        # translated_pdfのページを右ページに追加
+        new_page = new_doc.new_page(width=rect_translate.width, height=max_height)
+        new_page.show_pdf_page(new_page.rect, doc_translate, page_num)
+    
+    # ページレイアウトを見開きに設定
+    new_doc.set_pagelayout("TwoPageLeft")
+
+    # 新しいPDFファイルを保存
+    output_buffer = BytesIO()
+    await asyncio.to_thread(new_doc.save, output_buffer, garbage=4, deflate=True, clean=True)
+    await asyncio.to_thread(new_doc.close)
+    await asyncio.to_thread(doc_base.close)
+    await asyncio.to_thread(doc_translate.close)
+    output_data = output_buffer.getvalue()
+    return output_data
+
 def plot_area_distribution(areas, labels_values, title='Distribution of Areas', xlabel='Area', ylabel='Frequency', save_path=None):
     """
     デバッグ用、グラフを作画する
