@@ -133,9 +133,23 @@ async def pdf_block_bach():
             f.write(result_pdf)
         print(F"Saved: {output_path}")
 
+async def marge_test():
+    base_path = "./Test Bench/raw/3page-Interactive Video Stylization Using Few-Shot Patch-Based Training.pdf"
+    tran_path = "./Test Bench/result/result_3page-Interactive Video Stylization Using Few-Shot Patch-Based Training.pdf"
+    with open(base_path, "rb") as f:
+        input_pdf_data_base = f.read()
+    with open(tran_path, "rb") as f:
+        input_pdf_data_tran = f.read()
+    from modules.pdf_edit import create_viewing_pdf
+    #
+    result_pdf = await create_viewing_pdf(input_pdf_data_base,input_pdf_data_tran)
+
+    with open("./marge_test.pdf", "wb") as f:
+        f.write(result_pdf)
 
 if __name__ == "__main__":
     #asyncio.run(translate_test())
     #asyncio.run(test_bench())
-    asyncio.run(pdf_block_bach())
+    #asyncio.run(pdf_block_bach())
+    asyncio.run(marge_test())
     
