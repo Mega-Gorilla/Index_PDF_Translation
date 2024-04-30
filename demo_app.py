@@ -375,15 +375,31 @@ async def pdf_back_ground_task(file_name, target_lang, decrypted_deepl_key, deep
     #list_file_data = await find_recent_files(list_file_data,600) #現在時刻より10分以内でないファイルリストを作成
     #await delete_files_from_folder(id,key,bucket_name,list_file_data)
     # トークン発行および翻訳元データのダウンロード
-    auth_token = create_download_auth_token(id,key,bucket_name,file_path,600) # 10分有効なキーを発行
-    pdf_byte = await download_file(id,key,bucket_name,file_path,auth_token)
+    
+    try:
+        auth_token = create_download_auth_token(id,key,bucket_name,file_path,600) # 10分有効なキーを発行
+    except Exception as e:
+        message = str(e)
+        message = F"アクセストークン発行中にエラーが発生しました:{message} / {file_name}"
+        print(f"{message} / {file_name}")
+        return "error", message
+
+    # PDFデータのダウンロード
+    try:
+        pdf_byte = await download_file(id,key,bucket_name,file_path,auth_token)
+    except Exception as e:
+        message = str(e)
+        message = F"ファイルダウンロード中にエラーが発生しました:{message} / {file_name}"
+        print(f"{message} / {file_name}")
+        return "error", message
+    
     #翻訳実施
     try:
         translate_data = await pdf_translate(decrypted_deepl_key,pdf_byte,to_lang= target_lang,api_url=deepl_url)
     except Exception as e:
         message = str(e)
         message = F"翻訳中にエラーが発生しました: {message} / {file_name}"
-        print(f"翻訳中にエラーが発生しました: {message} / {file_name}")
+        print(f"{message} / {file_name}")
         return "error", message
     #翻訳データのダウンロードURLを発行
     download_url = await upload_byte(id,key,bucket_name,translate_data,'temp',file_name,'application/pdf')
