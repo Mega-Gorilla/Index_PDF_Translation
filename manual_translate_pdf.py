@@ -21,7 +21,7 @@ def load_json_to_list(file_path):
         print(f"ファイルの読み込み中にエラーが発生しました: {e}")
         return None
 
-async def translate_test():
+async def translate_test(disble_translate=False):
     # GUIでファイル選択のための設定
     root = tk.Tk()
     root.withdraw()  # GUIのメインウィンドウを表示しない
@@ -35,7 +35,7 @@ async def translate_test():
     with open(file_path, "rb") as f:
         input_pdf_data = f.read()
 
-    result_pdf = await pdf_translate(os.environ["DEEPL_API_KEY"], input_pdf_data,debug=True)
+    result_pdf = await pdf_translate(os.environ["DEEPL_API_KEY"], input_pdf_data,debug=True,disable_translate=disble_translate)
 
     if result_pdf is None:
         return
@@ -46,7 +46,7 @@ async def translate_test():
         f.write(result_pdf)
     print(F"Time:{time.time()-process_time}")
 
-async def test_bench():
+async def test_bench(disble_translate=False):
     original_directory = os.getcwd()
     directory = ".\Test Bench\\raw"
     import glob
@@ -65,9 +65,9 @@ async def test_bench():
         file_path = directory + "\\"+ file_path
         with open(file_path, "rb") as f:
             input_pdf_data = f.read()
-        print(F"Loaded: {file_path}")
+        print(F"\nLoaded: {file_path}")
 
-        result_pdf = await pdf_translate(os.environ["DEEPL_API_KEY"], input_pdf_data,debug=True)
+        result_pdf = await pdf_translate(os.environ["DEEPL_API_KEY"], input_pdf_data,debug=True,disable_translate=disble_translate)
 
         if result_pdf is None:
             continue
@@ -148,8 +148,8 @@ async def marge_test():
         f.write(result_pdf)
 
 if __name__ == "__main__":
-    #asyncio.run(translate_test())
-    #asyncio.run(test_bench())
+    #asyncio.run(translate_test(disble_translate=True))
+    asyncio.run(test_bench(disble_translate=True))
     #asyncio.run(pdf_block_bach())
-    asyncio.run(marge_test())
+    #asyncio.run(marge_test())
     
