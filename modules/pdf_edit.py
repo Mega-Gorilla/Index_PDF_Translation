@@ -5,6 +5,7 @@ from io import BytesIO
 from statistics import median
 from modules.spacy_api import *
 from collections import defaultdict
+import numpy as np
 
 async def extract_text_coordinates_blocks(pdf_data):
     """
@@ -83,14 +84,16 @@ async def extract_text_coordinates_dict(pdf_data):
             block["block_no"] = lines["number"]
             block["coordinates"] = lines["bbox"]
             block["text"] = ""
+            sizes = []
             for line in lines['lines']:
                 for span in line['spans']:
                     if block["text"] == "":
                         block["text"]+=span["text"]
                     else:
                         block["text"]+=" " + span["text"]
-                    block["size"]=span['size']
+                    sizes.append(span['size'])
                     block["font"]=span['font']
+            block["size"] = np.mean(sizes)
             # block["text_count"] = len(block["text"])
             page_content.append(block)
         
@@ -133,8 +136,7 @@ def check_first_num_tokens(input_list, keywords, num=2):
     return False
 
 async def remove_blocks(block_info, token_threshold=10,debug=False,lang='en'):
-    import string
-    import numpy as np
+    import string,copy
     """
     トークン数が指定された閾値以下のブロックをリストから削除します。更にブロックの幅のパーセンタイルを求め、幅300以上のパーセンタイルブロックをリストから消去します。
     削除されたブロックも返します。
@@ -148,37 +150,81 @@ async def remove_blocks(block_info, token_threshold=10,debug=False,lang='en'):
     fig_table_blocks = []
     removed_blocks = []
 
-    # boxデータの分割
+    # データの分割
     bboxs = [item['coordinates'] for sublist in block_info for item in sublist]
-    # ブロック幅のしきい値を求める
     widths = [x1 - x0 for x0, _, x1, _ in bboxs]
-    for i in range(100,-1,-25):
-        percentile = np.percentile(widths,i)
-        if percentile < 300:
-            break
-    width_threshold_low = 0.9 * percentile
-    width_threshold_high = 1.1 * percentile
 
-    save_data = []
+    sizes = [item['size'] for sublist in block_info for item in sublist]
+
+    text_list = [item['text'] for sublist in block_info for item in sublist]
+    for i in range(len(text_list)):
+        text_list[i] = text_list[i].replace("\n", "")
+        text_list[i] = ''.join(char for char in text_list[i] if char not in string.punctuation and char not in string.digits)
+    texts = [tokenize_text(lang,text) for text in text_list]
+    texts = [len(text) for text in texts]
+
+    # スコア値を換算
+    scores = []
+
+    for text in texts:
+        if token_threshold <= text:
+            scores.append([0])
+        else:
+            scores.append([1])
+    
+    for item in [widths,sizes]:
+        # IQR:ロバストスケーリング
+        item_median = median(item)
+        item_75_percentile = np.percentile(item,75)
+        item_25_percentile = np.percentile(item,25)
+        
+        for value,score_list in zip(item,scores):
+            score = abs((value-item_median)/(item_75_percentile-item_25_percentile))
+            score_list.append(score)
+    marge_score = [] #3スコアの中央値を換算
+    for list_score in scores:
+        score_median = sum(list_score)
+        marge_score.append(score_median)
+    
+    # ヒストグラムから基準値を算出
+    # データのサンプルサイズ
+    n = len(marge_score)
+    # スタージェスの公式を使用してビンの数を計算
+    num_bins_sturges = math.ceil(math.log2(n) + 1)
+    # IQRを計算
+    q75, q25 = np.percentile(marge_score, [75 ,25])
+    iqr = q75 - q25
+    # フリードマン＝ダイアコニスのルールに基づいてビン幅を計算
+    bin_width_fd = 2 * iqr / n ** (1/3)
+    # ビン幅を基にビンの数を計算
+    bin_range = max(marge_score) - min(marge_score)
+    num_bins_fd = math.ceil(bin_range / bin_width_fd)
+    # ビンの数を決定（二つの方法のうち小さい方を選択）
+    num_bins = min(num_bins_sturges, num_bins_fd)
+    # ヒストグラムを計算
+    histogram, bin_edges = np.histogram(marge_score, bins=num_bins)
+    # 最も頻繁に現れるビンのインデックスを取得
+    max_index = np.argmax(histogram)
+    # 最も頻繁に現れる範囲を返す
+    most_frequent_range = (bin_edges[max_index], bin_edges[max_index + 1])
+
+    i = 0
     for pages in block_info:
         page_filtered_blocks = []
         page_fig_table_blocks = []
         page_removed_blocks = []
-        for block in pages:
-            #boxを変数化
-            block_text = block["text"]
-            block_coordinates = block['coordinates']
-            #widthを計算
-            width = (block_coordinates[2] - block_coordinates[0])
-            #tokenを計算
-            tokens_list = tokenize_text(lang,block_text)
-            token = len(tokens_list)
 
-            #記号と数字が50%を超える場合は、リストから消去
-            no_many_symbol = True
-            symbol_and_digit_count = sum(1 for char in block_text if char in string.punctuation or char in string.digits)
-            if len(block_text)!=0:
-                no_many_symbol = symbol_and_digit_count / len(block_text) < 0.5
+        for block in pages:
+
+            #tokenを計算
+            block_text = block["text"]
+            tokens_list = tokenize_text(lang,block_text)
+
+            # スコア値の取得
+            score = marge_score[i]
+            size = math.floor((sizes[i])*100)/100
+            result=  bool(most_frequent_range[0]<=score<=most_frequent_range[1] and scores[i][0]==0)
+            printscore = F"[{math.floor(score * 100) / 100}/{result}] /T:{math.floor((scores[i][0])*100)/100}({texts[i]})/W:{math.floor((scores[i][1])*100)/100}/S:{math.floor((scores[i][2])*100)/100}({size})"
 
             # tokenリスト３番目までに特定ワードが入ってる場合はグラフ表として認識する
             if lang == 'ja':
@@ -187,44 +233,28 @@ async def remove_blocks(block_info, token_threshold=10,debug=False,lang='en'):
                 keyword = ['fig','table']
             table_bool = check_first_num_tokens(tokens_list,keyword)
             
-            #文字列として認識するBool関数
-            width_bool = bool(width_threshold_high > width > width_threshold_low)
-            no_symbol_bool = bool(no_many_symbol)
-            token_bool = bool(token_threshold<token)
-            
-            if debug:
-                save_data.append({"Text": block_text,
-                                    "result bool": no_symbol_bool and width_bool,
-                                    "width bool": width_bool,
-                                    "token bool":token_bool,
-                                    "no symbol Bool": no_symbol_bool,
-                                    "width_threshold_low": float(width_threshold_low),
-                                    "this with": float(width),
-                                    "width_threshold_high": float(width_threshold_high),
-                                    "this token": token,
-                                    "token threshold": token_threshold
-                                    })
             if table_bool:
+                # 図データとしてリストに追加
                 page_fig_table_blocks.append(block)
-            elif no_symbol_bool and width_bool and token_bool:
+            elif most_frequent_range[0]<=score<=most_frequent_range[1] and scores[i][0]==0:
+                # 本文データとしてリストに追加
                 page_filtered_blocks.append(block)
             else:
-                page_removed_blocks.append(block)
+                #データを除外
+                swap_text = F"{printscore}"
+                add_block = copy.copy(block)
+                add_block["text"] = swap_text
+                page_removed_blocks.append(add_block)
+            i+=1
+
         fig_table_blocks.append(page_fig_table_blocks)
         filtered_blocks.append(page_filtered_blocks)
         removed_blocks.append(page_removed_blocks)
     
     if debug:
-        import json
-        with open('save_string.json', 'w', encoding='utf-8') as json_file:
-            json.dump(save_data, json_file, ensure_ascii=False, indent=2)
-
         # 解析用にデータを保存する
-        width_median = median(widths)
-        width_percentile_90 = np.percentile(widths, 90)
-        width_percentile_75 = np.percentile(widths, 75)
-        width_percentile_80 = np.percentile(widths, 80)
-        mean_width = np.mean(widths)
+        size_median = median(sizes)
+        size_mean = np.mean(sizes)
 
         #tokenのしきい値を求める
         texts = [item['text'] for sublist in block_info for item in sublist]
@@ -236,21 +266,19 @@ async def remove_blocks(block_info, token_threshold=10,debug=False,lang='en'):
             token = tokenize_text('en', text)
             tokens.append(len(token))
         token_median = median(tokens)
-        token_percentile_75 = np.percentile(tokens, 75)
-        token_percentile_25 = np.percentile(tokens, 25)
         token_mean = np.mean(tokens)
-        plot_area_distribution(areas=widths,labels_values=[{"Median":width_median},
-                                                        {"threshold_low":width_threshold_low},
-                                                        {"threshold_high":width_threshold_high},
-                                                        {"Mean":mean_width},
-                                                        {"percentile_75":width_percentile_75},
-                                                        {"percentile_80":width_percentile_80},
-                                                        {"percentile_90":width_percentile_90}],title="Awidth Mean",xlabel='width size',ylabel='Frequency',save_path='grah_With.png')
-        plot_area_distribution(areas=tokens,labels_values=[{"Median":token_median},
-                                                        {"Mean":token_mean},
-                                                        {"percentile_25":token_percentile_25},
-                                                        {"percentile_75":token_percentile_75}],title="token Mean",xlabel='Token',ylabel='Frequency',save_path='grah_token.png')
-    return filtered_blocks,fig_table_blocks, removed_blocks
+
+        token_Mean = plot_area_distribution(areas=tokens,labels_values=[{"Median":token_median},
+                                                        {"Mean":token_mean}],title="token Mean",xlabel='Token',ylabel='Frequency')
+
+        size_Mean = plot_area_distribution(areas=sizes,labels_values=[{"Median":size_median},
+                                                        {"Mean":size_mean}],title="Size Mean",xlabel='font size',ylabel='Frequency')
+
+        socre_Mean = plot_area_distribution(areas=marge_score,labels_values=[{"Histogram Low":most_frequent_range[0]},
+                                                        {"Histogram High":most_frequent_range[1]}],title="score Mean",xlabel='score',ylabel='Frequency')
+       
+        return filtered_blocks,fig_table_blocks,removed_blocks,[token_Mean,size_Mean,socre_Mean]
+    return filtered_blocks,fig_table_blocks,removed_blocks,None
 
 async def remove_textbox_for_pdf(pdf_data, remove_list):
     """
@@ -388,14 +416,14 @@ async def preprocess_write_blocks(block_info, to_lang='ja'):
     grouped_pages = list(page_groups.values())
     return grouped_pages
 
-async def write_pdf_text(input_pdf_data, block_info, to_lang='en', debug=False):
+async def write_pdf_text(input_pdf_data, block_info, to_lang='en',text_color=[0,0,0],font_path=None):
     """
     指定されたフォントで、文字を作画します。
     """
     lh_factor = 1.5  # 行の高さの係数
 
     # フォント選択
-    if to_lang == 'en':
+    if to_lang == 'en' and font_path == None:
         font_path = 'fonts/TIMES.TTF'
     elif to_lang == 'ja':
         font_path = 'fonts/MSMINCHO.TTC'
@@ -413,12 +441,9 @@ async def write_pdf_text(input_pdf_data, block_info, to_lang='en', debug=False):
             coordinates = list(block["coordinates"])
             text = block["text"]
             font_size = block["size"]
-            if debug:
-                rect = fitz.Rect(coordinates)
-                page.draw_rect(rect,color=[0, 0, 1],width=0,fill=[0,0,1],fill_opacity=0.3)
             while True:
                 rect = fitz.Rect(coordinates)
-                result = page.insert_textbox(rect, text, fontsize=font_size, fontname="F0", align=3, lineheight=lh_factor)
+                result = page.insert_textbox(rect, text, fontsize=font_size, fontname="F0", align=3, lineheight = lh_factor, color = text_color)
                 if result >=0:
                     break   
                 else:
@@ -429,6 +454,42 @@ async def write_pdf_text(input_pdf_data, block_info, to_lang='en', debug=False):
     await asyncio.to_thread(doc.close)
     output_data = output_buffer.getvalue()
 
+    return output_data
+
+async def write_image_data(input_pdf_data,image_data,rect=(10,10,200,200),position=-1,add_new_page=True):
+    """
+    新しいページを作成し、画像を挿入します。
+    """
+    from PIL import Image
+    import io,os
+
+    doc = await asyncio.to_thread(fitz.open, stream=input_pdf_data, filetype="pdf")
+
+    # 最初のページの寸法を取得
+    first_page = doc[0]  # 最初のページを取得
+    rect = first_page.rect  # 最初のページの寸法を取得
+
+    # ページの追加
+    if add_new_page:
+        doc.insert_page(position, width=rect.width, height=rect.height)
+
+    page = doc[position]
+    image_byte = Image.open(io.BytesIO(image_data))
+    temp_image_path = "temp_image.png"
+    image_byte.save(temp_image_path)
+    page.insert_image(rect,filename=temp_image_path)
+
+    # 保存と終了処理
+    output_buffer = BytesIO()
+    await asyncio.to_thread(doc.save, output_buffer, garbage=4, deflate=True, clean=True)
+
+    # 一時ファイルの削除
+    os.remove(temp_image_path)  # temp_image.pngを削除
+    #ドキュメントのクローズ
+    await asyncio.to_thread(doc.close)
+    
+    # PDFデータをバイトとして返す
+    output_data = output_buffer.getvalue()
     return output_data
 
 async def write_logo_data(input_pdf_data):
@@ -495,9 +556,9 @@ async def create_viewing_pdf(base_pdf_path, translated_pdf_path):
     output_data = output_buffer.getvalue()
     return output_data
 
-def plot_area_distribution(areas, labels_values, title='Distribution of Areas', xlabel='Area', ylabel='Frequency', save_path=None):
+def plot_area_distribution(areas, labels_values, title='Distribution of Areas', xlabel='Area', ylabel='Frequency'):
     """
-    デバッグ用、グラフを作画する
+    デバッグ用、グラフを作画し画像データを返します
     """
     import numpy as np
     import matplotlib.pyplot as plt
@@ -518,7 +579,9 @@ def plot_area_distribution(areas, labels_values, title='Distribution of Areas', 
     plt.legend()
     plt.tight_layout()
 
-    if save_path:
-        plt.savefig(save_path)
-    else:
-        plt.show()
+    # PNGデータとしてグラフをメモリ上に保存
+    buf = BytesIO()
+    plt.savefig(buf, format='png')
+    plt.close()  # リソースを解放
+    buf.seek(0)  # バッファの先頭にシーク
+    return buf.read()  # バイトデータとして読み出し
