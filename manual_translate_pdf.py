@@ -39,6 +39,7 @@ async def translate_test(disble_translate=False):
 
     if result_pdf is None:
         return
+    
     _, file_name = os.path.split(file_path)
     output_path = Debug_folder_path + "result_"+file_name
 
@@ -46,7 +47,7 @@ async def translate_test(disble_translate=False):
         f.write(result_pdf)
     print(F"Time:{time.time()-process_time}")
 
-async def test_bench(disble_translate=False):
+async def test_bench(disble_translate=False,debug=True):
     original_directory = os.getcwd()
     directory = ".\Test Bench\\raw"
     import glob
@@ -67,7 +68,7 @@ async def test_bench(disble_translate=False):
             input_pdf_data = f.read()
         print(F"\nLoaded: {file_path}")
 
-        result_pdf = await pdf_translate(os.environ["DEEPL_API_KEY"], input_pdf_data,debug=True,disable_translate=disble_translate)
+        result_pdf = await pdf_translate(os.environ["DEEPL_API_KEY"], input_pdf_data,debug=debug,disable_translate=disble_translate)
 
         if result_pdf is None:
             continue
@@ -149,7 +150,8 @@ async def marge_test():
 
 if __name__ == "__main__":
     #asyncio.run(translate_test(disble_translate=True))
-    asyncio.run(test_bench(disble_translate=True))
+    #asyncio.run(test_bench(disble_translate=True,debug=True))
+    asyncio.run(test_bench(disble_translate=False,debug=False))
     #asyncio.run(pdf_block_bach())
     #asyncio.run(marge_test())
     
