@@ -1,6 +1,4 @@
 import aiohttp
-import os
-import re
 import asyncio
 from config import *
 from modules.pdf_edit import *
@@ -154,7 +152,8 @@ async def pdf_translate(key,pdf_data,source_lang = 'en',to_lang = 'ja',api_url="
         translated_pdf_data = await write_logo_data(translated_pdf_data)
     else:
         print("99.Translate is False")
-        
+    
+    """
     if debug:
         import json
         raw_blocks = await extract_text_coordinates_dict_dev(pdf_data)
@@ -178,6 +177,7 @@ async def pdf_translate(key,pdf_data,source_lang = 'en',to_lang = 'ja',api_url="
                 json.dump(write_text_blocks, json_file, ensure_ascii=False, indent=2)
             with open(Debug_folder_path+'write_fig_blocks.json', 'w', encoding='utf-8') as json_file:
                 json.dump(write_fig_blocks, json_file, ensure_ascii=False, indent=2)
+    
         
         text_block_pdf_data = await pdf_draw_blocks(pdf_data,text_blocks,width=0,fill_opacity=0.3,fill_colorRGB=[0,0,1])
         fig_block_pdf_data = await pdf_draw_blocks(text_block_pdf_data,fig_blocks,width=0,fill_opacity=0.3,fill_colorRGB=[0,1,0])
@@ -192,12 +192,13 @@ async def pdf_translate(key,pdf_data,source_lang = 'en',to_lang = 'ja',api_url="
         with open(Debug_folder_path+"removed_pdf.pdf", "wb") as f:
             f.write(removed_textbox_pdf_data)
         
-        # block　消去理由を描画
+        # block 消去理由を描画
         if disable_translate is False:
             translated_pdf_data = await write_pdf_text(translated_pdf_data,remove_info,text_color=[0,0,1],font_path="fonts/ariblk.ttf")
         else:
             translated_pdf_data = await write_pdf_text(all_block_pdf_data,remove_info,text_color=[0,0,1],font_path="fonts/ariblk.ttf")
         return translated_pdf_data
+        """
     
     # 見開き結合の実施
     marged_pdf_data = await create_viewing_pdf(pdf_data,translated_pdf_data)
