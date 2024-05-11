@@ -10,7 +10,7 @@ Index PDF 翻訳は、PDFのフォーマットを崩さずに、翻訳するこ�
 - 本文ブロックを認識時、終了記号(.:/など)がない場合、複数ブロックを1ブロックとして翻訳します。これによりブロック間やページ間にて翻訳文が途切れる等の問題を解決します。
 - 図や表の説明文のブロックを自動認識し、本文と分割して翻訳します。
 
-<img src="https://github.com/Mega-Gorilla/Index_PDF_Translation/blob/main/images/GMtDCedbsAAIkDO.jpg?raw=true" width = "300" />
+<img src="https://github.com/Mega-Gorilla/Index_PDF_Translation/blob/main/images/GMtDCedbsAAIkDO.jpg?raw=true" width = "500" />
 
 # ローカル版のインストール
 
