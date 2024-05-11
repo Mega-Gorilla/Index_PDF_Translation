@@ -1,4 +1,4 @@
-# 概要
+# Index PDF 翻訳 概要
 
 [Index PDF 翻訳](https://indqx-demo-front.onrender.com/)は、2024年5月31までwebにて翻訳サービスを提供していた、PDF翻訳のソースコードです。
 
@@ -30,7 +30,7 @@ config.pyを開き、以下のDeepL_API_Keyを変更し、[https://www.deepl.com
 DeepL_API_Key = "xxxxxx-xxxx-xxxx-xxxx-xxxxxxxxx:fx"
 ```
 
-### コードの実行
+# コードの実行
 
 以下のコマンドを実行して、PDF翻訳を実行します。アプリケーションが起動すると、ファイルエクスプローラが表示されます。
 翻訳するPDFを選択してください。翻訳が完了すると、./outputに翻訳後のPDFデータが保存されます。
