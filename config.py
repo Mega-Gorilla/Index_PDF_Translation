@@ -1,6 +1,11 @@
 import os
 # config.py
+# ----- ローカル版 設定 ------
+DeepL_API_Key = "Your DeepL API Key"
+DeepL_URL = "https://api-free.deepl.com/v2/translate" # DeepL Proの場合は、「https://api.deepl.com/v2/translate」を設定してください
+Output_folder_path = "./output/"
 
+# ----- 以下 API用 設定 --------
 # Black BlazeオブジェクトDB設定
 BLACK_BLAZE_CONFIG = {
     'public_key_id': os.environ["blackblaze_public_id"],
@@ -13,7 +18,6 @@ BLACK_BLAZE_CONFIG = {
 
 # 接続許可リスト
 CORS_CONFIG = [
-    'http://192.168.0.65:5173',
     'https://indqx-demo-front.onrender.com',
     'http://localhost:5173'
 ]

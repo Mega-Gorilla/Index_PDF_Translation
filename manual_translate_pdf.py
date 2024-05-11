@@ -21,6 +21,30 @@ def load_json_to_list(file_path):
         print(f"ファイルの読み込み中にエラーが発生しました: {e}")
         return None
 
+async def translate_local(deepl_url,deepl_key,disble_translate=False):
+    # GUIでファイル選択のための設定
+    root = tk.Tk()
+    root.withdraw()  # GUIのメインウィンドウを表示しない
+    file_path = filedialog.askopenfilename(filetypes=[("PDF files", "*.pdf")])  # PDFファイルのみ選択
+
+    if not file_path:
+        print("ファイルが選択されませんでした。")
+        return
+    
+    with open(file_path, "rb") as f:
+        input_pdf_data = f.read()
+
+    result_pdf = await pdf_translate(deepl_key, input_pdf_data,api_url=deepl_url,debug=False,disable_translate=disble_translate)
+
+    if result_pdf is None:
+        return
+    
+    _, file_name = os.path.split(file_path)
+    output_path = Output_folder_path + "result_"+file_name
+
+    with open(output_path, "wb") as f:
+        f.write(result_pdf)
+
 async def translate_test(disble_translate=False):
     # GUIでファイル選択のための設定
     root = tk.Tk()
@@ -149,9 +173,12 @@ async def marge_test():
         f.write(result_pdf)
 
 if __name__ == "__main__":
+    asyncio.run(translate_local(DeepL_URL,DeepL_API_Key))
+
     #asyncio.run(translate_test(disble_translate=True))
+    #asyncio.run(translate_test(disble_translate=False))
     #asyncio.run(test_bench(disble_translate=True,debug=True))
-    asyncio.run(test_bench(disble_translate=False,debug=False))
+    #asyncio.run(test_bench(disble_translate=False,debug=False))
     #asyncio.run(pdf_block_bach())
     #asyncio.run(marge_test())
     
