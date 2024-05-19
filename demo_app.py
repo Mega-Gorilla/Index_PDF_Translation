@@ -24,6 +24,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import  Session,selectinload
 
 from config import *
+from objective_DB_config import *
 
 app = FastAPI(timeout=300,version="0.1.2")
 

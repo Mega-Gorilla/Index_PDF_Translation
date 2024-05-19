@@ -6,15 +6,6 @@ DeepL_URL = "https://api-free.deepl.com/v2/translate" # DeepL Proの場合は、
 Output_folder_path = "./output/"
 
 # ----- 以下 API用 設定 --------
-# Black BlazeオブジェクトDB設定
-BLACK_BLAZE_CONFIG = {
-    'public_key_id': os.environ["blackblaze_public_id"],
-    'public_key' : os.environ["blackblaze_public_key"],
-    'private_key_id': os.environ["blackblaze_private_id"],
-    'private_key' : os.environ["blackblaze_private_key"],
-    'public_bucket' : 'pdf-public',
-    'private_bucket' : 'pdf-private'
-}
 
 # 接続許可リスト
 CORS_CONFIG = [
