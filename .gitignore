@@ -3,3 +3,6 @@
 /debug
 /Test Bench
 /dev_code
+
+.env
+output/*

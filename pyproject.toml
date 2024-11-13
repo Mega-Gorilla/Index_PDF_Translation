@@ -1,0 +1,32 @@
+[project]
+name = "index-pdf-translation"
+version = "0.1.0"
+description = "Index PDF Translation"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "aiohttp>=3.10.8",
+    "b2sdk>=2.5.1",
+    "bcrypt>=4.2.0",
+    "en-core-web-sm",
+    "fastapi>=0.115.0",
+    "ja-core-news-sm",
+    "numpy<2",
+    "passlib>=1.7.4",
+    "psycopg2-binary>=2.9.9",
+    "pycryptodome>=3.20.0",
+    "pymupdf>=1.24.10",
+    "python-jose[cryptography]>=3.3.0",
+    "python-multipart>=0.0.12",
+    "spacy==3.7.4",
+    "sqlalchemy>=2.0.35",
+    "tenacity>=9.0.0",
+    "uvicorn>=0.31.0",
+    "litellm",
+    "python-dotenv",
+]
+
+[tool.uv.sources]
+en-core-web-sm = { url = "https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1.tar.gz" }
+ja-core-news-sm = { url = "https://github.com/explosion/spacy-models/releases/download/ja_core_news_sm-3.7.0/ja_core_news_sm-3.7.0.tar.gz" }
+
