@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-only
 from fastapi import FastAPI, HTTPException, Depends, BackgroundTasks,File, UploadFile,Form
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel,ValidationError
