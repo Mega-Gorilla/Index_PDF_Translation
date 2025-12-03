@@ -326,10 +326,10 @@ async def preprocess_write_blocks(block_info, to_lang='ja'):
 
     # フォント選択
     if to_lang == 'en':
-        font_path = 'fonts/TIMES.TTF'
+        font_path = 'fonts/LiberationSerif-Regular.ttf'
         a_text = 'a'
     elif to_lang == 'ja':
-        font_path = 'fonts/MSMINCHO.TTC'
+        font_path = 'fonts/ipam.ttf'
         a_text = 'あ'
 
     # フォントサイズを逆算+ブロックごとにテキストを分割
@@ -425,9 +425,9 @@ async def write_pdf_text(input_pdf_data, block_info, to_lang='en',text_color=[0,
 
     # フォント選択
     if to_lang == 'en' and font_path == None:
-        font_path = 'fonts/TIMES.TTF'
+        font_path = 'fonts/LiberationSerif-Regular.ttf'
     elif to_lang == 'ja':
-        font_path = 'fonts/MSMINCHO.TTC'
+        font_path = 'fonts/ipam.ttf'
 
     doc = await asyncio.to_thread(fitz.open, stream=input_pdf_data, filetype="pdf")
 
@@ -500,7 +500,7 @@ async def write_logo_data(input_pdf_data):
     doc = await asyncio.to_thread(fitz.open, stream=input_pdf_data, filetype="pdf")
     rect = (5,5,35,35)
     logo_path = "./data/indqx_qr.png"
-    font_path = 'fonts/TIMES.TTF'
+    font_path = 'fonts/LiberationSerif-Regular.ttf'
     for page in doc:
         page.insert_font(fontname="F0", fontfile=font_path)
         page.insert_image(rect,filename=logo_path)
