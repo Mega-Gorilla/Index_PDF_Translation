@@ -195,9 +195,9 @@ async def pdf_translate(key,pdf_data,source_lang = 'en',to_lang = 'ja',api_url="
         
         # block 消去理由を描画
         if disable_translate is False:
-            translated_pdf_data = await write_pdf_text(translated_pdf_data,remove_info,text_color=[0,0,1],font_path="fonts/ariblk.ttf")
+            translated_pdf_data = await write_pdf_text(translated_pdf_data,remove_info,text_color=[0,0,1],font_path="fonts/LiberationSerif-Bold.ttf")
         else:
-            translated_pdf_data = await write_pdf_text(all_block_pdf_data,remove_info,text_color=[0,0,1],font_path="fonts/ariblk.ttf")
+            translated_pdf_data = await write_pdf_text(all_block_pdf_data,remove_info,text_color=[0,0,1],font_path="fonts/LiberationSerif-Bold.ttf")
         return translated_pdf_data
         """
     

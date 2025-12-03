@@ -2,6 +2,7 @@
 import fitz  # PyMuPDF
 import asyncio
 import math,re,html
+import os
 from io import BytesIO
 from statistics import median
 from modules.spacy_api import *
@@ -325,12 +326,24 @@ async def preprocess_write_blocks(block_info, to_lang='ja'):
     lh_calc_factor = 1.3
 
     # フォント選択
+    use_builtin_font = False
     if to_lang == 'en':
-        font_path = 'fonts/TIMES.TTF'
+        font_path = 'fonts/LiberationSerif-Regular.ttf'
         a_text = 'a'
+        fallback_fontname = 'helv'  # Helvetica
     elif to_lang == 'ja':
-        font_path = 'fonts/MSMINCHO.TTC'
+        font_path = 'fonts/ipam.ttf'
         a_text = 'あ'
+        fallback_fontname = 'helv'  # 日本語は組み込みフォントでは正しく表示されない
+
+    # フォントファイル存在チェックとフォールバック
+    if not os.path.exists(font_path):
+        print(f"警告: フォントファイルが見つかりません: {font_path}")
+        print(f"       PyMuPDF組み込みフォント '{fallback_fontname}' にフォールバックします。")
+        if to_lang == 'ja':
+            print(f"       注意: 日本語テキストは正しく表示されない可能性があります。")
+        use_builtin_font = True
+        font_path = None
 
     # フォントサイズを逆算+ブロックごとにテキストを分割
     any_blocks = []
@@ -344,7 +357,10 @@ async def preprocess_write_blocks(block_info, to_lang='ja'):
                 max_chars_per_boxes = []
 
                 # フォントサイズ計算
-                font = fitz.Font("F0",font_path)
+                if use_builtin_font:
+                    font = fitz.Font(fallback_fontname)
+                else:
+                    font = fitz.Font("F0", font_path)
                 a_width=font.text_length(a_text,font_size)
 
                 # BOXに収まるテキスト数を行ごとにリストに格納
@@ -424,29 +440,45 @@ async def write_pdf_text(input_pdf_data, block_info, to_lang='en',text_color=[0,
     lh_factor = 1.5  # 行の高さの係数
 
     # フォント選択
+    use_builtin_font = False
+    fallback_fontname = 'helv'  # デフォルトのフォールバック
+
     if to_lang == 'en' and font_path == None:
-        font_path = 'fonts/TIMES.TTF'
-    elif to_lang == 'ja':
-        font_path = 'fonts/MSMINCHO.TTC'
+        font_path = 'fonts/LiberationSerif-Regular.ttf'
+    elif to_lang == 'ja' and font_path == None:
+        font_path = 'fonts/ipam.ttf'
+
+    # フォントファイル存在チェックとフォールバック
+    if font_path and not os.path.exists(font_path):
+        print(f"警告: フォントファイルが見つかりません: {font_path}")
+        print(f"       PyMuPDF組み込みフォント '{fallback_fontname}' にフォールバックします。")
+        if to_lang == 'ja':
+            print(f"       注意: 日本語テキストは正しく表示されない可能性があります。")
+        use_builtin_font = True
+        font_path = None
 
     doc = await asyncio.to_thread(fitz.open, stream=input_pdf_data, filetype="pdf")
 
     for page_block in block_info:
-        
+
         for block in page_block:
             #ページ設定
             page_num = block["page_no"]
             page = doc[page_num]
-            page.insert_font(fontname="F0", fontfile=font_path)
+            if use_builtin_font:
+                page.insert_font(fontname=fallback_fontname)
+            else:
+                page.insert_font(fontname="F0", fontfile=font_path)
             # 書き込み実施
             coordinates = list(block["coordinates"])
             text = block["text"]
             font_size = block["size"]
+            active_fontname = fallback_fontname if use_builtin_font else "F0"
             while True:
                 rect = fitz.Rect(coordinates)
-                result = page.insert_textbox(rect, text, fontsize=font_size, fontname="F0", align=3, lineheight = lh_factor, color = text_color)
+                result = page.insert_textbox(rect, text, fontsize=font_size, fontname=active_fontname, align=3, lineheight = lh_factor, color = text_color)
                 if result >=0:
-                    break   
+                    break
                 else:
                     coordinates[3]+=1
         
@@ -500,13 +532,27 @@ async def write_logo_data(input_pdf_data):
     doc = await asyncio.to_thread(fitz.open, stream=input_pdf_data, filetype="pdf")
     rect = (5,5,35,35)
     logo_path = "./data/indqx_qr.png"
-    font_path = 'fonts/TIMES.TTF'
+    font_path = 'fonts/LiberationSerif-Regular.ttf'
+    fallback_fontname = 'helv'
+
+    # フォントファイル存在チェックとフォールバック
+    use_builtin_font = False
+    if not os.path.exists(font_path):
+        print(f"警告: フォントファイルが見つかりません: {font_path}")
+        print(f"       PyMuPDF組み込みフォント '{fallback_fontname}' にフォールバックします。")
+        use_builtin_font = True
+
+    active_fontname = fallback_fontname if use_builtin_font else "F0"
+
     for page in doc:
-        page.insert_font(fontname="F0", fontfile=font_path)
+        if use_builtin_font:
+            page.insert_font(fontname=fallback_fontname)
+        else:
+            page.insert_font(fontname="F0", fontfile=font_path)
         page.insert_image(rect,filename=logo_path)
-        page.insert_textbox((37,5,100,35),"Translated by.",fontsize=5,fontname="F0")
-        page.insert_textbox((37, 12, 100, 35), "IndQx", fontsize=10, fontname="F0")
-        page.insert_textbox((37,25,100,35),"Translation.",fontsize=5,fontname="F0")
+        page.insert_textbox((37,5,100,35),"Translated by.",fontsize=5,fontname=active_fontname)
+        page.insert_textbox((37, 12, 100, 35), "IndQx", fontsize=10, fontname=active_fontname)
+        page.insert_textbox((37,25,100,35),"Translation.",fontsize=5,fontname=active_fontname)
 
     output_buffer = BytesIO()
     await asyncio.to_thread(doc.save, output_buffer, garbage=4, deflate=True, clean=True)

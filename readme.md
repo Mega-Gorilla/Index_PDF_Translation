@@ -30,6 +30,17 @@ config.pyを開き、以下のDeepL_API_Keyを変更し、[https://www.deepl.com
 DeepL_API_Key = "xxxxxx-xxxx-xxxx-xxxx-xxxxxxxxx:fx"
 ```
 
+### フォント要件
+
+本プロジェクトでは以下のフォントを使用しています。これらはリポジトリに同梱されており、追加のインストールは不要です。
+
+| フォント | 用途 | ライセンス |
+|----------|------|-----------|
+| Liberation Serif | 英語テキスト | [SIL Open Font License 1.1](fonts/OFL.txt) |
+| IPA明朝 (ipam.ttf) | 日本語テキスト | [IPA Font License v1.0](fonts/IPA_Font_License_Agreement_v1.0.txt) |
+
+フォントファイルが見つからない場合、`FileNotFoundError` が発生します。
+
 # コードの実行
 
 以下のコマンドを実行して、PDF翻訳を実行します。アプリケーションが起動すると、ファイルエクスプローラが表示されます。
