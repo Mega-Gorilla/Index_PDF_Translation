@@ -2,6 +2,7 @@
 import fitz  # PyMuPDF
 import asyncio
 import math,re,html
+import os
 from io import BytesIO
 from statistics import median
 from modules.spacy_api import *
@@ -332,6 +333,14 @@ async def preprocess_write_blocks(block_info, to_lang='ja'):
         font_path = 'fonts/ipam.ttf'
         a_text = 'あ'
 
+    # フォントファイル存在チェック
+    if not os.path.exists(font_path):
+        raise FileNotFoundError(
+            f"フォントファイルが見つかりません: {font_path}\n"
+            f"fonts/ フォルダに必要なフォントファイルが存在することを確認してください。\n"
+            f"詳細は README.md の「フォント要件」セクションを参照してください。"
+        )
+
     # フォントサイズを逆算+ブロックごとにテキストを分割
     any_blocks = []
     for page in block_info:
@@ -429,6 +438,14 @@ async def write_pdf_text(input_pdf_data, block_info, to_lang='en',text_color=[0,
     elif to_lang == 'ja':
         font_path = 'fonts/ipam.ttf'
 
+    # フォントファイル存在チェック
+    if not os.path.exists(font_path):
+        raise FileNotFoundError(
+            f"フォントファイルが見つかりません: {font_path}\n"
+            f"fonts/ フォルダに必要なフォントファイルが存在することを確認してください。\n"
+            f"詳細は README.md の「フォント要件」セクションを参照してください。"
+        )
+
     doc = await asyncio.to_thread(fitz.open, stream=input_pdf_data, filetype="pdf")
 
     for page_block in block_info:
@@ -501,6 +518,15 @@ async def write_logo_data(input_pdf_data):
     rect = (5,5,35,35)
     logo_path = "./data/indqx_qr.png"
     font_path = 'fonts/LiberationSerif-Regular.ttf'
+
+    # フォントファイル存在チェック
+    if not os.path.exists(font_path):
+        raise FileNotFoundError(
+            f"フォントファイルが見つかりません: {font_path}\n"
+            f"fonts/ フォルダに必要なフォントファイルが存在することを確認してください。\n"
+            f"詳細は README.md の「フォント要件」セクションを参照してください。"
+        )
+
     for page in doc:
         page.insert_font(fontname="F0", fontfile=font_path)
         page.insert_image(rect,filename=logo_path)
