@@ -12,12 +12,6 @@ Indqx PDF 翻訳は、PDFのフォーマットを崩さずに、翻訳するこ�
 
 <img src="https://github.com/Mega-Gorilla/Index_PDF_Translation/blob/main/images/GMtDCedbsAAIkDO.jpg?raw=true" width = "500" />
 
-# ライセンス是正について
-
-- 本プロジェクトは、コア依存である PyMuPDF (AGPL-3.0) に準拠するため、**AGPL-3.0** として公開しています。  
-- 過去に BSD-3-Clause と誤記していた期間がありましたが、現在は正しいライセンスに是正済みです。  
-- 利用・改変・再配布時には AGPL-3.0 の条件（ネットワーク経由の提供時もソース提示が必要）に従ってください。
-
 # ローカル版のインストール
 
 本、レポジトリをクローン後、
