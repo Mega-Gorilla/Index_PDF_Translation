@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-only
 from modules.translate import pdf_translate,PDF_block_check,write_logo_data
 import os, asyncio,time
 import tkinter as tk
