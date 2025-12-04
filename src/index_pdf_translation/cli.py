@@ -6,14 +6,13 @@ Index PDF Translation - CLI Tool
 学術論文PDFを翻訳し、見開きPDF（オリジナル + 翻訳）を生成します。
 
 Usage:
-    python translate_pdf.py <input.pdf> [options]
-    uv run python translate_pdf.py <input.pdf> [options]
+    translate-pdf <input.pdf> [options]
 
 Examples:
-    python translate_pdf.py paper.pdf
-    python translate_pdf.py paper.pdf -o ./translated.pdf
-    python translate_pdf.py paper.pdf --source en --target ja
-    python translate_pdf.py paper.pdf --no-logo --debug
+    translate-pdf paper.pdf
+    translate-pdf paper.pdf -o ./translated.pdf
+    translate-pdf paper.pdf --source en --target ja
+    translate-pdf paper.pdf --no-logo --debug
 
 Environment Variables:
     DEEPL_API_KEY: DeepL APIキー (必須)
@@ -43,7 +42,7 @@ def parse_args() -> argparse.Namespace:
         パースされた引数のNamespace
     """
     parser = argparse.ArgumentParser(
-        prog="translate_pdf",
+        prog="translate-pdf",
         description="PDF翻訳ツール - 学術論文PDFを翻訳し見開きPDFを生成",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
@@ -114,7 +113,7 @@ Environment Variables:
     return parser.parse_args()
 
 
-async def translate(args: argparse.Namespace) -> int:
+async def run(args: argparse.Namespace) -> int:
     """
     PDFを翻訳します。
 
@@ -211,7 +210,7 @@ async def translate(args: argparse.Namespace) -> int:
 def main() -> NoReturn:
     """メインエントリーポイント。"""
     args = parse_args()
-    exit_code = asyncio.run(translate(args))
+    exit_code = asyncio.run(run(args))
     sys.exit(exit_code)
 
 
