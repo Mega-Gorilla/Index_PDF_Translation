@@ -23,7 +23,7 @@ from pathlib import Path
 from typing import NoReturn
 
 from config import DEEPL_API_KEY, DEEPL_API_URL, OUTPUT_DIR, SUPPORTED_LANGUAGES
-from modules.translate import pdf_translate
+from index_pdf_translation.core.translate import pdf_translate
 
 
 def parse_args() -> argparse.Namespace:

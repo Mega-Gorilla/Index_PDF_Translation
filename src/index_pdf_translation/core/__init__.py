@@ -7,10 +7,28 @@ This subpackage contains:
 - pdf_edit.py: PDF processing engine using PyMuPDF
 """
 
-# Exports will be added after module migration (Phase 2)
-# from index_pdf_translation.core.translate import pdf_translate
-# from index_pdf_translation.core.pdf_edit import (
-#     extract_text_coordinates_dict,
-#     remove_blocks,
-#     ...
-# )
+from index_pdf_translation.core.translate import pdf_translate
+from index_pdf_translation.core.pdf_edit import (
+    DocumentBlocks,
+    extract_text_coordinates_dict,
+    extract_text_coordinates_blocks,
+    remove_blocks,
+    remove_textbox_for_pdf,
+    preprocess_write_blocks,
+    write_pdf_text,
+    write_logo_data,
+    create_viewing_pdf,
+)
+
+__all__ = [
+    "pdf_translate",
+    "DocumentBlocks",
+    "extract_text_coordinates_dict",
+    "extract_text_coordinates_blocks",
+    "remove_blocks",
+    "remove_textbox_for_pdf",
+    "preprocess_write_blocks",
+    "write_pdf_text",
+    "write_logo_data",
+    "create_viewing_pdf",
+]
