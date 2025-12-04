@@ -1,0 +1,35 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+[project]
+name = "index-pdf-translation"
+version = "2.0.0"
+description = "PDF translation tool for academic papers"
+readme = "readme.md"
+license = {text = "AGPL-3.0-only"}
+requires-python = ">=3.11"
+authors = [
+    {name = "Mega-Gorilla"}
+]
+keywords = ["pdf", "translation", "deepl", "academic"]
+
+dependencies = [
+    "PyMuPDF>=1.24.0",
+    "spacy>=3.7.0",
+    "aiohttp>=3.9.0",
+    "numpy>=1.26.0",
+    "matplotlib>=3.8.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "ruff>=0.1.0",
+]
+
+[tool.uv]
+# This project is a CLI tool, not a package
+# Use `uv run` to execute scripts
+package = false
+
+# spaCy language models need to be downloaded after installation:
+# uv run python -m spacy download en_core_web_sm
+# uv run python -m spacy download ja_core_news_sm

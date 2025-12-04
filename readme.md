@@ -10,14 +10,27 @@ Index PDF Translationは、PDFのフォーマットを崩さずに翻訳でき�
 
 <img src="https://github.com/Mega-Gorilla/Index_PDF_Translation/blob/main/images/GMtDCedbsAAIkDO.jpg?raw=true" width = "500" />
 
-# ローカル版のインストール
+# インストール
 
-本、レポジトリをクローン後、
-以下のコマンドで必要ライブラリをインストールしてください。実行には、Python 3.11環境が必要です。
+本レポジトリをクローン後、以下のコマンドで必要ライブラリをインストールしてください。
+Python 3.11以上が必要です。
 
-### ライブラリーをインストール
+### uv を使用する場合（推奨）
+
+[uv](https://docs.astral.sh/uv/) を使用すると、高速にインストールできます。
+
+```bash
+uv sync
+uv run python -m spacy download en_core_web_sm
+uv run python -m spacy download ja_core_news_sm
 ```
+
+### pip を使用する場合
+
+```bash
 pip install -r requirements.txt
+python -m spacy download en_core_web_sm
+python -m spacy download ja_core_news_sm
 ```
 
 ### APIキーの設定
