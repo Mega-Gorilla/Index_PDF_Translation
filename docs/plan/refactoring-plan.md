@@ -254,9 +254,11 @@ def preprocess_translation_blocks()            # 前処理
 ```
 削除:
 ├── data/license.json        # ArXivライセンス検証（Web専用）
-├── data/indqx_qr.png        # QRコード（ロゴ機能削除時）
-├── debug/                   # デバッグ出力フォルダ
 └── Test Bench/              # テストベンチマーク
+
+維持:
+├── data/indqx_qr.png        # ロゴ機能で使用（維持）
+└── debug/                   # デバッグ出力（.gitignore に追加して維持）
 ```
 
 ---
@@ -555,7 +557,7 @@ if __name__ == "__main__":
 | Phase 1 | 不要ファイル削除 | 0.5日 |
 | Phase 2 | デバッグコード整理 | 0.5日 |
 | Phase 3 | config.py簡素化 | 0.5日 |
-| Phase 4 | requirements.txt整理 | 0.5日 |
+| Phase 4 | pip → uv 移行（pyproject.toml, uv.lock） | 0.5日 |
 | Phase 5 | CLI作成 | 1日 |
 | Phase 6 | コードリファクタリング | 1-2日 |
 | テスト | 動作確認 | 0.5日 |
@@ -615,3 +617,4 @@ if __name__ == "__main__":
 | 2024-12-04 | 1.1 | matplotlib維持、pip→uv移行を追加、デバッグ機能の整理 |
 | 2024-12-04 | 1.2 | ロゴ機能をデフォルトON、--no-logoでOFFに決定 |
 | 2024-12-04 | 1.3 | 見開きPDF生成を必須機能として維持に決定 |
+| 2024-12-04 | 1.4 | 削除リストとスケジュール表の整合性を修正 |
