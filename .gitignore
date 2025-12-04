@@ -1,5 +1,21 @@
+# Python
 **/__pycache__/**
+*.pyc
+*.pyo
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Project specific
 /debug_pdf
 /debug
 /Test Bench
 /dev_code
+/output/*.pdf

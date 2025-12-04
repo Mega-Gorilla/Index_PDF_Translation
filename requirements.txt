@@ -1,15 +1,13 @@
-uvicorn
-fastapi
-sqlalchemy
-python-jose[cryptography]
-passlib
-python-multipart
-bcrypt
-PyMuPDF
-spacy==3.7.4
-psycopg2
-aiohttp
-b2sdk
-pycryptodome
-https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1.tar.gz#egg=en_core_web_sm
-https://github.com/explosion/spacy-models/releases/download/ja_core_news_sm-3.7.0/ja_core_news_sm-3.7.0.tar.gz#egg=ja_core_news_sm
+# Core dependencies for Index PDF Translation
+# For uv users: use `uv sync` instead
+# For pip users: pip install -r requirements.txt
+
+PyMuPDF>=1.24.0
+spacy>=3.7.0
+aiohttp>=3.9.0
+numpy>=1.26.0
+matplotlib>=3.8.0
+
+# spaCy language models (install after main dependencies)
+# python -m spacy download en_core_web_sm
+# python -m spacy download ja_core_news_sm

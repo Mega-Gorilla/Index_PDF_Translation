@@ -17,9 +17,18 @@ Index PDF Translation is a PDF translation tool designed for academic papers. It
 
 ## Commands
 
-### Installation
+### Installation (uv - recommended)
+```bash
+uv sync
+uv run python -m spacy download en_core_web_sm
+uv run python -m spacy download ja_core_news_sm
+```
+
+### Installation (pip)
 ```bash
 pip install -r requirements.txt
+python -m spacy download en_core_web_sm
+python -m spacy download ja_core_news_sm
 ```
 
 ### Run Local Translation (CLI)
