@@ -34,12 +34,12 @@ python -m spacy download ja_core_news_sm
 ### Run Local Translation (CLI)
 ```bash
 # Basic usage
-uv run python translate_pdf.py paper.pdf
+uv run translate-pdf paper.pdf
 
 # With options
-uv run python translate_pdf.py paper.pdf -o ./result.pdf
-uv run python translate_pdf.py paper.pdf --source en --target ja
-uv run python translate_pdf.py paper.pdf --no-logo --debug
+uv run translate-pdf paper.pdf -o ./result.pdf
+uv run translate-pdf paper.pdf --source en --target ja
+uv run translate-pdf paper.pdf --no-logo --debug
 ```
 Translates PDF and saves side-by-side PDF to `./output/translated_*.pdf`
 
@@ -47,37 +47,40 @@ Translates PDF and saves side-by-side PDF to `./output/translated_*.pdf`
 - `-o, --output`: Output file path
 - `-s, --source`: Source language (en/ja, default: en)
 - `-t, --target`: Target language (en/ja, default: ja)
+- `--api-key`: DeepL API key (or use DEEPL_API_KEY env var)
+- `--api-url`: DeepL API URL (for Pro users)
 - `--no-logo`: Disable logo watermark
 - `--debug`: Enable debug mode (generate visualization PDFs)
 
 ## Configuration
 
-**config.py** - Set your DeepL API key:
-```python
-DEEPL_API_KEY = "your-api-key"
-DEEPL_API_URL = "https://api-free.deepl.com/v2/translate"  # Pro: https://api.deepl.com/v2/translate
+Set your DeepL API key via environment variable:
+```bash
+export DEEPL_API_KEY="your-api-key"
+# For Pro API users:
+export DEEPL_API_URL="https://api.deepl.com/v2/translate"
 ```
 
 ## Architecture
 
-### Core Modules (`modules/`)
+### Core Modules (`src/index_pdf_translation/`)
 
-- **pdf_edit.py** - PDF processing engine using PyMuPDF (fitz)
+- **core/pdf_edit.py** - PDF processing engine using PyMuPDF (fitz)
   - Text extraction with spatial coordinates
   - Histogram-based block classification (Sturges/Freedman-Diaconis binning)
   - Text removal and reinsertion with auto font sizing
   - Side-by-side PDF layout generation
 
-- **translate.py** - Translation orchestration
+- **core/translate.py** - Translation orchestration
   - DeepL API integration
   - Cross-block sentence merging (handles text spanning pages/blocks)
   - Main workflow: extract → filter → remove → translate → insert → layout
 
-- **spacy_api.py** - Language tokenization (en_core_web_sm, ja_core_news_sm)
+- **nlp/tokenizer.py** - Language tokenization (en_core_web_sm, ja_core_news_sm)
 
 ### Entry Points
 
-- **translate_pdf.py** - CLI tool for local PDF translation (argparse-based)
+- **cli.py** - CLI tool (`translate-pdf` command) via entry_points
 
 ### Translation Algorithm
 
@@ -92,4 +95,5 @@ DEEPL_API_URL = "https://api-free.deepl.com/v2/translate"  # Pro: https://api.de
 ### Key Technical Details
 
 - All I/O operations use `asyncio.to_thread()` for async execution
-- Font files in `fonts/` for Japanese (ipam.ttf) and English (Liberation Serif)
+- Font files bundled in `resources/fonts/` for Japanese (ipam.ttf) and English (Liberation Serif)
+- Resources accessed via `importlib.resources` for proper package installation support

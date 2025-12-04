@@ -25,9 +25,8 @@ dev = [
     "ruff>=0.1.0",
 ]
 
-# CLI entry point will be added in Phase 5
-# [project.scripts]
-# translate-pdf = "index_pdf_translation.cli:main"
+[project.scripts]
+translate-pdf = "index_pdf_translation.cli:main"
 
 [build-system]
 requires = ["hatchling"]

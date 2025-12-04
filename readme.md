@@ -57,10 +57,10 @@ export DEEPL_API_URL="https://api.deepl.com/v2/translate"
 #### 方法2: コマンドラインオプション
 
 ```bash
-uv run python translate_pdf.py paper.pdf --api-key "your-api-key"
+uv run translate-pdf paper.pdf --api-key "your-api-key"
 
 # DeepL API Proユーザーの場合
-uv run python translate_pdf.py paper.pdf --api-key "your-api-key" --api-url "https://api.deepl.com/v2/translate"
+uv run translate-pdf paper.pdf --api-key "your-api-key" --api-url "https://api.deepl.com/v2/translate"
 ```
 
 ## 使用方法
@@ -69,10 +69,10 @@ uv run python translate_pdf.py paper.pdf --api-key "your-api-key" --api-url "htt
 
 ```bash
 # uv を使用する場合（推奨）
-uv run python translate_pdf.py paper.pdf
+uv run translate-pdf paper.pdf
 
-# pip を使用する場合
-python translate_pdf.py paper.pdf
+# pip でインストールした場合
+translate-pdf paper.pdf
 ```
 
 翻訳が完了すると、`./output/translated_<ファイル名>.pdf` に見開きPDF（オリジナル + 翻訳）が保存されます。
@@ -93,13 +93,13 @@ python translate_pdf.py paper.pdf
 
 ```bash
 # 出力ファイルを指定
-uv run python translate_pdf.py paper.pdf -o ./result.pdf
+uv run translate-pdf paper.pdf -o ./result.pdf
 
 # 日本語から英語に翻訳
-uv run python translate_pdf.py paper.pdf -s ja -t en
+uv run translate-pdf paper.pdf -s ja -t en
 
 # ロゴなし + デバッグモード
-uv run python translate_pdf.py paper.pdf --no-logo --debug
+uv run translate-pdf paper.pdf --no-logo --debug
 ```
 
 ## アーキテクチャ
@@ -108,9 +108,10 @@ uv run python translate_pdf.py paper.pdf --no-logo --debug
 
 ```
 Index_PDF_Translation/
-├── translate_pdf.py                   # CLIエントリーポイント
 ├── src/index_pdf_translation/         # パッケージ本体
 │   ├── __init__.py                    # 公開API
+│   ├── cli.py                         # CLIエントリーポイント
+│   ├── config.py                      # 設定管理
 │   ├── core/
 │   │   ├── translate.py               # 翻訳オーケストレーション
 │   │   └── pdf_edit.py                # PDF処理エンジン（PyMuPDF）
@@ -216,7 +217,7 @@ Font file not found: LiberationSerif-Regular.ttf
 uv sync --extra dev
 
 # 構文チェック
-uv run python -m py_compile translate_pdf.py
+uv run python -m py_compile src/index_pdf_translation/cli.py
 ```
 
 ### コード規約
