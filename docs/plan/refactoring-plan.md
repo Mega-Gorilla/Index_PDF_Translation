@@ -119,7 +119,7 @@ async def pdf_translate(key, pdf_data, source_lang='en', to_lang='ja', api_url, 
 | spacy | トークン化 | ✅ 必須 |
 | aiohttp | HTTP通信（DeepL） | ✅ 必須 |
 | numpy | 数値計算 | ✅ 必須 |
-| matplotlib | グラフ描画（デバッグ） | ❌ 削除可 |
+| matplotlib | グラフ描画（デバッグ） | ✅ 維持（デバッグ用） |
 | fastapi | Webフレームワーク | ❌ 削除 |
 | uvicorn | ASGIサーバー | ❌ 削除 |
 | sqlalchemy | ORM | ❌ 削除 |
@@ -135,9 +135,10 @@ async def pdf_translate(key, pdf_data, source_lang='en', to_lang='ja', api_url, 
 
 ```
 Index_PDF_Translation/
+├── pyproject.toml               # プロジェクト定義（uv/PEP 621準拠）
+├── uv.lock                      # 依存ロックファイル（自動生成）
 ├── translate_pdf.py             # CLIエントリーポイント（新規）
 ├── config.py                    # DeepL設定のみ
-├── requirements.txt             # 最小依存
 ├── modules/
 │   ├── translate.py             # 翻訳オーケストレーション（整理）
 │   ├── pdf_edit.py              # PDF処理（整理）
@@ -148,6 +149,7 @@ Index_PDF_Translation/
 │   ├── OFL.txt
 │   └── IPA_Font_License_Agreement_v1.0.txt
 ├── output/                      # デフォルト出力先
+├── debug/                       # デバッグ出力（.gitignore）
 ├── docs/                        # ドキュメント
 ├── README.md
 ├── LICENSE
@@ -157,14 +159,18 @@ Index_PDF_Translation/
 ### 3.2 新しいCLIインターフェース
 
 ```bash
-# 基本使用法
-python translate_pdf.py input.pdf
+# 基本使用法（uv経由）
+uv run translate-pdf input.pdf
 
 # オプション付き
-python translate_pdf.py input.pdf --output ./translated.pdf
-python translate_pdf.py input.pdf --source en --target ja
-python translate_pdf.py input.pdf --no-side-by-side  # 見開き無効
-python translate_pdf.py input.pdf --no-logo          # ロゴ無効
+uv run translate-pdf input.pdf --output ./translated.pdf
+uv run translate-pdf input.pdf --source en --target ja
+uv run translate-pdf input.pdf --no-side-by-side  # 見開き無効
+uv run translate-pdf input.pdf --no-logo          # ロゴ無効
+uv run translate-pdf input.pdf --debug            # デバッグモード
+
+# 直接実行も可能
+python translate_pdf.py input.pdf
 ```
 
 ### 3.3 予想コード量
@@ -213,12 +219,14 @@ def translate_local()     # → translate_pdf.py に移行
 
 ```python
 # 削除対象
-async def extract_text_coordinates_dict_dev()  # デバッグ用
-async def pdf_draw_blocks()                    # ブロック枠描画
+async def extract_text_coordinates_dict_dev()  # デバッグ用（生データ取得）
 async def write_image_data()                   # 画像埋め込み（未使用）
-def plot_area_distribution()                   # matplotlib可視化
 
-# 維持
+# 維持（デバッグ用）
+async def pdf_draw_blocks()                    # ブロック枠描画（--debug時に使用）
+def plot_area_distribution()                   # matplotlib可視化（--debug時に使用）
+
+# 維持（コア機能）
 async def extract_text_coordinates_dict()      # テキスト抽出
 async def remove_blocks()                      # ブロック分類
 async def remove_textbox_for_pdf()             # テキスト削除
@@ -275,13 +283,17 @@ def preprocess_translation_blocks()            # 前処理
 
 ### Phase 2: デバッグコードの整理
 
-**目的**: 不要なデバッグ/テストコードを削除
+**目的**: 不要なデバッグ/テストコードを削除、必要なデバッグ機能は `--debug` フラグで制御
 
 **タスク**:
 - [ ] `manual_translate_pdf.py` のテスト関数を削除
-- [ ] `modules/pdf_edit.py` のデバッグ関数を削除
+- [ ] `modules/pdf_edit.py` の未使用関数を削除（`extract_text_coordinates_dict_dev`, `write_image_data`）
 - [ ] `modules/translate.py` のコメントアウトコードを削除
-- [ ] matplotlib依存を削除
+- [ ] デバッグ関数（`pdf_draw_blocks`, `plot_area_distribution`）を `--debug` フラグで制御
+
+**維持するデバッグ機能**:
+- `pdf_draw_blocks()`: ブロック分類の可視化（青=本文, 緑=図表, 赤=削除）
+- `plot_area_distribution()`: ヒストグラム分析の可視化（matplotlib）
 
 **検証**: コア機能が動作することを確認
 
@@ -322,34 +334,84 @@ SUPPORTED_LANGUAGES = {
 
 ---
 
-### Phase 4: requirements.txt の整理
+### Phase 4: pip → uv への移行
 
-**Before**:
-```
-uvicorn
-fastapi
-PyMuPDF
-spacy
-aiohttp
-sqlalchemy
-b2sdk
-pycryptodome
-psycopg2-binary
-numpy
-matplotlib
-# spaCy models...
+**目的**: モダンなパッケージ管理への移行
+
+#### pip vs uv 比較
+
+| 項目 | pip | uv |
+|------|-----|-----|
+| インストール速度 | 遅い | **10-100倍高速** |
+| 依存解決 | 遅い | **高速** |
+| ロックファイル | requirements.txt (手動) | **uv.lock (自動)** |
+| 仮想環境管理 | 別途venv必要 | **`uv venv` で統合** |
+| Python管理 | pyenv等が別途必要 | **`uv python` で統合** |
+| 再現性 | 低い | **高い** |
+
+#### 新規作成: pyproject.toml
+
+```toml
+[project]
+name = "index-pdf-translation"
+version = "2.0.0"
+description = "PDF translation tool for academic papers"
+readme = "README.md"
+license = {text = "AGPL-3.0-only"}
+requires-python = ">=3.11"
+authors = [
+    {name = "Mega-Gorilla"}
+]
+keywords = ["pdf", "translation", "deepl", "academic"]
+
+dependencies = [
+    "PyMuPDF>=1.24.0",
+    "spacy>=3.7.0",
+    "aiohttp>=3.9.0",
+    "numpy>=1.26.0",
+    "matplotlib>=3.8.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "ruff>=0.1.0",
+]
+
+[project.scripts]
+translate-pdf = "translate_pdf:main"
+
+[tool.uv]
+# spaCy言語モデルの設定
+extra-index-url = []
+
+[tool.uv.sources]
+en-core-web-sm = { url = "https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1-py3-none-any.whl" }
+ja-core-news-sm = { url = "https://github.com/explosion/spacy-models/releases/download/ja_core_news_sm-3.7.0/ja_core_news_sm-3.7.0-py3-none-any.whl" }
 ```
 
-**After**:
-```
-PyMuPDF>=1.24.0
-spacy>=3.7.0
-aiohttp>=3.9.0
-numpy>=1.26.0
+#### インストール手順の変更
 
-# spaCy language models
-https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1-py3-none-any.whl
-https://github.com/explosion/spacy-models/releases/download/ja_core_news_sm-3.7.0/ja_core_news_sm-3.7.0-py3-none-any.whl
+**Before (pip)**:
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+python manual_translate_pdf.py
+```
+
+**After (uv)**:
+```bash
+uv sync                          # 依存インストール（自動で仮想環境作成）
+uv run translate-pdf input.pdf   # 実行
+```
+
+#### 後方互換性
+
+`requirements.txt` は `uv export` で自動生成し、pipユーザー向けに維持:
+
+```bash
+uv export --format requirements-txt > requirements.txt
 ```
 
 ---
@@ -393,6 +455,7 @@ def main():
     parser.add_argument("-t", "--target", default="ja", help="Target language")
     parser.add_argument("--no-side-by-side", action="store_true")
     parser.add_argument("--no-logo", action="store_true")
+    parser.add_argument("--debug", action="store_true", help="Enable debug mode (generate visualization PDFs)")
 
     args = parser.parse_args()
 
@@ -423,6 +486,7 @@ async def translate(args):
         api_url=DEEPL_API_URL,
         side_by_side=not args.no_side_by_side,
         add_logo=not args.no_logo,
+        debug=args.debug,  # デバッグモード（可視化PDF生成）
     )
 
     # Save output
@@ -507,9 +571,11 @@ if __name__ == "__main__":
 | 指標 | Before | After | 目標 |
 |------|--------|-------|------|
 | Pythonファイル数 | 10 | 4-5 | -50% |
-| 総コード行数 | ~2,200 | ~700 | -68% |
-| 依存パッケージ | 15+ | 5-6 | -60% |
-| クリーンインストール時間 | - | 短縮 | 改善 |
+| 総コード行数 | ~2,200 | ~800 | -64% |
+| 依存パッケージ | 15+ | 6 | -60% |
+| パッケージ管理 | pip + requirements.txt | **uv + pyproject.toml** | モダン化 |
+| インストール時間 | 遅い | **10倍以上高速** | 改善 |
+| 再現性 | 低い（バージョン固定が手動） | **高い（uv.lock）** | 改善 |
 
 ---
 
@@ -550,3 +616,4 @@ if __name__ == "__main__":
 | 日付 | バージョン | 変更内容 |
 |------|-----------|----------|
 | 2024-12-04 | 1.0 | 初版作成 |
+| 2024-12-04 | 1.1 | matplotlib維持、pip→uv移行を追加、デバッグ機能の整理 |
