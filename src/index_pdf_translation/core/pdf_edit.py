@@ -24,6 +24,7 @@ import numpy as np
 
 from index_pdf_translation.logger import get_logger
 from index_pdf_translation.nlp.tokenizer import tokenize_text
+from index_pdf_translation.resources import get_font_path, get_logo_path
 
 logger = get_logger("pdf_edit")
 
@@ -32,13 +33,10 @@ LINE_HEIGHT_FACTOR = 1.5  # 行の高さの係数
 LH_CALC_FACTOR = 1.3  # 行高さ計算係数
 FONT_SIZE_DECREMENT = 0.1  # フォントサイズ調整時の減少量
 
-# フォントパス
-FONT_PATH_EN = "fonts/LiberationSerif-Regular.ttf"
-FONT_PATH_JA = "fonts/ipam.ttf"
+# フォールバックフォント（PyMuPDF組み込み）
 FALLBACK_FONT = "helv"
 
 # ロゴ設定
-LOGO_PATH = "./data/indqx_qr.png"
 LOGO_RECT = (5, 5, 35, 35)
 
 # 図表キーワード
@@ -440,12 +438,17 @@ def _get_font_config(to_lang: str) -> tuple[str, str, str]:
     Returns:
         (フォントパス, サンプル文字, フォールバックフォント名)
     """
-    if to_lang == "en":
-        return FONT_PATH_EN, "a", FALLBACK_FONT
-    elif to_lang == "ja":
-        return FONT_PATH_JA, "あ", FALLBACK_FONT
-    else:
-        return FONT_PATH_EN, "a", FALLBACK_FONT
+    try:
+        if to_lang == "ja":
+            font_path = str(get_font_path("ipam.ttf"))
+            return font_path, "あ", FALLBACK_FONT
+        else:
+            font_path = str(get_font_path("LiberationSerif-Regular.ttf"))
+            return font_path, "a", FALLBACK_FONT
+    except FileNotFoundError:
+        # リソースが見つからない場合はフォールバック
+        logger.warning(f"フォントリソースが見つかりません。フォールバックを使用します。")
+        return "", "a", FALLBACK_FONT
 
 
 def _check_font_availability(font_path: str, to_lang: str) -> tuple[bool, Optional[str]]:
@@ -597,10 +600,13 @@ async def write_pdf_text(
 
     # フォント選択
     if font_path is None:
-        if to_lang == "en":
-            font_path = FONT_PATH_EN
-        elif to_lang == "ja":
-            font_path = FONT_PATH_JA
+        try:
+            if to_lang == "ja":
+                font_path = str(get_font_path("ipam.ttf"))
+            else:
+                font_path = str(get_font_path("LiberationSerif-Regular.ttf"))
+        except FileNotFoundError:
+            font_path = ""  # フォールバックを使用
 
     use_builtin_font, actual_font_path = _check_font_availability(font_path, to_lang)
 
@@ -656,8 +662,21 @@ async def write_logo_data(input_pdf_data: bytes) -> bytes:
     """
     doc = await asyncio.to_thread(fitz.open, stream=input_pdf_data, filetype="pdf")
 
-    use_builtin_font, actual_font_path = _check_font_availability(FONT_PATH_EN, "en")
+    # フォントパス取得
+    try:
+        font_path_en = str(get_font_path("LiberationSerif-Regular.ttf"))
+    except FileNotFoundError:
+        font_path_en = ""
+
+    use_builtin_font, actual_font_path = _check_font_availability(font_path_en, "en")
     active_fontname = FALLBACK_FONT if use_builtin_font else "F0"
+
+    # ロゴパス取得
+    try:
+        logo_path = str(get_logo_path())
+    except FileNotFoundError:
+        logger.warning("ロゴファイルが見つかりません。ロゴなしで続行します。")
+        logo_path = None
 
     for page in doc:
         if use_builtin_font:
@@ -665,7 +684,8 @@ async def write_logo_data(input_pdf_data: bytes) -> bytes:
         else:
             page.insert_font(fontname="F0", fontfile=actual_font_path)
 
-        page.insert_image(LOGO_RECT, filename=LOGO_PATH)
+        if logo_path:
+            page.insert_image(LOGO_RECT, filename=logo_path)
         page.insert_textbox(
             (37, 5, 100, 35), "Translated by.", fontsize=5, fontname=active_fontname
         )
