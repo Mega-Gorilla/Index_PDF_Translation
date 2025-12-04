@@ -1,10 +1,8 @@
-# Indqx PDF 翻訳 概要
+# Index PDF Translation
 
-[Indqx PDF 翻訳](https://indqx-demo-front.onrender.com/)は、2024年5月31までwebにて翻訳サービスを提供していた、PDF翻訳のソースコードです。
+> **Note**: 本プロジェクトは、2024年5月31日までWebサービスとして提供されていた「Indqx PDF 翻訳」のソースコードです。**Webサーバー機能は削除済み**で、現在はローカルCLIツールとしてのみ動作します。
 
-サービス終了に伴い、Index PDF翻訳を、ローカルで実行可能なコードも提供しています。
-
-Indqx PDF 翻訳は、PDFのフォーマットを崩さずに、翻訳することができる論文向けPDF翻訳サービスです。以下の機能があります。
+Index PDF Translationは、PDFのフォーマットを崩さずに翻訳できる論文向けPDF翻訳ツールです。以下の機能があります。
 - 本文自動認識機能により、論文データの数式やタイトルなどの翻訳不要部分を無視して本文のみを翻訳します。
     - 本文認識はブロックの幅、文字数、フォントサイズにより、分析を行います。
 - 本文ブロックを認識時、終了記号(.:/など)がない場合、複数ブロックを1ブロックとして翻訳します。これによりブロック間やページ間にて翻訳文が途切れる等の問題を解決します。
@@ -39,7 +37,7 @@ DeepL_API_Key = "xxxxxx-xxxx-xxxx-xxxx-xxxxxxxxx:fx"
 | Liberation Serif | 英語テキスト | [SIL Open Font License 1.1](fonts/OFL.txt) |
 | IPA明朝 (ipam.ttf) | 日本語テキスト | [IPA Font License v1.0](fonts/IPA_Font_License_Agreement_v1.0.txt) |
 
-フォントファイルが見つからない場合、`FileNotFoundError` が発生します。
+フォントファイルが見つからない場合、PyMuPDF組み込みフォントにフォールバックします。
 
 # コードの実行
 

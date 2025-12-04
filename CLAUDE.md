@@ -28,11 +28,6 @@ python manual_translate_pdf.py
 ```
 Opens file dialog, translates selected PDF, saves to `./output/result_*.pdf`
 
-### Run Web API Server
-```bash
-uvicorn demo_app:app --reload
-```
-
 ### Debug Mode
 In `manual_translate_pdf.py`, call `translate_test()` instead of `translate_local()` to generate visualization PDFs showing block classification (blue=body, green=figures, red=removed) in `./debug/`.
 
@@ -43,8 +38,6 @@ In `manual_translate_pdf.py`, call `translate_test()` instead of `translate_loca
 DeepL_API_Key = "your-api-key"
 DeepL_URL = "https://api-free.deepl.com/v2/translate"  # or Pro URL
 ```
-
-**objective_DB_config.py** - Backblaze B2 credentials (for web API mode, uses environment variables)
 
 ## Architecture
 
@@ -63,16 +56,9 @@ DeepL_URL = "https://api-free.deepl.com/v2/translate"  # or Pro URL
 
 - **spacy_api.py** - Language tokenization (en_core_web_sm, ja_core_news_sm)
 
-- **arxiv_api.py** - ArXiv paper download and metadata via OAI-PMH
-
-- **backblaze_api.py** - B2 cloud storage for web API mode
-
-- **database.py** - SQLAlchemy ORM models for paper metadata
-
 ### Entry Points
 
 - **manual_translate_pdf.py** - CLI tool for local PDF translation
-- **demo_app.py** - FastAPI REST API with RSA-encrypted API key submission
 
 ### Translation Algorithm
 
@@ -87,5 +73,4 @@ DeepL_URL = "https://api-free.deepl.com/v2/translate"  # or Pro URL
 ### Key Technical Details
 
 - All I/O operations use `asyncio.to_thread()` for async execution
-- Font files in `fonts/` for Japanese (MSMINCHO, ipam) and English (Times, Arial)
-- License validation for ArXiv papers (`data/license.json`) - only CC BY/CC0 allowed
+- Font files in `fonts/` for Japanese (ipam.ttf) and English (Liberation Serif)
