@@ -165,7 +165,6 @@ uv run translate-pdf input.pdf
 # オプション付き
 uv run translate-pdf input.pdf --output ./translated.pdf
 uv run translate-pdf input.pdf --source en --target ja
-uv run translate-pdf input.pdf --no-side-by-side  # 見開き無効
 uv run translate-pdf input.pdf --no-logo          # ロゴ無効
 uv run translate-pdf input.pdf --debug            # デバッグモード
 
@@ -453,8 +452,7 @@ def main():
     parser.add_argument("-o", "--output", help="Output file path")
     parser.add_argument("-s", "--source", default="en", help="Source language")
     parser.add_argument("-t", "--target", default="ja", help="Target language")
-    parser.add_argument("--no-side-by-side", action="store_true")
-    parser.add_argument("--no-logo", action="store_true")
+    parser.add_argument("--no-logo", action="store_true", help="Disable logo watermark")
     parser.add_argument("--debug", action="store_true", help="Enable debug mode (generate visualization PDFs)")
 
     args = parser.parse_args()
@@ -484,7 +482,6 @@ async def translate(args):
         source_lang=args.source,
         to_lang=args.target,
         api_url=DEEPL_API_URL,
-        side_by_side=not args.no_side_by_side,
         add_logo=not args.no_logo,
         debug=args.debug,  # デバッグモード（可視化PDF生成）
     )
@@ -590,8 +587,8 @@ if __name__ == "__main__":
 
 2. **見開きPDF生成**
    - オプション A: 必須機能として維持
-   - オプション B: オプション化（`--no-side-by-side`）
-   - **提案**: オプション B
+   - ~~オプション B: オプション化（`--no-side-by-side`）~~
+   - **決定**: オプション A - 必須機能として維持（常に見開きPDFを生成）
 
 3. **data/indqx_qr.png の扱い**
    - **決定**: ロゴ機能を維持するため、ファイルも維持
@@ -617,3 +614,4 @@ if __name__ == "__main__":
 | 2024-12-04 | 1.0 | 初版作成 |
 | 2024-12-04 | 1.1 | matplotlib維持、pip→uv移行を追加、デバッグ機能の整理 |
 | 2024-12-04 | 1.2 | ロゴ機能をデフォルトON、--no-logoでOFFに決定 |
+| 2024-12-04 | 1.3 | 見開きPDF生成を必須機能として維持に決定 |
