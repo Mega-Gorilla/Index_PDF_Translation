@@ -2,90 +2,127 @@
 
 ## 概要
 
-現在 DeepL API のみに対応している翻訳機能を、`deep-translator` ライブラリを使用して Google 翻訳にも対応させる。これにより、APIキーなしで翻訳テスト・デバッグが可能になる。
+翻訳機能を `deep-translator` ライブラリベースに刷新し、**デフォルトで Google 翻訳**を使用する。
+APIキー不要で即座に翻訳が可能となり、開発者体験が大幅に向上する。
+DeepL は高品質オプションとして引き続きサポートする。
 
-## 現状分析
+## 設計方針
 
-### 現在のアーキテクチャ
+### 基本方針
+
+| 項目 | 変更前 | 変更後 |
+|------|--------|--------|
+| デフォルト翻訳エンジン | DeepL（APIキー必須） | **Google（APIキー不要）** |
+| 後方互換性 | - | **無視**（Breaking Change許容） |
+| 翻訳ライブラリ | aiohttp 直接 | **deep-translator** |
+
+### アーキテクチャ
 
 ```
 cli.py
   └── TranslationConfig (config.py)
         └── pdf_translate (core/translate.py)
-              └── translate_str_data() - DeepL API直接呼び出し
-              └── translate_blocks()
+              └── TranslatorBackend (translators/)
+                    ├── GoogleTranslator (デフォルト)
+                    └── DeepLTranslator (オプション)
 ```
 
-### 問題点
-
-1. **翻訳ロジックがDeepL APIにハードコード**
-   - `translate_str_data()` が aiohttp で DeepL API を直接呼び出し
-   - API URL、パラメータ形式が DeepL 固有
-
-2. **TranslationConfig が DeepL 専用**
-   - `api_key` が必須バリデーション（空だとエラー）
-   - `deepl_target_lang` プロパティが DeepL 固有
-
-3. **テストが困難**
-   - 実際の翻訳テストには DeepL APIキーが必要
-   - CI/CD での統合テストが制限される
-
-## 設計方針
-
-### Strategy パターンの採用
+### Strategy パターン
 
 翻訳バックエンドを抽象化し、実行時に切り替え可能にする。
 
 ```
-TranslatorBackend (Protocol/ABC)
-    ├── DeepLTranslator     - 既存の DeepL API 実装
-    ├── GoogleTranslator    - deep-translator 経由
-    └── MockTranslator      - テスト用
+TranslatorBackend (Protocol)
+    ├── GoogleTranslator  - デフォルト、APIキー不要
+    └── DeepLTranslator   - 高品質、APIキー必要
 ```
-
-### 言語コード統一
-
-各バックエンドで言語コード形式が異なるため、統一インターフェースを提供：
-
-| 内部コード | DeepL | Google (deep-translator) |
-|-----------|-------|--------------------------|
-| `en`      | `EN`  | `english` または `en`     |
-| `ja`      | `JA`  | `japanese` または `ja`    |
 
 ---
 
 ## 実装フェーズ
 
-### Phase 1: 翻訳バックエンド抽象化
+### Phase 1: 依存関係の更新
 
-#### 1.1 `src/index_pdf_translation/translators/__init__.py` 作成
+#### 1.1 `pyproject.toml` 更新
 
-```python
-from .base import TranslatorBackend
-from .deepl import DeepLTranslator
-from .google import GoogleTranslator
-
-__all__ = ["TranslatorBackend", "DeepLTranslator", "GoogleTranslator"]
+```toml
+dependencies = [
+    "PyMuPDF>=1.24.0",
+    "spacy>=3.7.0",
+    "numpy>=1.26.0",
+    "matplotlib>=3.8.0",
+    "deep-translator>=1.11.0",  # 追加
+]
+# aiohttp は DeepL バックエンドでのみ使用するためオプショナルに移動
+[project.optional-dependencies]
+deepl = ["aiohttp>=3.9.0"]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "ruff>=0.1.0",
+    "aiohttp>=3.9.0",  # テスト用
+]
 ```
 
-#### 1.2 `src/index_pdf_translation/translators/base.py` 作成
+> **Note**: aiohttp を完全に削除せず `[deepl]` extra として残す。
+> DeepL を使用するユーザーは `pip install index-pdf-translation[deepl]` でインストール。
+
+---
+
+### Phase 2: 翻訳バックエンド抽象化
+
+#### 2.1 `src/index_pdf_translation/translators/__init__.py`
 
 ```python
-from abc import ABC, abstractmethod
-from typing import Protocol
+# SPDX-License-Identifier: AGPL-3.0-only
+"""翻訳バックエンドモジュール"""
 
+from .base import TranslatorBackend, TranslationError
+from .google import GoogleTranslator
+
+__all__ = [
+    "TranslatorBackend",
+    "TranslationError",
+    "GoogleTranslator",
+]
+
+# DeepL は遅延インポート（aiohttp がない場合に備える）
+def get_deepl_translator():
+    """DeepLTranslator を取得（aiohttp が必要）"""
+    from .deepl import DeepLTranslator
+    return DeepLTranslator
+```
+
+#### 2.2 `src/index_pdf_translation/translators/base.py`
+
+```python
+# SPDX-License-Identifier: AGPL-3.0-only
+"""翻訳バックエンドの基底クラス"""
+
+from typing import Protocol, runtime_checkable
+
+
+class TranslationError(Exception):
+    """翻訳処理中に発生したエラー"""
+    pass
+
+
+@runtime_checkable
 class TranslatorBackend(Protocol):
-    """翻訳バックエンドのプロトコル"""
+    """翻訳バックエンドのプロトコル定義"""
 
-    @abstractmethod
-    async def translate(self, text: str, target_lang: str, source_lang: str = "auto") -> str:
+    @property
+    def name(self) -> str:
+        """バックエンド名（"google", "deepl"）"""
+        ...
+
+    async def translate(self, text: str, target_lang: str) -> str:
         """
         テキストを翻訳する。
 
         Args:
             text: 翻訳するテキスト
-            target_lang: 翻訳先言語（内部コード: "en", "ja"）
-            source_lang: 翻訳元言語（内部コード、"auto"で自動検出）
+            target_lang: 翻訳先言語（"en", "ja"）
 
         Returns:
             翻訳されたテキスト
@@ -95,168 +132,369 @@ class TranslatorBackend(Protocol):
         """
         ...
 
-    @abstractmethod
-    async def translate_batch(self, texts: list[str], target_lang: str, source_lang: str = "auto") -> list[str]:
-        """複数テキストを一括翻訳"""
-        ...
+    async def translate_batch(self, texts: list[str], target_lang: str) -> list[str]:
+        """
+        複数テキストを一括翻訳する。
 
-    @property
-    @abstractmethod
-    def name(self) -> str:
-        """バックエンド名（"deepl", "google"）"""
-        ...
+        Args:
+            texts: 翻訳するテキストのリスト
+            target_lang: 翻訳先言語（"en", "ja"）
 
-    @property
-    @abstractmethod
-    def requires_api_key(self) -> bool:
-        """APIキーが必要かどうか"""
-        ...
+        Returns:
+            翻訳されたテキストのリスト
 
-
-class TranslationError(Exception):
-    """翻訳エラー"""
-    pass
-```
-
-#### 1.3 `src/index_pdf_translation/translators/deepl.py` 作成
-
-既存の `translate_str_data()` ロジックを移植：
-
-```python
-import aiohttp
-from .base import TranslatorBackend, TranslationError
-
-class DeepLTranslator(TranslatorBackend):
-    """DeepL API を使用した翻訳"""
-
-    # 内部コード -> DeepL コード
-    LANG_MAP = {"en": "EN", "ja": "JA"}
-
-    def __init__(self, api_key: str, api_url: str = "https://api-free.deepl.com/v2/translate"):
-        if not api_key:
-            raise ValueError("DeepL API key is required")
-        self._api_key = api_key
-        self._api_url = api_url
-
-    @property
-    def name(self) -> str:
-        return "deepl"
-
-    @property
-    def requires_api_key(self) -> bool:
-        return True
-
-    async def translate(self, text: str, target_lang: str, source_lang: str = "auto") -> str:
-        # 既存ロジック移植
-        ...
-
-    async def translate_batch(self, texts: list[str], target_lang: str, source_lang: str = "auto") -> list[str]:
-        # 改行で連結 -> 翻訳 -> 分割（既存方式）
+        Raises:
+            TranslationError: 翻訳に失敗した場合
+        """
         ...
 ```
 
-#### 1.4 `src/index_pdf_translation/translators/google.py` 作成
+#### 2.3 `src/index_pdf_translation/translators/google.py`
 
 ```python
+# SPDX-License-Identifier: AGPL-3.0-only
+"""Google 翻訳バックエンド（deep-translator 使用）"""
+
 import asyncio
 from deep_translator import GoogleTranslator as DTGoogleTranslator
-from .base import TranslatorBackend, TranslationError
+from deep_translator.exceptions import TranslationNotFound
 
-class GoogleTranslator(TranslatorBackend):
-    """Google 翻訳を使用（APIキー不要）"""
+from .base import TranslationError
 
-    # 内部コード -> deep-translator コード
+
+class GoogleTranslator:
+    """
+    Google 翻訳を使用した翻訳バックエンド。
+
+    APIキー不要で使用可能。deep-translator ライブラリ経由。
+    """
+
+    # 内部言語コード -> deep-translator 言語コード
     LANG_MAP = {"en": "en", "ja": "ja"}
-
-    def __init__(self):
-        pass  # APIキー不要
 
     @property
     def name(self) -> str:
         return "google"
 
-    @property
-    def requires_api_key(self) -> bool:
-        return False
+    async def translate(self, text: str, target_lang: str) -> str:
+        """テキストを翻訳"""
+        if not text.strip():
+            return text
 
-    async def translate(self, text: str, target_lang: str, source_lang: str = "auto") -> str:
-        # deep-translator は同期API、asyncio.to_thread() でラップ
-        def _translate():
-            translator = DTGoogleTranslator(
-                source=self.LANG_MAP.get(source_lang, "auto"),
-                target=self.LANG_MAP[target_lang]
-            )
-            return translator.translate(text)
+        def _translate() -> str:
+            try:
+                translator = DTGoogleTranslator(
+                    source="auto",
+                    target=self.LANG_MAP[target_lang]
+                )
+                return translator.translate(text)
+            except TranslationNotFound as e:
+                raise TranslationError(f"Translation failed: {e}")
+            except KeyError:
+                raise TranslationError(f"Unsupported language: {target_lang}")
 
         return await asyncio.to_thread(_translate)
 
-    async def translate_batch(self, texts: list[str], target_lang: str, source_lang: str = "auto") -> list[str]:
-        def _translate_batch():
-            translator = DTGoogleTranslator(
-                source=self.LANG_MAP.get(source_lang, "auto"),
-                target=self.LANG_MAP[target_lang]
-            )
-            return translator.translate_batch(texts)
+    async def translate_batch(self, texts: list[str], target_lang: str) -> list[str]:
+        """複数テキストを一括翻訳"""
+        if not texts:
+            return []
+
+        def _translate_batch() -> list[str]:
+            try:
+                translator = DTGoogleTranslator(
+                    source="auto",
+                    target=self.LANG_MAP[target_lang]
+                )
+                # 空文字列はスキップして翻訳
+                results = []
+                for text in texts:
+                    if text.strip():
+                        results.append(translator.translate(text))
+                    else:
+                        results.append(text)
+                return results
+            except TranslationNotFound as e:
+                raise TranslationError(f"Batch translation failed: {e}")
+            except KeyError:
+                raise TranslationError(f"Unsupported language: {target_lang}")
 
         return await asyncio.to_thread(_translate_batch)
 ```
 
----
-
-### Phase 2: Config と translate.py の更新
-
-#### 2.1 `config.py` 更新
+#### 2.4 `src/index_pdf_translation/translators/deepl.py`
 
 ```python
-from typing import Literal
+# SPDX-License-Identifier: AGPL-3.0-only
+"""DeepL 翻訳バックエンド"""
 
-TranslatorBackendType = Literal["deepl", "google"]
+try:
+    import aiohttp
+except ImportError:
+    raise ImportError(
+        "aiohttp is required for DeepL backend. "
+        "Install with: pip install index-pdf-translation[deepl]"
+    )
+
+from .base import TranslationError
+
+
+class DeepLTranslator:
+    """
+    DeepL API を使用した翻訳バックエンド。
+
+    高品質な翻訳が可能だが、APIキーが必要。
+    """
+
+    # 内部言語コード -> DeepL 言語コード
+    LANG_MAP = {"en": "EN", "ja": "JA"}
+
+    DEFAULT_API_URL = "https://api-free.deepl.com/v2/translate"
+
+    def __init__(self, api_key: str, api_url: str | None = None):
+        """
+        Args:
+            api_key: DeepL API キー
+            api_url: DeepL API URL（None の場合は Free API を使用）
+        """
+        if not api_key:
+            raise ValueError("DeepL API key is required")
+        self._api_key = api_key
+        self._api_url = api_url or self.DEFAULT_API_URL
+
+    @property
+    def name(self) -> str:
+        return "deepl"
+
+    async def translate(self, text: str, target_lang: str) -> str:
+        """テキストを翻訳"""
+        if not text.strip():
+            return text
+
+        params = {
+            "auth_key": self._api_key,
+            "text": text,
+            "target_lang": self.LANG_MAP[target_lang],
+            "tag_handling": "xml",
+            "formality": "more",
+        }
+
+        async with aiohttp.ClientSession() as session:
+            async with session.post(self._api_url, data=params) as response:
+                if response.status == 200:
+                    result = await response.json()
+                    return result["translations"][0]["text"]
+                else:
+                    error_text = await response.text()
+                    raise TranslationError(
+                        f"DeepL API error (status {response.status}): {error_text}"
+                    )
+
+    async def translate_batch(self, texts: list[str], target_lang: str) -> list[str]:
+        """複数テキストを一括翻訳（改行区切りで一括送信）"""
+        if not texts:
+            return []
+
+        # 空文字列のインデックスを記録
+        non_empty_indices = [i for i, t in enumerate(texts) if t.strip()]
+        non_empty_texts = [texts[i] for i in non_empty_indices]
+
+        if not non_empty_texts:
+            return texts
+
+        # 改行で連結して一括翻訳
+        combined_text = "\n".join(non_empty_texts)
+        translated_combined = await self.translate(combined_text, target_lang)
+        translated_parts = translated_combined.split("\n")
+
+        # 結果を元の位置に戻す
+        results = list(texts)  # コピー
+        for idx, translated in zip(non_empty_indices, translated_parts):
+            results[idx] = translated
+
+        return results
+```
+
+---
+
+### Phase 3: Config の更新
+
+#### 3.1 `src/index_pdf_translation/config.py`
+
+```python
+# SPDX-License-Identifier: AGPL-3.0-only
+"""翻訳設定モジュール"""
+
+import os
+from dataclasses import dataclass, field
+from typing import Literal, TypedDict, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from index_pdf_translation.translators import TranslatorBackend
+
+
+class LanguageConfig(TypedDict):
+    """言語設定の型定義"""
+    spacy: str  # spaCyモデル名
+
+
+# 言語設定（DeepL コードは TranslatorBackend 内で管理）
+SUPPORTED_LANGUAGES: dict[str, LanguageConfig] = {
+    "en": {"spacy": "en_core_web_sm"},
+    "ja": {"spacy": "ja_core_news_sm"},
+}
+
+DEFAULT_OUTPUT_DIR: str = "./output/"
+
+# 翻訳バックエンドの型
+TranslatorBackendType = Literal["google", "deepl"]
+
 
 @dataclass
 class TranslationConfig:
-    backend: TranslatorBackendType = "deepl"
-    api_key: str = field(default_factory=lambda: os.environ.get("DEEPL_API_KEY", ""))
-    api_url: str = field(default_factory=lambda: os.environ.get("DEEPL_API_URL", "https://api-free.deepl.com/v2/translate"))
+    """
+    翻訳設定を管理する dataclass。
+
+    デフォルトは Google 翻訳（APIキー不要）。
+    高品質な翻訳が必要な場合は DeepL を使用。
+
+    Attributes:
+        backend: 翻訳バックエンド ("google" or "deepl")
+        api_key: DeepL APIキー（backend="deepl" の場合のみ必要）
+        api_url: DeepL API URL（backend="deepl" の場合のみ使用）
+        source_lang: 翻訳元言語コード (default: "en")
+        target_lang: 翻訳先言語コード (default: "ja")
+        add_logo: ロゴウォーターマークを追加 (default: True)
+        debug: デバッグモード (default: False)
+
+    Examples:
+        >>> # Google 翻訳（デフォルト、APIキー不要）
+        >>> config = TranslationConfig()
+
+        >>> # DeepL 翻訳（高品質）
+        >>> config = TranslationConfig(
+        ...     backend="deepl",
+        ...     api_key="your-deepl-key"
+        ... )
+    """
+
+    backend: TranslatorBackendType = "google"
+    api_key: str = field(
+        default_factory=lambda: os.environ.get("DEEPL_API_KEY", "")
+    )
+    api_url: str = field(
+        default_factory=lambda: os.environ.get(
+            "DEEPL_API_URL",
+            "https://api-free.deepl.com/v2/translate"
+        )
+    )
     source_lang: str = "en"
     target_lang: str = "ja"
     add_logo: bool = True
     debug: bool = False
 
     def __post_init__(self) -> None:
-        # backend が "deepl" の場合のみ api_key を必須にする
+        """設定値のバリデーション"""
+        # DeepL バックエンドの場合は API キーが必須
         if self.backend == "deepl" and not self.api_key:
             raise ValueError(
                 "DeepL API key required when using 'deepl' backend. "
-                "Set DEEPL_API_KEY or use --backend google"
+                "Set DEEPL_API_KEY environment variable or pass api_key parameter. "
+                "Or use backend='google' for API-key-free translation."
             )
-        # 言語バリデーション（既存通り）
-        ...
+
+        # 言語コードの検証
+        if self.source_lang not in SUPPORTED_LANGUAGES:
+            raise ValueError(
+                f"Unsupported source language: {self.source_lang}. "
+                f"Supported: {list(SUPPORTED_LANGUAGES.keys())}"
+            )
+        if self.target_lang not in SUPPORTED_LANGUAGES:
+            raise ValueError(
+                f"Unsupported target language: {self.target_lang}. "
+                f"Supported: {list(SUPPORTED_LANGUAGES.keys())}"
+            )
 
     def create_translator(self) -> "TranslatorBackend":
-        """設定に基づいて翻訳バックエンドを作成"""
-        from index_pdf_translation.translators import DeepLTranslator, GoogleTranslator
+        """
+        設定に基づいて翻訳バックエンドを作成する。
 
-        if self.backend == "deepl":
-            return DeepLTranslator(self.api_key, self.api_url)
-        elif self.backend == "google":
+        Returns:
+            TranslatorBackend インスタンス
+
+        Raises:
+            ValueError: 未知のバックエンドが指定された場合
+            ImportError: DeepL バックエンドで aiohttp がない場合
+        """
+        from index_pdf_translation.translators import GoogleTranslator
+
+        if self.backend == "google":
             return GoogleTranslator()
+        elif self.backend == "deepl":
+            from index_pdf_translation.translators import get_deepl_translator
+            DeepLTranslator = get_deepl_translator()
+            return DeepLTranslator(self.api_key, self.api_url)
         else:
             raise ValueError(f"Unknown backend: {self.backend}")
 ```
 
-#### 2.2 `core/translate.py` 更新
+---
 
-`translate_str_data()` と `translate_blocks()` をリファクタリング：
+### Phase 4: translate.py の更新
+
+#### 4.1 `src/index_pdf_translation/core/translate.py`
+
+主な変更点：
+- `translate_str_data()` を削除
+- `translate_blocks()` の引数を `TranslatorBackend` に変更
+- `pdf_translate()` を簡素化
 
 ```python
+# SPDX-License-Identifier: AGPL-3.0-only
+"""翻訳オーケストレーション"""
+
+from typing import Any, Optional
+
+from index_pdf_translation.config import TranslationConfig
+from index_pdf_translation.logger import get_logger
+from index_pdf_translation.translators import TranslatorBackend
+from index_pdf_translation.core.pdf_edit import (
+    DocumentBlocks,
+    create_viewing_pdf,
+    extract_text_coordinates_dict,
+    preprocess_write_blocks,
+    remove_blocks,
+    remove_textbox_for_pdf,
+    write_logo_data,
+    write_pdf_text,
+)
+
+logger = get_logger("translate")
+
+
 async def translate_blocks(
     blocks: DocumentBlocks,
-    translator: TranslatorBackend,  # 変更: key, api_url → translator
+    translator: TranslatorBackend,
     target_lang: str,
 ) -> DocumentBlocks:
-    """複数のテキストブロックを一括翻訳"""
-    texts = [block["text"] for page in blocks for block in page]
+    """
+    複数のテキストブロックを一括翻訳する。
 
+    Args:
+        blocks: 翻訳するブロック情報のリスト
+        translator: 翻訳バックエンド
+        target_lang: 翻訳先言語コード
+
+    Returns:
+        翻訳後のブロック情報
+    """
+    # 全テキストを抽出
+    texts: list[str] = []
+    for page in blocks:
+        for block in page:
+            texts.append(block["text"])
+
+    # 一括翻訳
     translated_texts = await translator.translate_batch(texts, target_lang)
 
     # 翻訳結果を各ブロックに割り当て
@@ -269,224 +507,577 @@ async def translate_blocks(
     return blocks
 
 
+async def preprocess_translation_blocks(
+    blocks: DocumentBlocks,
+    end_markers: tuple[str, ...] = (".", ":", ";"),
+    end_marker_enable: bool = True,
+) -> DocumentBlocks:
+    """翻訳前のブロック前処理"""
+    # 既存実装を維持
+    ...
+
+
 async def pdf_translate(
     pdf_data: bytes,
     *,
-    config: Optional[TranslationConfig] = None,
-    # 後方互換性のため既存パラメータも維持
-    api_key: Optional[str] = None,
-    ...
+    config: TranslationConfig,
+    disable_translate: bool = False,
 ) -> Optional[bytes]:
-    # config から translator を作成
-    if config is not None:
-        translator = config.create_translator()
+    """
+    PDFを翻訳し、見開きPDF（オリジナル + 翻訳）を生成する。
+
+    Args:
+        pdf_data: 入力PDFのバイナリデータ
+        config: 翻訳設定
+        disable_translate: 翻訳を無効化（テスト用）
+
+    Returns:
+        見開きPDFのバイナリデータ、または失敗時はNone
+
+    Examples:
+        >>> # Google 翻訳（デフォルト）
+        >>> config = TranslationConfig()
+        >>> result = await pdf_translate(pdf_data, config=config)
+
+        >>> # DeepL 翻訳
+        >>> config = TranslationConfig(backend="deepl", api_key="xxx")
+        >>> result = await pdf_translate(pdf_data, config=config)
+    """
+    # 翻訳バックエンドを作成
+    translator = config.create_translator()
+    logger.info(f"Using translator: {translator.name}")
+
+    # 1. テキストブロック抽出
+    block_info = await extract_text_coordinates_dict(pdf_data)
+
+    # 2. ブロック分類
+    if config.debug:
+        text_blocks, fig_blocks, remove_info, plot_images = await remove_blocks(
+            block_info, 10, lang=config.source_lang, debug=True
+        )
     else:
-        # 後方互換: 個別パラメータから DeepLTranslator を作成
-        from index_pdf_translation.translators import DeepLTranslator
-        translator = DeepLTranslator(api_key, api_url)
+        text_blocks, fig_blocks, _, _ = await remove_blocks(
+            block_info, 10, lang=config.source_lang
+        )
 
-    # 翻訳時に translator を使用
-    translate_text_blocks = await translate_blocks(
-        preprocess_text_blocks,
-        translator,  # 変更
-        effective_target_lang,
+    # 3. テキスト削除
+    removed_textbox_pdf_data = await remove_textbox_for_pdf(pdf_data, text_blocks)
+    removed_textbox_pdf_data = await remove_textbox_for_pdf(
+        removed_textbox_pdf_data, fig_blocks
     )
+    logger.info("1. テキストボックス削除完了")
+
+    # 翻訳前のブロック準備
+    preprocess_text_blocks = await preprocess_translation_blocks(
+        text_blocks, (".", ":", ";"), True
+    )
+    preprocess_fig_blocks = await preprocess_translation_blocks(
+        fig_blocks, (".", ":", ";"), False
+    )
+    logger.info("2. ブロック前処理完了")
+
+    # 4. 翻訳実施
+    if not disable_translate:
+        translate_text_blocks = await translate_blocks(
+            preprocess_text_blocks,
+            translator,
+            config.target_lang,
+        )
+        translate_fig_blocks = await translate_blocks(
+            preprocess_fig_blocks,
+            translator,
+            config.target_lang,
+        )
+        logger.info("3. 翻訳完了")
+
+        # 5. PDF書き込みデータ作成
+        write_text_blocks = await preprocess_write_blocks(
+            translate_text_blocks, config.target_lang
+        )
+        write_fig_blocks = await preprocess_write_blocks(
+            translate_fig_blocks, config.target_lang
+        )
+        logger.info("4. 書き込みブロック生成完了")
+
+        # PDFの作成
+        translated_pdf_data = removed_textbox_pdf_data
+        if write_text_blocks:
+            translated_pdf_data = await write_pdf_text(
+                translated_pdf_data, write_text_blocks, config.target_lang
+            )
+        if write_fig_blocks:
+            translated_pdf_data = await write_pdf_text(
+                translated_pdf_data, write_fig_blocks, config.target_lang
+            )
+
+        # 6. ロゴ追加（オプション）
+        if config.add_logo:
+            translated_pdf_data = await write_logo_data(translated_pdf_data)
+    else:
+        logger.info("翻訳スキップ（disable_translate=True）")
+        translated_pdf_data = removed_textbox_pdf_data
+
+    # 7. 見開き結合
+    merged_pdf_data = await create_viewing_pdf(pdf_data, translated_pdf_data)
+    logger.info("5. 見開きPDF生成完了")
+
+    return merged_pdf_data
 ```
 
 ---
 
-### Phase 3: CLI 更新
+### Phase 5: CLI の更新
 
-#### 3.1 `cli.py` 更新
+#### 5.1 `src/index_pdf_translation/cli.py`
 
 ```python
-parser.add_argument(
-    "--backend",
-    default="deepl",
-    choices=["deepl", "google"],
-    help="翻訳バックエンド (デフォルト: deepl)",
+#!/usr/bin/env python3
+# SPDX-License-Identifier: AGPL-3.0-only
+"""CLI ツール"""
+
+import argparse
+import asyncio
+import os
+import sys
+from pathlib import Path
+from typing import NoReturn
+
+from index_pdf_translation import pdf_translate
+from index_pdf_translation.config import (
+    DEFAULT_OUTPUT_DIR,
+    SUPPORTED_LANGUAGES,
+    TranslationConfig,
 )
 
-# run() 内
-api_key = args.api_key or os.environ.get("DEEPL_API_KEY", "")
 
-# backend が google なら api_key 不要
-if args.backend == "deepl" and not api_key:
-    print("エラー: DeepL APIキーが必要です。--backend google でAPIキー不要の翻訳も可能です。", ...)
-    return 1
+def parse_args() -> argparse.Namespace:
+    """コマンドライン引数をパース"""
+    parser = argparse.ArgumentParser(
+        prog="translate-pdf",
+        description="PDF翻訳ツール - 学術論文PDFを翻訳し見開きPDFを生成",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  %(prog)s paper.pdf                        # Google翻訳（デフォルト）
+  %(prog)s paper.pdf --backend deepl        # DeepL翻訳（高品質）
+  %(prog)s paper.pdf -o result.pdf          # 出力ファイル指定
+  %(prog)s paper.pdf -s en -t ja            # 英語→日本語
 
-config = TranslationConfig(
-    backend=args.backend,
-    api_key=api_key,
-    ...
-)
+Environment Variables:
+  DEEPL_API_KEY    DeepL APIキー (--backend deepl 時に必要)
+  DEEPL_API_URL    DeepL API URL (オプション)
+""",
+    )
+
+    parser.add_argument(
+        "input",
+        type=Path,
+        help="翻訳するPDFファイルのパス",
+    )
+
+    parser.add_argument(
+        "-o", "--output",
+        type=Path,
+        help=f"出力ファイルのパス (デフォルト: {DEFAULT_OUTPUT_DIR}translated_<input>.pdf)",
+    )
+
+    parser.add_argument(
+        "-b", "--backend",
+        default="google",
+        choices=["google", "deepl"],
+        help="翻訳バックエンド (デフォルト: google)",
+    )
+
+    parser.add_argument(
+        "-s", "--source",
+        default="en",
+        choices=list(SUPPORTED_LANGUAGES.keys()),
+        help="翻訳元の言語 (デフォルト: en)",
+    )
+
+    parser.add_argument(
+        "-t", "--target",
+        default="ja",
+        choices=list(SUPPORTED_LANGUAGES.keys()),
+        help="翻訳先の言語 (デフォルト: ja)",
+    )
+
+    parser.add_argument(
+        "--api-key",
+        help="DeepL APIキー (--backend deepl 時に必要)",
+    )
+
+    parser.add_argument(
+        "--api-url",
+        help="DeepL API URL (オプション)",
+    )
+
+    parser.add_argument(
+        "--no-logo",
+        action="store_true",
+        help="ロゴウォーターマークを無効化",
+    )
+
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="デバッグモード（ブロック分類の可視化PDFを生成）",
+    )
+
+    return parser.parse_args()
+
+
+async def run(args: argparse.Namespace) -> int:
+    """PDFを翻訳"""
+    input_path: Path = args.input
+
+    # 入力ファイルの検証
+    if not input_path.exists():
+        print(f"エラー: ファイルが見つかりません: {input_path}", file=sys.stderr)
+        return 1
+
+    if input_path.suffix.lower() != ".pdf":
+        print(f"エラー: PDFファイルではありません: {input_path}", file=sys.stderr)
+        return 1
+
+    # API キーの取得（DeepL の場合のみ）
+    api_key = ""
+    api_url = ""
+    if args.backend == "deepl":
+        api_key = args.api_key or os.environ.get("DEEPL_API_KEY", "")
+        if not api_key:
+            print(
+                "エラー: DeepL バックエンドには APIキーが必要です。\n"
+                "  --api-key オプションまたは環境変数 DEEPL_API_KEY を設定してください。\n"
+                "  または --backend google でAPIキー不要の翻訳を使用できます。",
+                file=sys.stderr,
+            )
+            return 1
+        api_url = args.api_url or os.environ.get(
+            "DEEPL_API_URL", "https://api-free.deepl.com/v2/translate"
+        )
+
+    # 出力パスの決定
+    if args.output:
+        output_path: Path = args.output
+    else:
+        output_dir = Path(DEFAULT_OUTPUT_DIR)
+        output_path = output_dir / f"translated_{input_path.name}"
+
+    # 出力ディレクトリの作成
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # 進捗表示
+    print(f"入力: {input_path}")
+    print(f"出力: {output_path}")
+    print(f"バックエンド: {args.backend}")
+    print(f"翻訳: {args.source.upper()} → {args.target.upper()}")
+    if args.no_logo:
+        print("ロゴ: 無効")
+    if args.debug:
+        print("デバッグモード: 有効")
+    print()
+
+    # TranslationConfig を作成
+    try:
+        config = TranslationConfig(
+            backend=args.backend,
+            api_key=api_key,
+            api_url=api_url,
+            source_lang=args.source,
+            target_lang=args.target,
+            add_logo=not args.no_logo,
+            debug=args.debug,
+        )
+    except ValueError as e:
+        print(f"エラー: {e}", file=sys.stderr)
+        return 1
+
+    # PDFの読み込み
+    with open(input_path, "rb") as f:
+        pdf_data = f.read()
+
+    # 翻訳の実行
+    try:
+        result_pdf = await pdf_translate(pdf_data, config=config)
+    except Exception as e:
+        print(f"エラー: 翻訳中にエラーが発生しました: {e}", file=sys.stderr)
+        return 1
+
+    if result_pdf is None:
+        print("エラー: 翻訳に失敗しました", file=sys.stderr)
+        return 1
+
+    # 結果の保存
+    with open(output_path, "wb") as f:
+        f.write(result_pdf)
+
+    print()
+    print(f"完了: {output_path}")
+    return 0
+
+
+def main() -> NoReturn:
+    """メインエントリーポイント"""
+    args = parse_args()
+    exit_code = asyncio.run(run(args))
+    sys.exit(exit_code)
+
+
+if __name__ == "__main__":
+    main()
 ```
 
 ---
 
-### Phase 4: テスト追加
+### Phase 6: テスト追加
 
-#### 4.1 `tests/test_translators.py` 作成
+#### 6.1 `tests/test_translators.py` 新規作成
 
 ```python
+# SPDX-License-Identifier: AGPL-3.0-only
+"""翻訳バックエンドのテスト"""
+
 import pytest
-from index_pdf_translation.translators import DeepLTranslator, GoogleTranslator, TranslationError
+from index_pdf_translation.translators import GoogleTranslator, TranslationError
+
 
 class TestGoogleTranslator:
-    """Google翻訳のテスト（APIキー不要）"""
+    """Google 翻訳バックエンドのテスト"""
+
+    def test_name(self):
+        """バックエンド名の確認"""
+        translator = GoogleTranslator()
+        assert translator.name == "google"
 
     @pytest.mark.asyncio
     async def test_translate_simple(self):
+        """基本的な翻訳テスト"""
         translator = GoogleTranslator()
-        result = await translator.translate("Hello", target_lang="ja")
-        assert result  # 何らかの翻訳結果が返る
-        assert result != "Hello"  # 原文とは異なる
+        result = await translator.translate("Hello", "ja")
+        assert result
+        assert result != "Hello"
+        # 「こんにちは」または類似の日本語になることを期待
+
+    @pytest.mark.asyncio
+    async def test_translate_empty_string(self):
+        """空文字列の翻訳"""
+        translator = GoogleTranslator()
+        result = await translator.translate("", "ja")
+        assert result == ""
 
     @pytest.mark.asyncio
     async def test_translate_batch(self):
+        """バッチ翻訳テスト"""
         translator = GoogleTranslator()
-        texts = ["Hello", "World"]
-        results = await translator.translate_batch(texts, target_lang="ja")
-        assert len(results) == 2
+        texts = ["Hello", "World", "Good morning"]
+        results = await translator.translate_batch(texts, "ja")
+        assert len(results) == 3
+        assert all(r for r in results)
 
-    def test_properties(self):
+    @pytest.mark.asyncio
+    async def test_translate_batch_with_empty(self):
+        """空文字列を含むバッチ翻訳"""
         translator = GoogleTranslator()
-        assert translator.name == "google"
-        assert translator.requires_api_key is False
+        texts = ["Hello", "", "World"]
+        results = await translator.translate_batch(texts, "ja")
+        assert len(results) == 3
+        assert results[1] == ""
+
+    @pytest.mark.asyncio
+    async def test_translate_batch_empty_list(self):
+        """空リストのバッチ翻訳"""
+        translator = GoogleTranslator()
+        results = await translator.translate_batch([], "ja")
+        assert results == []
 
 
 class TestDeepLTranslator:
-    """DeepL翻訳のテスト（APIキー必須のため一部スキップ）"""
+    """DeepL 翻訳バックエンドのテスト（APIキー必須のため限定的）"""
 
     def test_requires_api_key(self):
-        with pytest.raises(ValueError):
+        """APIキー必須の確認"""
+        from index_pdf_translation.translators import get_deepl_translator
+        DeepLTranslator = get_deepl_translator()
+
+        with pytest.raises(ValueError, match="API key is required"):
             DeepLTranslator(api_key="")
 
-    def test_properties(self):
-        translator = DeepLTranslator(api_key="dummy")
+    def test_name(self):
+        """バックエンド名の確認"""
+        from index_pdf_translation.translators import get_deepl_translator
+        DeepLTranslator = get_deepl_translator()
+
+        translator = DeepLTranslator(api_key="dummy-key")
         assert translator.name == "deepl"
-        assert translator.requires_api_key is True
 ```
 
-#### 4.2 `tests/test_config.py` 更新
+#### 6.2 `tests/test_config.py` 更新
 
 ```python
-def test_config_google_backend_no_api_key():
-    """Google バックエンドなら API キー不要"""
+# 追加テストケース
+
+def test_config_default_backend_is_google():
+    """デフォルトバックエンドが Google であること"""
+    config = TranslationConfig()
+    assert config.backend == "google"
+
+
+def test_config_google_backend_no_api_key_required():
+    """Google バックエンドは API キー不要"""
     config = TranslationConfig(backend="google")
     assert config.backend == "google"
-    # エラーにならない
+    # api_key が空でもエラーにならない
 
 
 def test_config_deepl_backend_requires_api_key():
     """DeepL バックエンドは API キー必須"""
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="DeepL API key required"):
         TranslationConfig(backend="deepl", api_key="")
 
 
-def test_config_create_translator():
-    """create_translator() のテスト"""
+def test_config_deepl_backend_with_api_key():
+    """DeepL バックエンドに API キーを渡す"""
+    config = TranslationConfig(backend="deepl", api_key="test-key")
+    assert config.backend == "deepl"
+    assert config.api_key == "test-key"
+
+
+def test_config_create_translator_google():
+    """create_translator() で Google バックエンドを作成"""
     config = TranslationConfig(backend="google")
     translator = config.create_translator()
     assert translator.name == "google"
-```
 
-#### 4.3 統合テスト（オプション）
 
-```python
-@pytest.mark.integration
-@pytest.mark.asyncio
-async def test_pdf_translate_with_google(sample_llama_pdf):
-    """Google翻訳での実際のPDF翻訳テスト"""
-    config = TranslationConfig(backend="google", source_lang="en", target_lang="ja")
-
-    with open(sample_llama_pdf, "rb") as f:
-        pdf_data = f.read()
-
-    result = await pdf_translate(pdf_data, config=config)
-    assert result is not None
-    assert len(result) > 0
+def test_config_create_translator_deepl():
+    """create_translator() で DeepL バックエンドを作成"""
+    config = TranslationConfig(backend="deepl", api_key="test-key")
+    translator = config.create_translator()
+    assert translator.name == "deepl"
 ```
 
 ---
 
-### Phase 5: ドキュメント更新
+### Phase 7: ドキュメント更新
 
-#### 5.1 `readme.md` 更新
+#### 7.1 `readme.md` 更新
 
 ```markdown
-### 翻訳バックエンド
+## Quick Start
 
-#### DeepL（デフォルト、高品質）
+```bash
+# インストール
+uv sync
+uv run python -m spacy download en_core_web_sm
+
+# 翻訳実行（Google翻訳、APIキー不要）
+uv run translate-pdf paper.pdf
+```
+
+## 翻訳バックエンド
+
+### Google 翻訳（デフォルト）
+
+APIキー不要で即座に使用可能：
+
+```bash
+translate-pdf paper.pdf
+translate-pdf paper.pdf --backend google  # 明示的に指定
+```
+
+### DeepL（高品質）
+
+高品質な翻訳が必要な場合：
+
 ```bash
 export DEEPL_API_KEY="your-api-key"
-translate-pdf paper.pdf
+translate-pdf paper.pdf --backend deepl
+
+# または
+translate-pdf paper.pdf --backend deepl --api-key "your-api-key"
 ```
 
-#### Google 翻訳（APIキー不要）
+DeepL を使用するには追加の依存関係が必要：
+
 ```bash
-translate-pdf paper.pdf --backend google
+uv pip install index-pdf-translation[deepl]
 ```
 ```
 
-#### 5.2 `CLAUDE.md` 更新
+#### 7.2 `CLAUDE.md` 更新
 
-CLI オプションに `--backend` を追加。
+CLI オプションセクションを更新：
 
----
-
-## 依存関係
-
-### pyproject.toml 更新
-
-```toml
-dependencies = [
-    "PyMuPDF>=1.24.0",
-    "spacy>=3.7.0",
-    "aiohttp>=3.9.0",
-    "numpy>=1.26.0",
-    "matplotlib>=3.8.0",
-    "deep-translator>=1.11.0",  # 追加
-]
+```markdown
+### CLI Options
+- `-o, --output`: Output file path
+- `-b, --backend`: Translation backend (google/deepl, default: google)
+- `-s, --source`: Source language (en/ja, default: en)
+- `-t, --target`: Target language (en/ja, default: ja)
+- `--api-key`: DeepL API key (required for --backend deepl)
+- `--api-url`: DeepL API URL (for Pro users)
+- `--no-logo`: Disable logo watermark
+- `--debug`: Enable debug mode
 ```
 
 ---
 
-## リスク・考慮事項
+## Breaking Changes
 
-### 1. Google 翻訳の品質
+この実装は以下の Breaking Change を含む：
 
-- DeepL より品質が劣る可能性
-- 対策: デフォルトは DeepL を維持、Google は開発・テスト用途を推奨
+| 項目 | 変更内容 |
+|------|----------|
+| デフォルトバックエンド | `deepl` → `google` |
+| `pdf_translate()` 引数 | 個別パラメータ廃止、`config` パラメータ必須 |
+| `TranslationConfig` | `api_key` は `backend="deepl"` 時のみ必須 |
+| `aiohttp` 依存 | オプショナル（`[deepl]` extra）に移動 |
+| `deepl_target_lang` プロパティ | 削除 |
 
-### 2. Rate Limiting
+### マイグレーションガイド
 
-- deep-translator の Google 翻訳はレート制限あり（具体的な制限は未公開）
-- 対策: 大量テキストの場合は適度な待機を入れる検討
+```python
+# Before (v2.x)
+from index_pdf_translation import pdf_translate
+result = await pdf_translate(
+    pdf_data,
+    api_key="xxx",
+    target_lang="ja"
+)
 
-### 3. 後方互換性
+# After (v3.x)
+from index_pdf_translation import pdf_translate, TranslationConfig
 
-- 既存の `api_key`, `api_url` パラメータは維持
-- `backend` パラメータはデフォルト `"deepl"` で既存動作を保持
+# Google 翻訳（デフォルト、APIキー不要）
+config = TranslationConfig()
+result = await pdf_translate(pdf_data, config=config)
 
-### 4. エラーハンドリング
-
-- deep-translator のエラーを `TranslationError` に統一
-- ネットワークエラー、言語未対応などの適切な処理
+# DeepL 翻訳
+config = TranslationConfig(backend="deepl", api_key="xxx")
+result = await pdf_translate(pdf_data, config=config)
+```
 
 ---
 
-## 完了条件（Issue #25 より）
+## 完了条件
 
-- [x] 設計完了
-- [ ] deep-translator を依存関係に追加
-- [ ] TranslatorBackend 抽象クラス作成
-- [ ] DeepLTranslator 実装
-- [ ] GoogleTranslator 実装
-- [ ] TranslationConfig に backend オプション追加
-- [ ] CLI に --backend オプション追加
-- [ ] テスト追加（Google翻訳を使用）
-- [ ] README 更新
+- [ ] `pyproject.toml` 更新（deep-translator 追加、aiohttp をオプショナルに）
+- [ ] `translators/` モジュール作成
+  - [ ] `base.py` - プロトコル定義
+  - [ ] `google.py` - Google 翻訳実装
+  - [ ] `deepl.py` - DeepL 翻訳実装
+- [ ] `config.py` 更新（backend オプション、デフォルト google）
+- [ ] `core/translate.py` 更新（TranslatorBackend 使用）
+- [ ] `cli.py` 更新（--backend オプション）
+- [ ] `__init__.py` 更新
+- [ ] テスト追加
+  - [ ] `test_translators.py`
+  - [ ] `test_config.py` 更新
+- [ ] ドキュメント更新
+  - [ ] `readme.md`
+  - [ ] `CLAUDE.md`
+- [ ] CI 通過確認
 
 ---
 
@@ -495,16 +1086,16 @@ dependencies = [
 ### 新規作成
 - `src/index_pdf_translation/translators/__init__.py`
 - `src/index_pdf_translation/translators/base.py`
-- `src/index_pdf_translation/translators/deepl.py`
 - `src/index_pdf_translation/translators/google.py`
+- `src/index_pdf_translation/translators/deepl.py`
 - `tests/test_translators.py`
 
 ### 更新
-- `pyproject.toml` - deep-translator 依存追加
-- `src/index_pdf_translation/config.py` - backend オプション追加
-- `src/index_pdf_translation/core/translate.py` - translator 抽象化
-- `src/index_pdf_translation/cli.py` - --backend オプション追加
-- `src/index_pdf_translation/__init__.py` - エクスポート追加
-- `tests/test_config.py` - backend テスト追加
-- `readme.md` - 使用方法更新
-- `CLAUDE.md` - CLI オプション更新
+- `pyproject.toml`
+- `src/index_pdf_translation/__init__.py`
+- `src/index_pdf_translation/config.py`
+- `src/index_pdf_translation/core/translate.py`
+- `src/index_pdf_translation/cli.py`
+- `tests/test_config.py`
+- `readme.md`
+- `CLAUDE.md`
