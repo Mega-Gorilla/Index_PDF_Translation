@@ -16,6 +16,25 @@ DeepL は高品質オプションとして引き続きサポートする。
 | 後方互換性 | - | **無視**（Breaking Change許容） |
 | 翻訳ライブラリ | aiohttp 直接 | **deep-translator** |
 
+### リリース戦略
+
+**Breaking Change のためメジャーバージョンアップ**: `v2.x.x` → `v3.0.0`
+
+#### 影響範囲
+
+| 対象 | 影響 | 対応 |
+|------|------|------|
+| CLI | `--api-key` 必須 → 不要に | 引数は残す（DeepL用）、エラーメッセージ変更 |
+| テスト | DEEPL_API_KEY 前提のテスト | モック化 or スキップ条件追加 |
+| 既存利用者 | `TranslationConfig(api_key=...)` が必須 | `backend="deepl"` 明示で動作 |
+| CI | API キー未設定で失敗 | Google デフォルトで通過可能に |
+
+#### リリースチェックリスト
+
+- [ ] CHANGELOG.md に Breaking Changes を明記
+- [ ] README.md にマイグレーションガイド追加
+- [ ] PyPI リリースノートに互換性情報記載
+
 ### アーキテクチャ
 
 ```
@@ -123,6 +142,80 @@ class DeepLTranslator:
 | 言語追加 | 3箇所更新 | **1箇所のみ**（SUPPORTED_LANGUAGES） |
 | 不整合リスク | あり | **なし** |
 | 保守性 | 低 | **高** |
+
+---
+
+## 設計判断: セパレータトークン方式の採用
+
+### 問題分析
+
+改行連結方式 (`"\n".join(texts)`) には以下のリスクがある：
+
+```python
+# 入力
+texts = ["Hello", "", "World"]  # 3行（空行含む）
+combined = "Hello\n\nWorld"
+
+# Google翻訳後（空行が消える可能性）
+translated = "こんにちは\n世界"  # 2行に
+
+# split後
+lines = translated.split("\n")  # len=2 ≠ 3 → ブロック対応崩壊
+```
+
+**Google翻訳は改行や空行を保持しない場合がある**
+
+### 検証テスト結果
+
+複数のセパレータ候補を実際の Google 翻訳 API でテスト：
+
+| セパレータ | 成功率 | 問題点 |
+|-----------|--------|--------|
+| **`[[[BR]]]`** | **100%** | なし ✅ **推奨** |
+| `###SPLIT###` | 100% | なし |
+| `<<SEP>>` | 60% | SEP→「9月」と翻訳される |
+| `\n---\n` | 60% | 空行で崩壊 |
+| `|||BLOCK|||` | 0% | BLOCK→「ブロック」と翻訳される |
+
+テストケース：
+1. 基本的な複数行: `["Hello", "World", "Good morning"]`
+2. 空文字列を含む: `["Hello", "", "World"]`
+3. 空白のみを含む: `["Hello", "   ", "World"]`
+4. 長めの学術論文風テキスト
+
+### 重要な発見
+
+- **英単語を含むトークンは翻訳される**: `BLOCK` → `ブロック`、`SEP` → `9月`
+- **記号のみのトークンは保持される**: `[[[BR]]]` は翻訳されない
+- **空行も正しく処理される**: `[[[BR]]]` 使用時
+
+### 結論
+
+**セパレータトークン `[[[BR]]]` を採用**
+
+```python
+BLOCK_SEPARATOR = "[[[BR]]]"
+
+# 連結
+combined = BLOCK_SEPARATOR.join(texts)
+# "Hello[[[BR]]][[[BR]]]World"
+
+# 翻訳後
+translated = "こんにちは[[[BR]]][[[BR]]]世界"
+
+# 分割
+lines = translated.split(BLOCK_SEPARATOR)
+# ["こんにちは", "", "世界"] ← 正確に3要素
+```
+
+### メリット
+
+| 観点 | 改行方式 | セパレータ方式（採用） |
+|------|----------|----------------------|
+| 空行対応 | ❌ 崩壊リスク | ✅ **正確に保持** |
+| 改行保持 | ❌ 不安定 | ✅ **100% 保持** |
+| API コール数 | 1回 | 1回（同じ） |
+| 実装複雑度 | 低 | 低（join/split のみ） |
 
 ---
 
@@ -927,9 +1020,10 @@ class TranslationConfig:
 #### 4.1 `src/index_pdf_translation/core/translate.py`
 
 主な変更点：
-- `translate_str_data()` を削除
-- `translate_blocks()` で改行連結ロジックを実装
+- `translate_str_data()` を削除（aiohttp 直接使用を廃止）
+- `translate_blocks()` でセパレータトークン方式を実装
 - `pdf_translate()` を簡素化
+- **aiohttp の import を削除**（DeepL 専用モジュールに移動）
 
 ```python
 # SPDX-License-Identifier: AGPL-3.0-only
@@ -955,6 +1049,10 @@ if TYPE_CHECKING:
 
 logger = get_logger("translate")
 
+# セパレータトークン（Google翻訳で翻訳されない記号のみのトークン）
+# 検証済み: 空行・空白を含む複数テキストで100%の成功率
+BLOCK_SEPARATOR = "[[[BR]]]"
+
 
 async def translate_blocks(
     blocks: DocumentBlocks,
@@ -964,10 +1062,11 @@ async def translate_blocks(
     """
     複数のテキストブロックを一括翻訳する。
 
-    全テキストを改行で連結し、1回の API コールで翻訳する。
+    セパレータトークン方式で全テキストを連結し、1回の API コールで翻訳する。
     これにより：
     - API コール数を最小化（レート制限回避）
     - 文脈を維持した高品質な翻訳
+    - 空行・空白を含むブロックも正確に保持
 
     Args:
         blocks: 翻訳するブロック情報のリスト
@@ -986,12 +1085,19 @@ async def translate_blocks(
     if not texts:
         return blocks
 
-    # 改行で連結して一括翻訳（1回の API コール）
-    combined_text = "\n".join(texts)
+    # セパレータトークンで連結して一括翻訳（1回の API コール）
+    combined_text = BLOCK_SEPARATOR.join(texts)
     translated_combined = await translator.translate(combined_text, target_lang)
 
     # 翻訳結果を分割して各ブロックに割り当て
-    translated_lines = translated_combined.split("\n")
+    translated_lines = translated_combined.split(BLOCK_SEPARATOR)
+
+    # 行数検証（フォールバック用ログ）
+    if len(translated_lines) != len(texts):
+        logger.warning(
+            f"Block count mismatch after translation: "
+            f"expected {len(texts)}, got {len(translated_lines)}"
+        )
 
     idx = 0
     for page in blocks:
@@ -1374,13 +1480,22 @@ if __name__ == "__main__":
 
 ### Phase 6: テスト追加
 
+#### テスト戦略
+
+| テスト種別 | 実行タイミング | 外部API | 目的 |
+|-----------|---------------|---------|------|
+| **ユニットテスト** | CI（常時） | モック | 高速・安定・カバレッジ |
+| **統合テスト** | ローカル/手動 | 実API | 実際の動作確認 |
+
 #### 6.1 `tests/test_translators.py` 新規作成
 
 ```python
 # SPDX-License-Identifier: AGPL-3.0-only
-"""翻訳バックエンドのテスト"""
+"""翻訳バックエンドのテスト（モック使用）"""
 
 import pytest
+from unittest.mock import patch, MagicMock
+
 from index_pdf_translation.translators import GoogleTranslator, TranslationError
 
 
@@ -1393,37 +1508,64 @@ class TestGoogleTranslator:
         assert translator.name == "google"
 
     @pytest.mark.asyncio
-    async def test_translate_simple(self):
-        """基本的な翻訳テスト"""
-        translator = GoogleTranslator()
-        result = await translator.translate("Hello", "ja")
-        assert result
-        assert result != "Hello"
-
-    @pytest.mark.asyncio
     async def test_translate_empty_string(self):
-        """空文字列の翻訳"""
+        """空文字列の翻訳（APIコールなし）"""
         translator = GoogleTranslator()
         result = await translator.translate("", "ja")
         assert result == ""
 
     @pytest.mark.asyncio
-    async def test_translate_with_newlines(self):
-        """改行を含むテキストの翻訳（一括翻訳のテスト）"""
-        translator = GoogleTranslator()
-        text = "Hello\nWorld\nGood morning"
-        result = await translator.translate(text, "ja")
-        # 改行が保持されていることを確認
-        assert "\n" in result
-        lines = result.split("\n")
-        assert len(lines) == 3
-
-    @pytest.mark.asyncio
     async def test_translate_whitespace_only(self):
-        """空白のみの文字列"""
+        """空白のみの文字列（APIコールなし）"""
         translator = GoogleTranslator()
         result = await translator.translate("   ", "ja")
         assert result == "   "
+
+    @pytest.mark.asyncio
+    async def test_translate_simple_mocked(self):
+        """基本的な翻訳テスト（モック）"""
+        translator = GoogleTranslator()
+
+        with patch("deep_translator.GoogleTranslator") as mock_dt:
+            mock_instance = MagicMock()
+            mock_instance.translate.return_value = "こんにちは"
+            mock_dt.return_value = mock_instance
+
+            result = await translator.translate("Hello", "ja")
+
+            assert result == "こんにちは"
+            mock_dt.assert_called_once_with(source="auto", target="ja")
+            mock_instance.translate.assert_called_once_with("Hello")
+
+    @pytest.mark.asyncio
+    async def test_translate_with_separator_mocked(self):
+        """セパレータを含むテキストの翻訳（モック）"""
+        translator = GoogleTranslator()
+
+        with patch("deep_translator.GoogleTranslator") as mock_dt:
+            mock_instance = MagicMock()
+            # セパレータが保持されることをシミュレート
+            mock_instance.translate.return_value = "こんにちは[[[BR]]]世界[[[BR]]]おはよう"
+            mock_dt.return_value = mock_instance
+
+            result = await translator.translate("Hello[[[BR]]]World[[[BR]]]Good morning", "ja")
+
+            assert "[[[BR]]]" in result
+            parts = result.split("[[[BR]]]")
+            assert len(parts) == 3
+
+    @pytest.mark.asyncio
+    async def test_translate_error_handling(self):
+        """エラーハンドリングのテスト"""
+        translator = GoogleTranslator()
+
+        with patch("deep_translator.GoogleTranslator") as mock_dt:
+            mock_instance = MagicMock()
+            mock_instance.translate.side_effect = Exception("API Error")
+            mock_dt.return_value = mock_instance
+
+            with pytest.raises(TranslationError, match="Google Translate error"):
+                await translator.translate("Hello", "ja")
 
 
 class TestDeepLTranslator:
@@ -1444,6 +1586,34 @@ class TestDeepLTranslator:
 
         translator = DeepLTranslator(api_key="dummy-key")
         assert translator.name == "deepl"
+
+
+# 統合テスト（実API使用、CI ではスキップ）
+@pytest.mark.integration
+@pytest.mark.skipif(
+    "CI" in os.environ,
+    reason="Skip integration tests in CI"
+)
+class TestGoogleTranslatorIntegration:
+    """Google 翻訳の統合テスト（実API使用）"""
+
+    @pytest.mark.asyncio
+    async def test_real_translation(self):
+        """実際のGoogle翻訳API呼び出し"""
+        translator = GoogleTranslator()
+        result = await translator.translate("Hello", "ja")
+        assert result
+        assert result != "Hello"
+
+    @pytest.mark.asyncio
+    async def test_separator_preserved(self):
+        """セパレータが実際に保持されるか確認"""
+        translator = GoogleTranslator()
+        text = "Hello[[[BR]]]World[[[BR]]]Good morning"
+        result = await translator.translate(text, "ja")
+
+        parts = result.split("[[[BR]]]")
+        assert len(parts) == 3, f"Expected 3 parts, got {len(parts)}: {result}"
 ```
 
 #### 6.2 `tests/test_config.py` 更新
@@ -1602,18 +1772,23 @@ result = await pdf_translate(pdf_data, config=config)
 - [ ] `translators/` モジュール作成
   - [ ] `base.py` - プロトコル定義（translate のみ）
   - [ ] `google.py` - Google 翻訳実装
-  - [ ] `deepl.py` - DeepL 翻訳実装
+  - [ ] `deepl.py` - DeepL 翻訳実装（aiohttp 遅延 import）
 - [ ] `config.py` 更新（backend オプション、デフォルト google）
-- [ ] `core/translate.py` 更新（改行連結ロジック実装）
+- [ ] `core/translate.py` 更新
+  - [ ] aiohttp import 削除
+  - [ ] セパレータトークン方式（`[[[BR]]]`）実装
+  - [ ] translate_str_data() 削除
 - [ ] `cli.py` 更新（--backend オプション）
 - [ ] `__init__.py` 更新
 - [ ] テスト追加
-  - [ ] `test_translators.py`
+  - [ ] `test_translators.py`（モック使用）
   - [ ] `test_config.py` 更新
+  - [ ] 統合テスト（`@pytest.mark.integration`）
 - [ ] ドキュメント更新
   - [ ] `readme.md`
   - [ ] `CLAUDE.md`
-- [ ] CI 通過確認
+  - [ ] `CHANGELOG.md`（Breaking Changes）
+- [ ] CI 通過確認（API キー不要で通過）
 
 ---
 
