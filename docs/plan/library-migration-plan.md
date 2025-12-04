@@ -15,7 +15,8 @@
 1. `uv pip install .` でローカルインストール可能
 2. `from index_pdf_translation import pdf_translate` が動作
 3. `translate-pdf paper.pdf` (CLI) が動作
-4. 既存の `uv run python translate_pdf.py` も一時的に維持
+
+> **Note**: 後方互換性は考慮しない。`translate_pdf.py` は Phase 5 で削除し、`translate-pdf` コマンドに完全移行する。
 
 ---
 
@@ -255,10 +256,23 @@ FONT_PATH_EN = get_font_path("LiberationSerif-Regular.ttf")
 [tool.hatch.build.targets.wheel]
 packages = ["src/index_pdf_translation"]
 
+# 非Pythonファイル（フォント・ロゴ）をwheelに同梱
+[tool.hatch.build.targets.wheel.force-include]
+"src/index_pdf_translation/resources/fonts" = "index_pdf_translation/resources/fonts"
+"src/index_pdf_translation/resources/data" = "index_pdf_translation/resources/data"
+
 [tool.hatch.build.targets.sdist]
 include = [
     "src/index_pdf_translation/resources/**/*",
 ]
+```
+
+#### Wheel内容確認コマンド
+
+```bash
+# ビルド後、wheelにリソースが含まれているか確認
+uv build
+unzip -l dist/*.whl | grep -E '\.(ttf|png)$'
 ```
 
 #### 完了条件
@@ -266,6 +280,7 @@ include = [
 - [ ] フォントがパッケージから正しくロード
 - [ ] ロゴがパッケージから正しくロード
 - [ ] `pip install` 後もリソースアクセス可能
+- [ ] wheel内にフォント（.ttf）とロゴ（.png）が含まれていることを確認
 
 ---
 
@@ -616,6 +631,7 @@ result = await pdf_translate(data, config=config)
 ### Phase 3 完了チェック
 - [ ] `importlib.resources` 導入
 - [ ] フォント・ロゴのパッケージ同梱
+- [ ] `unzip -l dist/*.whl | grep -E '\.(ttf|png)$'` でwheel内リソース確認
 
 ### Phase 4 完了チェック
 - [ ] `TranslationConfig` dataclass 実装
