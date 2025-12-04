@@ -32,18 +32,11 @@ jobs:
           restore-keys: |
             uv-${{ runner.os }}-
 
-      - name: Cache spaCy models
-        uses: actions/cache@v4
-        with:
-          path: ~/.local/share/spacy
-          key: spacy-${{ runner.os }}-en_core_web_sm-v3.7
-
       - name: Install dependencies
         run: uv sync --extra dev
 
-      - name: Download spaCy model
-        run: |
-          uv run python -c "import spacy; spacy.cli.download('en_core_web_sm')"
+      - name: Install spaCy model
+        run: uv pip install en_core_web_sm@https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1-py3-none-any.whl
 
       - name: Run tests
         run: uv run pytest tests/ -v --tb=short
