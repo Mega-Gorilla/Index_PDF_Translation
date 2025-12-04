@@ -23,6 +23,15 @@ used for testing purposes. All papers are licensed under CC BY 4.0.
 - **arXiv**: https://arxiv.org/abs/2201.11903
 - **License**: [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)
 
+### sample_autogen.pdf
+
+- **Title**: AutoGen: Enabling Next-Gen LLM Applications via Multi-Agent Conversation
+- **Authors**: Qingyun Wu, Gagan Bansal, Jieyu Zhang, Yiran Wu, Beibin Li,
+  Erkang Zhu, Li Jiang, Xiaoyun Zhang, Shaokun Zhang, Jiale Liu,
+  Ahmed Hassan Awadallah, Ryen W White, Doug Burger, Chi Wang
+- **arXiv**: https://arxiv.org/abs/2308.08155
+- **License**: [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)
+
 ## License Compliance
 
 These excerpts are distributed under the terms of the

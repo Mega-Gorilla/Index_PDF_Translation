@@ -30,6 +30,13 @@ PDF_MAPPINGS = {
         "arxiv": "arXiv:2201.11903",
         "license": "CC BY 4.0",
     },
+    "2308.08155": {
+        "output": "sample_autogen.pdf",
+        "title": "AutoGen: Enabling Next-Gen LLM Applications via Multi-Agent Conversation",
+        "authors": "Qingyun Wu et al.",
+        "arxiv": "arXiv:2308.08155",
+        "license": "CC BY 4.0",
+    },
 }
 
 

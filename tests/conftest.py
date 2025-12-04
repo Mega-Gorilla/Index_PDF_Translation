@@ -45,6 +45,18 @@ def sample_cot_pdf() -> Path:
 
 
 @pytest.fixture
+def sample_autogen_pdf() -> Path:
+    """
+    Return path to AutoGen paper sample PDF (first page).
+
+    Paper: "AutoGen: Enabling Next-Gen LLM Applications via Multi-Agent Conversation"
+    arXiv: 2308.08155
+    License: CC BY 4.0
+    """
+    return FIXTURES_DIR / "sample_autogen.pdf"
+
+
+@pytest.fixture
 def sample_en_pdf(sample_llama_pdf: Path) -> Path:
     """
     Return path to a sample English PDF for testing.
@@ -70,6 +82,12 @@ def sample_llama_pdf_bytes(sample_llama_pdf: Path) -> bytes:
 def sample_cot_pdf_bytes(sample_cot_pdf: Path) -> bytes:
     """Return Chain-of-Thought sample PDF as bytes."""
     return sample_cot_pdf.read_bytes()
+
+
+@pytest.fixture
+def sample_autogen_pdf_bytes(sample_autogen_pdf: Path) -> bytes:
+    """Return AutoGen sample PDF as bytes."""
+    return sample_autogen_pdf.read_bytes()
 
 
 @pytest.fixture
