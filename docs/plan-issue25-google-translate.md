@@ -80,6 +80,52 @@ def _translate_batch(self, batch, **kwargs):
 
 ---
 
+## 設計判断: LANG_MAP の廃止
+
+### 問題分析
+
+当初の設計では各 Translator に `LANG_MAP` を定義していた：
+
+```python
+# 当初の設計（問題あり）
+class GoogleTranslator:
+    LANG_MAP = {"en": "en", "ja": "ja"}  # 無意味な変換
+
+class DeepLTranslator:
+    LANG_MAP = {"en": "EN", "ja": "JA"}  # config.py と重複
+```
+
+### 問題点
+
+1. **重複**: `config.py` の `SUPPORTED_LANGUAGES` と各 Translator で言語コードが重複
+2. **不整合リスク**: 言語追加時に3箇所の更新が必要
+3. **Google の LANG_MAP は無意味**: `"en" -> "en"` は何もしていない
+
+### 調査結果
+
+- **deep-translator**: `"en"`, `"ja"` をそのまま受け付ける
+- **DeepL API**: 言語コードは大文字小文字を区別しない（ISO 639-1）
+
+### 結論
+
+**`LANG_MAP` を完全廃止。言語コード変換はシンプルに処理。**
+
+| バックエンド | 変換方法 |
+|-------------|---------|
+| Google | `target_lang` をそのまま使用 |
+| DeepL | `target_lang.upper()` で変換 |
+
+### メリット
+
+| 観点 | LANG_MAP あり | LANG_MAP なし（採用） |
+|------|--------------|---------------------|
+| コード量 | 各 Translator に定義 | **不要** |
+| 言語追加 | 3箇所更新 | **1箇所のみ**（SUPPORTED_LANGUAGES） |
+| 不整合リスク | あり | **なし** |
+| 保守性 | 低 | **高** |
+
+---
+
 ## 実装フェーズ
 
 ### Phase 1: 依存関係の更新
@@ -200,10 +246,8 @@ class GoogleTranslator:
     Google 翻訳を使用した翻訳バックエンド。
 
     APIキー不要で使用可能。deep-translator ライブラリ経由。
+    言語コードは内部コード（"en", "ja"）をそのまま使用。
     """
-
-    # 内部言語コード -> deep-translator 言語コード
-    LANG_MAP = {"en": "en", "ja": "ja"}
 
     @property
     def name(self) -> str:
@@ -214,21 +258,24 @@ class GoogleTranslator:
         テキストを翻訳する。
 
         改行を含むテキストも対応。1回の API コールで処理。
+
+        Args:
+            text: 翻訳するテキスト
+            target_lang: 翻訳先言語（"en", "ja"）- そのまま使用
         """
         if not text.strip():
             return text
 
         def _translate() -> str:
             try:
+                # deep-translator は "en", "ja" をそのまま受け付ける
                 translator = DTGoogleTranslator(
                     source="auto",
-                    target=self.LANG_MAP[target_lang]
+                    target=target_lang
                 )
                 return translator.translate(text)
             except TranslationNotFound as e:
                 raise TranslationError(f"Translation failed: {e}")
-            except KeyError:
-                raise TranslationError(f"Unsupported language: {target_lang}")
             except Exception as e:
                 raise TranslationError(f"Google Translate error: {e}")
 
@@ -257,10 +304,8 @@ class DeepLTranslator:
     DeepL API を使用した翻訳バックエンド。
 
     高品質な翻訳が可能だが、APIキーが必要。
+    言語コードは .upper() で変換（"en" -> "EN"）。
     """
-
-    # 内部言語コード -> DeepL 言語コード
-    LANG_MAP = {"en": "EN", "ja": "JA"}
 
     DEFAULT_API_URL = "https://api-free.deepl.com/v2/translate"
 
@@ -284,6 +329,10 @@ class DeepLTranslator:
         テキストを翻訳する。
 
         改行を含むテキストも対応。1回の API コールで処理。
+
+        Args:
+            text: 翻訳するテキスト
+            target_lang: 翻訳先言語（"en", "ja"）- .upper() で変換
         """
         if not text.strip():
             return text
@@ -291,7 +340,7 @@ class DeepLTranslator:
         params = {
             "auth_key": self._api_key,
             "text": text,
-            "target_lang": self.LANG_MAP[target_lang],
+            "target_lang": target_lang.upper(),  # "en" -> "EN", "ja" -> "JA"
             "tag_handling": "xml",
             "formality": "more",
         }
@@ -331,7 +380,10 @@ class LanguageConfig(TypedDict):
     spacy: str  # spaCyモデル名
 
 
-# 言語設定（DeepL コードは TranslatorBackend 内で管理）
+# 言語設定
+# - 言語コード変換は各 TranslatorBackend が担当
+# - Google: "en", "ja" をそのまま使用
+# - DeepL: .upper() で "EN", "JA" に変換
 SUPPORTED_LANGUAGES: dict[str, LanguageConfig] = {
     "en": {"spacy": "en_core_web_sm"},
     "ja": {"spacy": "ja_core_news_sm"},
@@ -1079,6 +1131,8 @@ CLI オプションセクションを更新：
 | `TranslationConfig` | `api_key` は `backend="deepl"` 時のみ必須 |
 | `aiohttp` 依存 | オプショナル（`[deepl]` extra）に移動 |
 | `deepl_target_lang` プロパティ | 削除 |
+| `SUPPORTED_LANGUAGES` | `deepl` キー削除（`spacy` のみ） |
+| Translator `LANG_MAP` | 廃止（各バックエンドで直接変換） |
 
 ### マイグレーションガイド
 
