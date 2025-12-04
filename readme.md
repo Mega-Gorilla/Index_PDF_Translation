@@ -53,10 +53,39 @@ DEEPL_API_URL = "https://api-free.deepl.com/v2/translate"  # Pro: https://api.de
 
 フォントファイルが見つからない場合、PyMuPDF組み込みフォントにフォールバックします。
 
-# コードの実行
+# 使用方法
 
-以下のコマンドを実行して、PDF翻訳を実行します。アプリケーションが起動すると、ファイルエクスプローラが表示されます。
-翻訳するPDFを選択してください。翻訳が完了すると、./outputに翻訳後のPDFデータが保存されます。
+## 基本的な使い方
+
+```bash
+# uv を使用する場合（推奨）
+uv run python translate_pdf.py paper.pdf
+
+# pip を使用する場合
+python translate_pdf.py paper.pdf
 ```
- python manual_translate_pdf.py
- ```
+
+翻訳が完了すると、`./output/translated_<ファイル名>.pdf` に見開きPDF（オリジナル + 翻訳）が保存されます。
+
+## オプション
+
+| オプション | 説明 | デフォルト |
+|------------|------|-----------|
+| `-o, --output` | 出力ファイルのパス | `./output/translated_<input>.pdf` |
+| `-s, --source` | 翻訳元の言語 (en/ja) | `en` |
+| `-t, --target` | 翻訳先の言語 (en/ja) | `ja` |
+| `--no-logo` | ロゴウォーターマークを無効化 | - |
+| `--debug` | デバッグモード（ブロック分類の可視化） | - |
+
+## 使用例
+
+```bash
+# 出力ファイルを指定
+uv run python translate_pdf.py paper.pdf -o ./result.pdf
+
+# 日本語から英語に翻訳
+uv run python translate_pdf.py paper.pdf -s ja -t en
+
+# ロゴなし + デバッグモード
+uv run python translate_pdf.py paper.pdf --no-logo --debug
+```

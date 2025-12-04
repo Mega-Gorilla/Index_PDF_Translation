@@ -102,39 +102,64 @@ async def preprocess_translation_blocks(blocks,end_maker=(".",":",";"),end_maker
     return results
 
 
-async def pdf_translate(key,pdf_data,source_lang = 'en',to_lang = 'ja',api_url="https://api.deepl.com/v2/translate",debug = False,disable_translate=False):
+async def pdf_translate(key, pdf_data, source_lang='en', to_lang='ja',
+                        api_url="https://api.deepl.com/v2/translate",
+                        debug=False, disable_translate=False, add_logo=True):
+    """
+    PDFを翻訳し、見開きPDF（オリジナル + 翻訳）を生成します。
 
+    Args:
+        key: DeepL APIキー
+        pdf_data: 入力PDFのバイナリデータ
+        source_lang: 翻訳元言語コード (default: 'en')
+        to_lang: 翻訳先言語コード (default: 'ja')
+        api_url: DeepL API URL
+        debug: デバッグモード（可視化PDF生成）
+        disable_translate: 翻訳を無効化（テスト用）
+        add_logo: ロゴウォーターマークを追加 (default: True)
+
+    Returns:
+        見開きPDFのバイナリデータ
+    """
     block_info = await extract_text_coordinates_dict(pdf_data)
-    
+
     if debug:
-        text_blocks,fig_blocks,remove_info,plot_images = await remove_blocks(block_info,10,lang=source_lang,debug=True)
+        text_blocks, fig_blocks, remove_info, plot_images = await remove_blocks(
+            block_info, 10, lang=source_lang, debug=True
+        )
     else:
-        text_blocks,fig_blocks,_,_ = await remove_blocks(block_info,10,lang=source_lang)
+        text_blocks, fig_blocks, _, _ = await remove_blocks(block_info, 10, lang=source_lang)
+
     # 翻訳部分を消去したPDFデータを制作
-    removed_textbox_pdf_data = await remove_textbox_for_pdf(pdf_data,text_blocks)
-    removed_textbox_pdf_data = await remove_textbox_for_pdf(removed_textbox_pdf_data,fig_blocks)
+    removed_textbox_pdf_data = await remove_textbox_for_pdf(pdf_data, text_blocks)
+    removed_textbox_pdf_data = await remove_textbox_for_pdf(removed_textbox_pdf_data, fig_blocks)
     print("1.Generate removed_textbox_pdf_data")
 
     # 翻訳前のブロック準備
-    preprocess_text_blocks = await preprocess_translation_blocks(text_blocks,(".",":",";"),True)
-    preprocess_fig_blocks = await preprocess_translation_blocks(fig_blocks,(".",":",";"),False)
+    preprocess_text_blocks = await preprocess_translation_blocks(text_blocks, (".", ":", ";"), True)
+    preprocess_fig_blocks = await preprocess_translation_blocks(fig_blocks, (".", ":", ";"), False)
     print("2.Generate Prepress_blocks")
 
     # 翻訳実施
     if disable_translate is False:
-        translate_text_blocks = await translate_blocks(preprocess_text_blocks,key,to_lang,api_url)
-        translate_fig_blocks = await translate_blocks(preprocess_fig_blocks,key,to_lang,api_url)
+        translate_text_blocks = await translate_blocks(preprocess_text_blocks, key, to_lang, api_url)
+        translate_fig_blocks = await translate_blocks(preprocess_fig_blocks, key, to_lang, api_url)
         print("3.translated blocks")
+
         # pdf書き込みデータ作成
-        write_text_blocks = await preprocess_write_blocks(translate_text_blocks,to_lang)
-        write_fig_blocks = await preprocess_write_blocks(translate_fig_blocks,to_lang)
+        write_text_blocks = await preprocess_write_blocks(translate_text_blocks, to_lang)
+        write_fig_blocks = await preprocess_write_blocks(translate_fig_blocks, to_lang)
         print("4.Generate wirte Blocks")
+
         # pdfの作成
         if write_text_blocks != []:
-            translated_pdf_data = await write_pdf_text(removed_textbox_pdf_data,write_text_blocks,to_lang)
+            translated_pdf_data = await write_pdf_text(removed_textbox_pdf_data, write_text_blocks, to_lang)
         if write_fig_blocks != []:
-            translated_pdf_data = await write_pdf_text(translated_pdf_data,write_fig_blocks,to_lang)
-        translated_pdf_data = await write_logo_data(translated_pdf_data)
+            translated_pdf_data = await write_pdf_text(translated_pdf_data, write_fig_blocks, to_lang)
+
+        # ロゴ追加（オプション）
+        if add_logo:
+            translated_pdf_data = await write_logo_data(translated_pdf_data)
     else:
         print("99.Translate is False")
 
