@@ -256,6 +256,11 @@ def chunk_texts_for_translation(
 
     Returns:
         チャンクに分割されたテキストリストのリスト
+
+    Note:
+        単一ブロックが max_size を超える場合はそのまま単独チャンクとして扱う。
+        API 側でエラーになる可能性があるが、学術論文では稀なケースのため
+        Phase 1 ではハードエラーとして処理し、ログで警告を出力する。
     """
     chunks: list[list[str]] = []
     current_chunk: list[str] = []
@@ -263,6 +268,21 @@ def chunk_texts_for_translation(
     separator_len = len(separator)
 
     for text in texts:
+        # 単一ブロックが制限を超える場合は警告してそのまま追加
+        if len(text) > max_size:
+            # 現在のチャンクを先に保存
+            if current_chunk:
+                chunks.append(current_chunk)
+                current_chunk = []
+                current_size = 0
+            # 巨大ブロックを単独チャンクとして追加（APIエラーになる可能性あり）
+            chunks.append([text])
+            logger.warning(
+                f"Single block exceeds MAX_CHUNK_SIZE ({len(text)} > {max_size}). "
+                f"May fail at translation API."
+            )
+            continue
+
         # セパレータを含めたサイズを計算
         item_size = len(text)
         if current_chunk:
@@ -284,6 +304,29 @@ def chunk_texts_for_translation(
 
     return chunks
 ```
+
+### 巨大ブロック（単一ブロック > MAX_CHUNK_SIZE）の対応方針
+
+| 方針 | 採用 | 理由 |
+|------|------|------|
+| **ハードエラー（警告ログ）** | ✅ Phase 1 | シンプル、学術論文では稀 |
+| 句点で分割 | ❌ | 分割後の再結合が複雑、翻訳品質低下 |
+| 別 API 使用 | ❌ | 実装複雑度増加 |
+
+**学術論文での実態**:
+- 一般的な段落: 200〜500 文字
+- 長めの段落: 1,000〜2,000 文字
+- 4,500 文字超の単一ブロック: **極めて稀**（Abstract 全体でも 2,000 文字程度）
+
+**Phase 1 での対応**:
+1. 警告ログを出力
+2. そのまま API に送信（エラーになる可能性あり）
+3. エラー時は `TranslationError` として上位に伝播
+
+**将来の改善案（Phase 2 以降）**:
+- 句点・改行での自動分割
+- ユーザーへの警告メッセージ表示
+- 手動分割のガイダンス
 
 ### 翻訳フロー
 
@@ -321,73 +364,72 @@ def chunk_texts_for_translation(
 | DeepL | 429 Too Many Requests | APIクォータ超過 |
 | DeepL | 456 Quota Exceeded | 月間クォータ超過 |
 
-### 解決策: 指数バックオフリトライ
+### Phase 1 での実装（固定遅延リトライ）
+
+**採用方針**: シンプルな固定遅延リトライを実装。
+
+| パラメータ | 値 | 理由 |
+|-----------|-----|------|
+| max_retries | 3 | 一時的なエラーに対応 |
+| retry_delay | 1.0秒 | シンプル、過度な待機を避ける |
 
 ```python
-import asyncio
-from typing import TypeVar
-
-T = TypeVar("T")
-
-async def with_retry(
-    func,
+async def translate_chunk_with_retry(
+    translator: "TranslatorBackend",
+    text: str,
+    target_lang: str,
     max_retries: int = 3,
-    base_delay: float = 1.0,
-    max_delay: float = 30.0,
-) -> T:
+    retry_delay: float = 1.0,
+) -> str:
     """
-    指数バックオフでリトライする。
+    固定遅延リトライ付きで翻訳を実行（Phase 1 実装）。
 
     Args:
-        func: 実行する非同期関数
+        translator: 翻訳バックエンド
+        text: 翻訳するテキスト
+        target_lang: 翻訳先言語コード
         max_retries: 最大リトライ回数
-        base_delay: 初回リトライの遅延秒数
-        max_delay: 最大遅延秒数
-    """
-    last_error = None
+        retry_delay: リトライ間隔（秒）- 固定
 
+    Returns:
+        翻訳されたテキスト
+
+    Raises:
+        TranslationError: リトライ後も失敗した場合
+    """
+    from index_pdf_translation.translators.base import TranslationError
+
+    last_error = None
     for attempt in range(max_retries + 1):
         try:
-            return await func()
+            return await translator.translate(text, target_lang)
         except TranslationError as e:
             last_error = e
-            if attempt == max_retries:
+            if attempt < max_retries:
+                logger.warning(
+                    f"Translation failed (attempt {attempt + 1}/{max_retries + 1}), "
+                    f"retrying in {retry_delay}s: {e}"
+                )
+                await asyncio.sleep(retry_delay)  # 固定遅延
+            else:
                 raise
 
-            # 指数バックオフ: 1, 2, 4, 8... 秒
-            delay = min(base_delay * (2 ** attempt), max_delay)
-            logger.warning(
-                f"Translation failed (attempt {attempt + 1}/{max_retries + 1}), "
-                f"retrying in {delay}s: {e}"
-            )
-            await asyncio.sleep(delay)
-
-    raise last_error  # 到達しないはずだが型チェック用
+    raise last_error  # 型チェック用（到達しない）
 ```
 
-### 適用箇所
+### 将来の改善案（Phase 2 以降）
 
-`translate_blocks()` 内の各チャンク翻訳でリトライを適用:
+指数バックオフリトライへの移行を検討:
 
 ```python
-async def translate_blocks(...):
-    ...
-    for chunk in chunks:
-        combined = BLOCK_SEPARATOR.join(chunk)
-
-        async def _translate():
-            return await translator.translate(combined, target_lang)
-
-        translated = await with_retry(_translate)
-        ...
+# 将来の実装イメージ
+delay = min(base_delay * (2 ** attempt), max_delay)  # 1, 2, 4, 8... 秒
 ```
 
-### Phase 1 での実装範囲
-
-**初回リリースではシンプルなリトライのみ実装**:
-- 最大3回リトライ
-- 固定遅延（1秒）
-- 指数バックオフは将来の改善として検討
+メリット:
+- レート制限時に段階的に待機時間を増加
+- API 側の負荷軽減
+- 成功確率向上
 
 ---
 
@@ -1282,6 +1324,11 @@ def chunk_texts_for_translation(
 
     Returns:
         チャンクに分割されたテキストリストのリスト
+
+    Note:
+        単一ブロックが max_size を超える場合はそのまま単独チャンクとして扱う。
+        API 側でエラーになる可能性があるが、学術論文では稀なケースのため
+        Phase 1 ではハードエラーとして処理し、ログで警告を出力する。
     """
     chunks: list[list[str]] = []
     current_chunk: list[str] = []
@@ -1289,6 +1336,21 @@ def chunk_texts_for_translation(
     separator_len = len(separator)
 
     for text in texts:
+        # 単一ブロックが制限を超える場合は警告してそのまま追加
+        if len(text) > max_size:
+            # 現在のチャンクを先に保存
+            if current_chunk:
+                chunks.append(current_chunk)
+                current_chunk = []
+                current_size = 0
+            # 巨大ブロックを単独チャンクとして追加（APIエラーになる可能性あり）
+            chunks.append([text])
+            logger.warning(
+                f"Single block exceeds MAX_CHUNK_SIZE ({len(text)} > {max_size}). "
+                f"May fail at translation API."
+            )
+            continue
+
         # セパレータを含めたサイズを計算
         item_size = len(text)
         if current_chunk:
@@ -1319,14 +1381,14 @@ async def translate_chunk_with_retry(
     retry_delay: float = 1.0,
 ) -> str:
     """
-    リトライ付きで翻訳を実行。
+    固定遅延リトライ付きで翻訳を実行（Phase 1 実装）。
 
     Args:
         translator: 翻訳バックエンド
         text: 翻訳するテキスト
         target_lang: 翻訳先言語コード
         max_retries: 最大リトライ回数
-        retry_delay: リトライ間隔（秒）
+        retry_delay: リトライ間隔（秒）- 固定
 
     Returns:
         翻訳されたテキスト
@@ -1347,7 +1409,7 @@ async def translate_chunk_with_retry(
                     f"Translation failed (attempt {attempt + 1}/{max_retries + 1}), "
                     f"retrying in {retry_delay}s: {e}"
                 )
-                await asyncio.sleep(retry_delay)
+                await asyncio.sleep(retry_delay)  # 固定遅延
             else:
                 raise
 
