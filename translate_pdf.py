@@ -105,10 +105,6 @@ async def translate(args):
     # 出力ディレクトリの作成
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # 言語コードの取得
-    source_deepl = SUPPORTED_LANGUAGES[args.source]["deepl"]
-    target_deepl = SUPPORTED_LANGUAGES[args.target]["deepl"]
-
     # 進捗表示
     print(f"入力: {input_path}")
     print(f"出力: {output_path}")
