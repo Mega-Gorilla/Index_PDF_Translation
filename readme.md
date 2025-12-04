@@ -43,13 +43,24 @@ python -m spacy download ja_core_news_sm
 
 ### APIキーの設定
 
-config.pyを開き、`DEEPL_API_KEY`を変更し、[DeepL APIキー管理ページ](https://www.deepl.com/ja/your-account/keys)より取得したAPIキーを入力してください。
+[DeepL APIキー管理ページ](https://www.deepl.com/ja/your-account/keys)からAPIキーを取得し、以下のいずれかの方法で設定してください。
 
-DeepL API Proユーザーの場合、`DEEPL_API_URL`をPro API用URLに変更してください。
+#### 方法1: 環境変数（推奨）
 
-```python
-DEEPL_API_KEY = "your-api-key"
-DEEPL_API_URL = "https://api-free.deepl.com/v2/translate"  # Pro: https://api.deepl.com/v2/translate
+```bash
+export DEEPL_API_KEY="your-api-key"
+
+# DeepL API Proユーザーの場合（オプション）
+export DEEPL_API_URL="https://api.deepl.com/v2/translate"
+```
+
+#### 方法2: コマンドラインオプション
+
+```bash
+uv run python translate_pdf.py paper.pdf --api-key "your-api-key"
+
+# DeepL API Proユーザーの場合
+uv run python translate_pdf.py paper.pdf --api-key "your-api-key" --api-url "https://api.deepl.com/v2/translate"
 ```
 
 ## 使用方法
@@ -73,6 +84,8 @@ python translate_pdf.py paper.pdf
 | `-o, --output` | 出力ファイルのパス | `./output/translated_<input>.pdf` |
 | `-s, --source` | 翻訳元の言語 (en/ja) | `en` |
 | `-t, --target` | 翻訳先の言語 (en/ja) | `ja` |
+| `--api-key` | DeepL APIキー | 環境変数 `DEEPL_API_KEY` |
+| `--api-url` | DeepL API URL | `https://api-free.deepl.com/v2/translate` |
 | `--no-logo` | ロゴウォーターマークを無効化 | - |
 | `--debug` | デバッグモード（ブロック分類の可視化） | - |
 
@@ -96,7 +109,6 @@ uv run python translate_pdf.py paper.pdf --no-logo --debug
 ```
 Index_PDF_Translation/
 ├── translate_pdf.py                   # CLIエントリーポイント
-├── config.py                          # DeepL API設定
 ├── src/index_pdf_translation/         # パッケージ本体
 │   ├── __init__.py                    # 公開API
 │   ├── core/
@@ -154,8 +166,9 @@ DeepL API request failed with status code 403
 ```
 
 **解決方法**:
-- `config.py`の`DEEPL_API_KEY`が正しいか確認
-- Free APIを使用している場合、`DEEPL_API_URL`が`https://api-free.deepl.com/v2/translate`になっているか確認
+- 環境変数 `DEEPL_API_KEY` または `--api-key` オプションで設定したAPIキーが正しいか確認
+- Free APIを使用している場合、`DEEPL_API_URL` が `https://api-free.deepl.com/v2/translate` になっているか確認（デフォルト）
+- Pro APIを使用する場合は `--api-url https://api.deepl.com/v2/translate` を指定
 
 ### フォントが見つからない警告
 
@@ -203,7 +216,7 @@ Font file not found: LiberationSerif-Regular.ttf
 uv sync --extra dev
 
 # 構文チェック
-uv run python -m py_compile translate_pdf.py config.py
+uv run python -m py_compile translate_pdf.py
 ```
 
 ### コード規約
@@ -215,7 +228,7 @@ uv run python -m py_compile translate_pdf.py config.py
 
 ### モジュール拡張
 
-新しい言語を追加する場合、`config.py`の`SUPPORTED_LANGUAGES`に追加してください:
+新しい言語を追加する場合、`src/index_pdf_translation/config.py`の`SUPPORTED_LANGUAGES`に追加してください:
 
 ```python
 SUPPORTED_LANGUAGES: dict[str, LanguageConfig] = {

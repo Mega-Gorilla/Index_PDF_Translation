@@ -14,13 +14,11 @@ CLI usage:
 """
 
 from index_pdf_translation._version import __version__
+from index_pdf_translation.config import TranslationConfig
 from index_pdf_translation.core.translate import pdf_translate
-
-# TranslationConfig will be added in Phase 4
-# from index_pdf_translation.config import TranslationConfig
 
 __all__ = [
     "__version__",
     "pdf_translate",
-    # "TranslationConfig",  # Available after Phase 4
+    "TranslationConfig",
 ]

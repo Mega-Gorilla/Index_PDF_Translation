@@ -9,6 +9,7 @@ from typing import Any, Optional
 
 import aiohttp
 
+from index_pdf_translation.config import TranslationConfig
 from index_pdf_translation.logger import get_logger
 from index_pdf_translation.core.pdf_edit import (
     DocumentBlocks,
@@ -175,14 +176,16 @@ async def preprocess_translation_blocks(
 
 
 async def pdf_translate(
-    key: str,
     pdf_data: bytes,
+    *,
+    config: Optional[TranslationConfig] = None,
+    api_key: Optional[str] = None,
+    api_url: Optional[str] = None,
     source_lang: str = "en",
-    to_lang: str = "ja",
-    api_url: str = "https://api.deepl.com/v2/translate",
+    target_lang: str = "ja",
     debug: bool = False,
-    disable_translate: bool = False,
     add_logo: bool = True,
+    disable_translate: bool = False,
 ) -> Optional[bytes]:
     """
     PDFを翻訳し、見開きPDF（オリジナル + 翻訳）を生成します。
@@ -197,29 +200,65 @@ async def pdf_translate(
     7. 見開きPDF生成
 
     Args:
-        key: DeepL APIキー
         pdf_data: 入力PDFのバイナリデータ
-        source_lang: 翻訳元言語コード (default: 'en')
-        to_lang: 翻訳先言語コード (default: 'ja')
-        api_url: DeepL API URL
-        debug: デバッグモード（可視化PDF生成）
+        config: TranslationConfig オブジェクト。指定時は他のパラメータより優先。
+        api_key: DeepL APIキー (config未指定時に使用)
+        api_url: DeepL API URL (config未指定時に使用)
+        source_lang: 翻訳元言語コード (config未指定時に使用, default: 'en')
+        target_lang: 翻訳先言語コード (config未指定時に使用, default: 'ja')
+        debug: デバッグモード (config未指定時に使用, default: False)
+        add_logo: ロゴウォーターマークを追加 (config未指定時に使用, default: True)
         disable_translate: 翻訳を無効化（テスト用）
-        add_logo: ロゴウォーターマークを追加 (default: True)
 
     Returns:
         見開きPDFのバイナリデータ、または失敗時はNone
+
+    Examples:
+        >>> # TranslationConfig を使用
+        >>> config = TranslationConfig(api_key="your-key")
+        >>> result = await pdf_translate(pdf_data, config=config)
+
+        >>> # 個別パラメータを使用
+        >>> result = await pdf_translate(
+        ...     pdf_data,
+        ...     api_key="your-key",
+        ...     source_lang="en",
+        ...     target_lang="ja",
+        ... )
     """
+    # 設定の解決
+    if config is not None:
+        # TranslationConfig が指定された場合、その値を使用
+        effective_api_key = config.api_key
+        effective_api_url = config.api_url
+        effective_source_lang = config.source_lang
+        effective_target_lang = config.target_lang
+        effective_debug = config.debug
+        effective_add_logo = config.add_logo
+    else:
+        # 個別パラメータを使用
+        if api_key is None:
+            raise ValueError(
+                "api_key is required. Pass api_key parameter or use TranslationConfig."
+            )
+        effective_api_key = api_key
+        effective_api_url = api_url or "https://api-free.deepl.com/v2/translate"
+        effective_source_lang = source_lang
+        effective_target_lang = target_lang
+        effective_debug = debug
+        effective_add_logo = add_logo
+
     # 1. テキストブロック抽出
     block_info = await extract_text_coordinates_dict(pdf_data)
 
     # 2. ブロック分類
-    if debug:
+    if effective_debug:
         text_blocks, fig_blocks, remove_info, plot_images = await remove_blocks(
-            block_info, 10, lang=source_lang, debug=True
+            block_info, 10, lang=effective_source_lang, debug=True
         )
     else:
         text_blocks, fig_blocks, _, _ = await remove_blocks(
-            block_info, 10, lang=source_lang
+            block_info, 10, lang=effective_source_lang
         )
 
     # 3. テキスト削除
@@ -241,31 +280,41 @@ async def pdf_translate(
     # 4. 翻訳実施
     if not disable_translate:
         translate_text_blocks = await translate_blocks(
-            preprocess_text_blocks, key, to_lang, api_url
+            preprocess_text_blocks,
+            effective_api_key,
+            effective_target_lang,
+            effective_api_url,
         )
         translate_fig_blocks = await translate_blocks(
-            preprocess_fig_blocks, key, to_lang, api_url
+            preprocess_fig_blocks,
+            effective_api_key,
+            effective_target_lang,
+            effective_api_url,
         )
         logger.info("3. 翻訳完了")
 
         # 5. PDF書き込みデータ作成
-        write_text_blocks = await preprocess_write_blocks(translate_text_blocks, to_lang)
-        write_fig_blocks = await preprocess_write_blocks(translate_fig_blocks, to_lang)
+        write_text_blocks = await preprocess_write_blocks(
+            translate_text_blocks, effective_target_lang
+        )
+        write_fig_blocks = await preprocess_write_blocks(
+            translate_fig_blocks, effective_target_lang
+        )
         logger.info("4. 書き込みブロック生成完了")
 
         # PDFの作成
         translated_pdf_data = removed_textbox_pdf_data
         if write_text_blocks:
             translated_pdf_data = await write_pdf_text(
-                translated_pdf_data, write_text_blocks, to_lang
+                translated_pdf_data, write_text_blocks, effective_target_lang
             )
         if write_fig_blocks:
             translated_pdf_data = await write_pdf_text(
-                translated_pdf_data, write_fig_blocks, to_lang
+                translated_pdf_data, write_fig_blocks, effective_target_lang
             )
 
         # 6. ロゴ追加（オプション）
-        if add_logo:
+        if effective_add_logo:
             translated_pdf_data = await write_logo_data(translated_pdf_data)
     else:
         logger.info("翻訳スキップ（disable_translate=True）")
