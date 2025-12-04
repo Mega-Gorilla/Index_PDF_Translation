@@ -20,13 +20,19 @@ import argparse
 import asyncio
 import sys
 from pathlib import Path
+from typing import NoReturn
 
 from config import DEEPL_API_KEY, DEEPL_API_URL, OUTPUT_DIR, SUPPORTED_LANGUAGES
 from modules.translate import pdf_translate
 
 
-def parse_args():
-    """コマンドライン引数をパースします。"""
+def parse_args() -> argparse.Namespace:
+    """
+    コマンドライン引数をパースします。
+
+    Returns:
+        パースされた引数のNamespace
+    """
     parser = argparse.ArgumentParser(
         prog="translate_pdf",
         description="PDF翻訳ツール - 学術論文PDFを翻訳し見開きPDFを生成",
@@ -48,20 +54,23 @@ Examples:
     )
 
     parser.add_argument(
-        "-o", "--output",
+        "-o",
+        "--output",
         type=Path,
         help=f"出力ファイルのパス (デフォルト: {OUTPUT_DIR}translated_<input>.pdf)",
     )
 
     parser.add_argument(
-        "-s", "--source",
+        "-s",
+        "--source",
         default="en",
         choices=list(SUPPORTED_LANGUAGES.keys()),
         help="翻訳元の言語 (デフォルト: en)",
     )
 
     parser.add_argument(
-        "-t", "--target",
+        "-t",
+        "--target",
         default="ja",
         choices=list(SUPPORTED_LANGUAGES.keys()),
         help="翻訳先の言語 (デフォルト: ja)",
@@ -82,22 +91,30 @@ Examples:
     return parser.parse_args()
 
 
-async def translate(args):
-    """PDFを翻訳します。"""
-    input_path = args.input
+async def translate(args: argparse.Namespace) -> int:
+    """
+    PDFを翻訳します。
+
+    Args:
+        args: コマンドライン引数
+
+    Returns:
+        終了コード（0: 成功, 1: 失敗）
+    """
+    input_path: Path = args.input
 
     # 入力ファイルの検証
     if not input_path.exists():
         print(f"エラー: ファイルが見つかりません: {input_path}", file=sys.stderr)
         return 1
 
-    if not input_path.suffix.lower() == ".pdf":
+    if input_path.suffix.lower() != ".pdf":
         print(f"エラー: PDFファイルではありません: {input_path}", file=sys.stderr)
         return 1
 
     # 出力パスの決定
     if args.output:
-        output_path = args.output
+        output_path: Path = args.output
     else:
         output_dir = Path(OUTPUT_DIR)
         output_path = output_dir / f"translated_{input_path.name}"
@@ -143,7 +160,7 @@ async def translate(args):
     return 0
 
 
-def main():
+def main() -> NoReturn:
     """メインエントリーポイント。"""
     args = parse_args()
     exit_code = asyncio.run(translate(args))
