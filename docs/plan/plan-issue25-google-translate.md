@@ -471,6 +471,98 @@ DeepL でセパレータが翻訳される場合の対策:
 
 ---
 
+## 設計判断: 環境変数と .env ファイル
+
+### 方針
+
+**`.env` はオプショナルとしてサポート**。必須にはしない。
+
+| 項目 | 方針 | 理由 |
+|------|------|------|
+| `.env` サポート | ✅ あり | 開発者体験向上 |
+| python-dotenv | ❌ 追加しない | 依存関係を最小限に保つ |
+| 必須化 | ❌ しない | Google デフォルトの強み（APIキー不要）を活かす |
+
+### 背景
+
+このプロジェクトの最大の強みは「**APIキー不要で動作する**」こと。
+`.env` を必須にすると、その強みが薄れる。
+DeepL/OpenAI 使用時の**便利機能**として位置づける。
+
+### ファイル構成
+
+```
+.gitignore          # .env を含める（セキュリティ）
+.env.example        # テンプレート（コミット対象）
+.env                # 実際の値（gitignore 対象）
+```
+
+### `.env.example` テンプレート
+
+```bash
+# Index PDF Translation - Environment Variables
+# Copy this file to .env and fill in your API keys.
+# All variables are OPTIONAL - Google Translate works without any API key.
+
+# ============================================================
+# DeepL API (for --backend deepl)
+# ============================================================
+# Get your API key at: https://www.deepl.com/pro-api
+# DEEPL_API_KEY=your-deepl-api-key-here
+
+# For DeepL Pro users (default is Free API):
+# DEEPL_API_URL=https://api.deepl.com/v2/translate
+
+# ============================================================
+# OpenAI API (for --backend openai, future feature)
+# ============================================================
+# Get your API key at: https://platform.openai.com/api-keys
+# OPENAI_API_KEY=your-openai-api-key-here
+```
+
+### 読み込み方法
+
+**python-dotenv は使用しない**。ユーザーは以下のいずれかで設定:
+
+| 方法 | コマンド例 |
+|------|-----------|
+| シェル読み込み | `source .env && translate-pdf paper.pdf --backend deepl` |
+| export | `export DEEPL_API_KEY=xxx && translate-pdf ...` |
+| CLI オプション | `translate-pdf paper.pdf --backend deepl --api-key xxx` |
+| IDE 設定 | VS Code の `.vscode/launch.json` 等 |
+
+### python-dotenv を追加しない理由
+
+| 観点 | 説明 |
+|------|------|
+| 依存関係 | パッケージサイズ増加を避ける |
+| ライブラリ利用 | `import` 時に自動読み込みは副作用になりうる |
+| シンプルさ | 現在の `os.environ.get()` で十分 |
+| 代替手段 | シェルの `source` や IDE 設定で対応可能 |
+
+### 将来の検討事項
+
+ユーザーからの要望が多い場合、以下の方法で対応可能:
+
+```python
+# cli.py のみで読み込み（ライブラリ使用時は影響なし）
+def main():
+    try:
+        from dotenv import load_dotenv
+        load_dotenv()
+    except ImportError:
+        pass  # dotenv がなくても動作
+    ...
+```
+
+```toml
+# pyproject.toml - オプショナル依存として追加
+[project.optional-dependencies]
+dotenv = ["python-dotenv>=1.0.0"]
+```
+
+---
+
 ## 拡張計画: OpenAI GPT 翻訳対応
 
 ### 背景・目的
@@ -2206,6 +2298,38 @@ DeepL を使用するには追加の依存関係が必要：
 ```bash
 uv pip install index-pdf-translation[deepl]
 ```
+
+## 環境変数の設定（オプション）
+
+DeepL や OpenAI（将来対応）を使用する場合、環境変数で API キーを設定できます。
+
+### 方法 1: .env ファイルを使用
+
+```bash
+# .env.example をコピー
+cp .env.example .env
+
+# .env を編集して API キーを設定
+# DEEPL_API_KEY=your-api-key-here
+
+# シェルで読み込んで実行
+source .env && translate-pdf paper.pdf --backend deepl
+```
+
+### 方法 2: export コマンド
+
+```bash
+export DEEPL_API_KEY="your-api-key"
+translate-pdf paper.pdf --backend deepl
+```
+
+### 方法 3: CLI オプション
+
+```bash
+translate-pdf paper.pdf --backend deepl --api-key "your-api-key"
+```
+
+> **Note**: Google 翻訳（デフォルト）は API キー不要のため、環境変数の設定なしで使用できます。
 ```
 
 #### 7.2 `CLAUDE.md` 更新
@@ -2222,6 +2346,40 @@ CLI オプションセクションを更新：
 - `--api-url`: DeepL API URL (for Pro users)
 - `--no-logo`: Disable logo watermark
 - `--debug`: Enable debug mode
+```
+
+#### 7.3 `.env.example` 新規作成
+
+```bash
+# Index PDF Translation - Environment Variables
+# Copy this file to .env and fill in your API keys.
+# All variables are OPTIONAL - Google Translate works without any API key.
+
+# ============================================================
+# DeepL API (for --backend deepl)
+# ============================================================
+# Get your API key at: https://www.deepl.com/pro-api
+# DEEPL_API_KEY=your-deepl-api-key-here
+
+# For DeepL Pro users (default is Free API):
+# DEEPL_API_URL=https://api.deepl.com/v2/translate
+
+# ============================================================
+# OpenAI API (for --backend openai, future feature)
+# ============================================================
+# Get your API key at: https://platform.openai.com/api-keys
+# OPENAI_API_KEY=your-openai-api-key-here
+```
+
+#### 7.4 `.gitignore` 更新
+
+以下を追加:
+
+```gitignore
+# Environment variables (API keys)
+.env
+.env.local
+.env.*.local
 ```
 
 ---
@@ -2303,8 +2461,10 @@ result = await pdf_translate(pdf_data, config=config)
 
 ### Phase 7: ドキュメント
 - [ ] `CHANGELOG.md` 新規作成（Breaking Changes）
-- [ ] `readme.md` 更新
+- [ ] `readme.md` 更新（環境変数設定セクション追加）
 - [ ] `CLAUDE.md` 更新
+- [ ] `.env.example` 新規作成（APIキーテンプレート）
+- [ ] `.gitignore` 更新（`.env` 追加）
 
 ### 最終確認
 - [ ] `__init__.py` 更新（エクスポート追加）
@@ -2324,6 +2484,7 @@ result = await pdf_translate(pdf_data, config=config)
 | `src/index_pdf_translation/translators/deepl.py` | DeepL 翻訳バックエンド |
 | `tests/test_translators.py` | 翻訳バックエンドのテスト |
 | `CHANGELOG.md` | 変更履歴（Breaking Changes 記載） |
+| `.env.example` | 環境変数テンプレート（APIキー設定用） |
 
 ### 更新
 | ファイル | 主な変更 |
@@ -2334,5 +2495,6 @@ result = await pdf_translate(pdf_data, config=config)
 | `src/index_pdf_translation/core/translate.py` | チャンキング、リトライ、セパレータ方式 |
 | `src/index_pdf_translation/cli.py` | --backend オプション |
 | `tests/test_config.py` | Breaking Changes 対応 |
-| `readme.md` | Quick Start、翻訳バックエンド説明 |
+| `readme.md` | Quick Start、翻訳バックエンド、環境変数設定 |
 | `CLAUDE.md` | CLI オプション更新 |
+| `.gitignore` | `.env` 追加（セキュリティ） |
