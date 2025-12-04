@@ -1,7 +1,6 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 import aiohttp
 import asyncio
-from config import *
 from modules.pdf_edit import *
 
 async def translate_str_data(key: str,text: str, target_lang: str,api_url:str) -> str:

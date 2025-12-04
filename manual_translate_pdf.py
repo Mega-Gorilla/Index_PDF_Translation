@@ -4,10 +4,10 @@ import os
 import asyncio
 import tkinter as tk
 from tkinter import filedialog
-from config import *
+from config import DEEPL_API_KEY, DEEPL_API_URL, OUTPUT_DIR
 
 
-async def translate_local(deepl_url,deepl_key,disble_translate=False):
+async def translate_local(deepl_url, deepl_key, disable_translate=False):
     # GUIでファイル選択のための設定
     root = tk.Tk()
     root.withdraw()  # GUIのメインウィンドウを表示しない
@@ -20,16 +20,16 @@ async def translate_local(deepl_url,deepl_key,disble_translate=False):
     with open(file_path, "rb") as f:
         input_pdf_data = f.read()
 
-    result_pdf = await pdf_translate(deepl_key, input_pdf_data,api_url=deepl_url,debug=False,disable_translate=disble_translate)
+    result_pdf = await pdf_translate(deepl_key, input_pdf_data, api_url=deepl_url, debug=False, disable_translate=disable_translate)
 
     if result_pdf is None:
         return
     
     _, file_name = os.path.split(file_path)
-    output_path = Output_folder_path + "result_"+file_name
+    output_path = OUTPUT_DIR + "result_" + file_name
 
     with open(output_path, "wb") as f:
         f.write(result_pdf)
 
 if __name__ == "__main__":
-    asyncio.run(translate_local(DeepL_URL, DeepL_API_Key))
+    asyncio.run(translate_local(DEEPL_API_URL, DEEPL_API_KEY))

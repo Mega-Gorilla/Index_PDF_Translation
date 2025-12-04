@@ -32,8 +32,8 @@ Opens file dialog, translates selected PDF, saves to `./output/result_*.pdf`
 
 **config.py** - Set your DeepL API key:
 ```python
-DeepL_API_Key = "your-api-key"
-DeepL_URL = "https://api-free.deepl.com/v2/translate"  # or Pro URL
+DEEPL_API_KEY = "your-api-key"
+DEEPL_API_URL = "https://api-free.deepl.com/v2/translate"  # Pro: https://api.deepl.com/v2/translate
 ```
 
 ## Architecture

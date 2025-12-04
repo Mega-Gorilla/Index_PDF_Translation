@@ -1,8 +1,5 @@
 import spacy
-from config import SPACY_CONFIG
-
-# サポートされている言語とそのモデルのマッピング
-supported_languages = SPACY_CONFIG['supported_languages']
+from config import SUPPORTED_LANGUAGES
 
 # spaCyモデルをロードし、キャッシュしておく辞書
 loaded_models = {}
@@ -11,8 +8,8 @@ def load_model(lang_code):
     """指定された言語コードのモデルをロードする"""
     if lang_code in loaded_models:
         return loaded_models[lang_code]
-    if lang_code in supported_languages:
-        model_name = supported_languages[lang_code]
+    if lang_code in SUPPORTED_LANGUAGES:
+        model_name = SUPPORTED_LANGUAGES[lang_code]["spacy"]
         try:
             nlp = spacy.load(model_name)
             loaded_models[lang_code] = nlp
