@@ -630,7 +630,7 @@ wheels = [
 [[package]]
 name = "index-pdf-translation"
 version = "2.0.0"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "aiohttp" },
     { name = "matplotlib" },
