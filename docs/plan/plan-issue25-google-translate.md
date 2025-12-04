@@ -126,6 +126,331 @@ class DeepLTranslator:
 
 ---
 
+## 拡張計画: OpenAI GPT 翻訳対応
+
+### 背景・目的
+
+GPT モデルを使用した翻訳機能を追加し、以下のメリットを提供する：
+
+1. **専門的な翻訳**: プロンプトで専門分野を指定可能
+2. **用語集対応**: プロンプトに用語集を含めて一貫した訳語を使用
+3. **長文コンテキスト**: 論文全体を一括送信し、前後の文脈を踏まえた翻訳
+4. **カスタマイズ性**: 翻訳スタイルの調整が可能
+
+### モデル調査結果（2025年12月時点）
+
+#### GPT モデル比較
+
+| モデル | 入力（/1M tokens） | 出力（/1M tokens） | コンテキスト長 | 備考 |
+|--------|-------------------|-------------------|----------------|------|
+| **GPT-4.1-nano** | **$0.10** | **$0.40** | **1M** | ⭐ 最安、推奨 |
+| GPT-4.1-mini | $0.40 | $1.60 | 1M | バランス型 |
+| GPT-4.1 | $2.00 | $8.00 | 1M | 高品質 |
+| GPT-4o-mini | $0.15 | $0.60 | 128K | 旧モデル |
+| GPT-5-mini | $0.25 | $2.00 | 400K | 最新 |
+
+参考: [OpenAI Pricing](https://openai.com/api/pricing/), [GPT-4.1 Pricing Calculator](https://livechatai.com/gpt-4-1-pricing-calculator)
+
+#### 翻訳品質（WMT24 コンペティション）
+
+| モデル | 勝利言語ペア数（/11） |
+|--------|----------------------|
+| Claude 3.5 Sonnet | **9** |
+| GPT-4 | 5 |
+
+参考: [Best LLMs for Translation](https://www.getblend.com/blog/which-llm-is-best-for-translation/), [Lokalise LLM Comparison](https://lokalise.com/blog/what-is-the-best-llm-for-translation/)
+
+#### 推奨モデル: GPT-4.1-nano
+
+- **最安価**: GPT-4o-mini より安い（$0.10 vs $0.15）
+- **大容量コンテキスト**: 1M トークン（論文全体を一括処理可能）
+- **高性能**: GPT-4o-mini より高いインテリジェンススコア
+- **キャッシュ割引**: 同一入力の再利用で 75% 割引（$0.025/1M）
+
+### 改行保持問題と解決策
+
+#### 問題
+
+現在の設計は改行ベースのブロック対応に依存：
+
+```python
+texts = ["Hello", "World", "Good morning"]
+combined = "Hello\nWorld\nGood morning"
+translated = await translator.translate(combined, target_lang)
+lines = translated.split("\n")  # len(lines) == 3 を期待
+```
+
+**LLM は改行を 100% 保持する保証がない**
+
+#### 解決策: Structured Outputs（JSON 配列）
+
+OpenAI の [Structured Outputs](https://platform.openai.com/docs/guides/structured-outputs) 機能を使用：
+
+```python
+from pydantic import BaseModel
+
+class TranslationResult(BaseModel):
+    translations: list[str]
+
+response = await client.beta.chat.completions.parse(
+    model="gpt-4.1-nano",
+    messages=[
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "user", "content": json.dumps(texts)}
+    ],
+    response_format=TranslationResult,
+)
+```
+
+**メリット**:
+- gpt-4o-2024-08-06 以降、100% のスキーマ準拠率
+- 配列の要素数が保証される
+- 改行問題を完全に回避
+
+参考: [Structured Outputs Intro](https://cookbook.openai.com/examples/structured_outputs_intro)
+
+### 翻訳プロンプト設計
+
+#### システムプロンプト（案）
+
+```
+You are a professional translator specializing in academic papers.
+Translate the following texts from {source_lang} to {target_lang}.
+
+Requirements:
+- Preserve technical terminology accurately
+- Maintain the exact number of input texts in the output array
+- Each input text corresponds to one output text at the same index
+- Do not merge or split texts
+- Preserve any special characters or formatting within each text
+
+Return a JSON object with a "translations" array containing the translated texts.
+```
+
+#### 推奨パラメータ
+
+| パラメータ | 値 | 理由 |
+|-----------|-----|------|
+| temperature | 0.2 | 決定論的な翻訳結果 |
+| top_p | 0.6 | 安定した出力 |
+| response_format | Structured Output | 配列構造を保証 |
+
+参考: [GPT-4o Prompt Strategies](https://medium.com/@michalmikuli/gpt-4o-prompt-strategies-in-2025-d2f418cf0a79)
+
+### コスト試算
+
+学術論文1本（約10,000語 ≈ 15,000トークン）の翻訳コスト：
+
+| バックエンド | コスト | 備考 |
+|-------------|--------|------|
+| Google 翻訳 | **無料** | レート制限あり |
+| DeepL Free | **無料** | 月50万文字まで |
+| GPT-4.1-nano | **約 $0.006** | 入力+出力 |
+| GPT-4.1-mini | 約 $0.024 | |
+| GPT-4.1 | 約 $0.12 | |
+| DeepL Pro | 約 $0.27 | |
+
+**GPT-4.1-nano は非常に低コスト**（論文1本約0.6円）
+
+### 実装設計
+
+#### `src/index_pdf_translation/translators/openai.py`
+
+```python
+# SPDX-License-Identifier: AGPL-3.0-only
+"""OpenAI GPT 翻訳バックエンド"""
+
+import json
+from typing import Optional
+
+try:
+    from openai import AsyncOpenAI
+    from pydantic import BaseModel
+except ImportError:
+    raise ImportError(
+        "openai and pydantic are required for OpenAI backend. "
+        "Install with: pip install index-pdf-translation[openai]"
+    )
+
+from .base import TranslationError
+
+
+class TranslationResult(BaseModel):
+    """Structured Output 用のスキーマ"""
+    translations: list[str]
+
+
+class OpenAITranslator:
+    """
+    OpenAI GPT を使用した翻訳バックエンド。
+
+    Structured Outputs で配列構造を保証し、改行問題を回避。
+    """
+
+    DEFAULT_MODEL = "gpt-4.1-nano"
+
+    SYSTEM_PROMPT_TEMPLATE = """You are a professional translator specializing in academic papers.
+Translate the following texts from {source_lang} to {target_lang}.
+
+Requirements:
+- Preserve technical terminology accurately
+- Maintain the exact number of input texts in the output array
+- Each input text corresponds to one output text at the same index
+- Do not merge or split texts
+
+Return a JSON object with a "translations" array."""
+
+    # 言語コード -> 言語名
+    LANG_NAMES = {"en": "English", "ja": "Japanese"}
+
+    def __init__(
+        self,
+        api_key: str,
+        model: str = DEFAULT_MODEL,
+        source_lang: str = "en",
+    ):
+        if not api_key:
+            raise ValueError("OpenAI API key is required")
+        self._client = AsyncOpenAI(api_key=api_key)
+        self._model = model
+        self._source_lang = source_lang
+
+    @property
+    def name(self) -> str:
+        return "openai"
+
+    async def translate(self, text: str, target_lang: str) -> str:
+        """単一テキストを翻訳（改行区切りで複数テキストとして処理）"""
+        if not text.strip():
+            return text
+
+        # 改行で分割して配列として送信
+        texts = text.split("\n")
+        translated_texts = await self.translate_texts(texts, target_lang)
+        return "\n".join(translated_texts)
+
+    async def translate_texts(
+        self,
+        texts: list[str],
+        target_lang: str
+    ) -> list[str]:
+        """複数テキストを Structured Outputs で翻訳"""
+        if not texts:
+            return []
+
+        # 空文字列のインデックスを記録
+        non_empty_indices = [i for i, t in enumerate(texts) if t.strip()]
+        non_empty_texts = [texts[i] for i in non_empty_indices]
+
+        if not non_empty_texts:
+            return texts
+
+        system_prompt = self.SYSTEM_PROMPT_TEMPLATE.format(
+            source_lang=self.LANG_NAMES.get(self._source_lang, self._source_lang),
+            target_lang=self.LANG_NAMES.get(target_lang, target_lang),
+        )
+
+        try:
+            response = await self._client.beta.chat.completions.parse(
+                model=self._model,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": json.dumps(non_empty_texts)},
+                ],
+                response_format=TranslationResult,
+                temperature=0.2,
+                top_p=0.6,
+            )
+
+            result = response.choices[0].message.parsed
+            translated_parts = result.translations
+
+            # 結果を元の位置に戻す
+            results = list(texts)
+            for idx, translated in zip(non_empty_indices, translated_parts):
+                if idx < len(results):
+                    results[idx] = translated
+
+            return results
+
+        except Exception as e:
+            raise TranslationError(f"OpenAI API error: {e}")
+```
+
+#### TranslationConfig 更新
+
+```python
+TranslatorBackendType = Literal["google", "deepl", "openai"]
+
+@dataclass
+class TranslationConfig:
+    backend: TranslatorBackendType = "google"
+    api_key: str = field(default_factory=lambda: os.environ.get("DEEPL_API_KEY", ""))
+    openai_api_key: str = field(default_factory=lambda: os.environ.get("OPENAI_API_KEY", ""))
+    openai_model: str = "gpt-4.1-nano"
+    # ...
+
+    def create_translator(self) -> "TranslatorBackend":
+        if self.backend == "openai":
+            from index_pdf_translation.translators import get_openai_translator
+            OpenAITranslator = get_openai_translator()
+            return OpenAITranslator(
+                api_key=self.openai_api_key,
+                model=self.openai_model,
+                source_lang=self.source_lang,
+            )
+        # ...
+```
+
+#### CLI 更新
+
+```bash
+# 使用例
+translate-pdf paper.pdf --backend openai --openai-model gpt-4.1-nano
+translate-pdf paper.pdf --backend openai --openai-model gpt-4.1  # 高品質
+```
+
+### 依存関係
+
+```toml
+[project.optional-dependencies]
+openai = ["openai>=1.0.0", "pydantic>=2.0.0"]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "ruff>=0.1.0",
+    "aiohttp>=3.9.0",
+    "openai>=1.0.0",
+    "pydantic>=2.0.0",
+]
+```
+
+### メリット・デメリット
+
+| 観点 | メリット | デメリット |
+|------|----------|-----------|
+| 翻訳品質 | 専門用語の文脈理解、カスタマイズ可能 | Google/DeepL との明確な優位性は要検証 |
+| コスト | GPT-4.1-nano は非常に安価 | 無料ではない |
+| 改行保持 | Structured Outputs で 100% 保証 | JSON パースのオーバーヘッド |
+| 依存関係 | openai ライブラリが必要 | パッケージサイズ増加 |
+| API キー | 必須 | Google 翻訳の「APIキー不要」のメリットが薄れる |
+
+### 実装優先度
+
+**Phase 1（Issue #25）で実装する範囲**:
+- [x] Google 翻訳（デフォルト）
+- [x] DeepL 翻訳（オプション）
+
+**Phase 2（別 Issue）で実装を検討**:
+- [ ] OpenAI GPT 翻訳（オプション）
+
+理由：
+1. Issue #25 の主目的は「APIキー不要の翻訳」であり、OpenAI は要件を満たさない
+2. Structured Outputs の実装は追加の検証が必要
+3. まずは Google/DeepL で安定稼働させてから拡張
+
+---
+
 ## 実装フェーズ
 
 ### Phase 1: 依存関係の更新
