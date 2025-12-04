@@ -22,9 +22,10 @@ DeepL は高品質オプションとして引き続きサポートする。
 cli.py
   └── TranslationConfig (config.py)
         └── pdf_translate (core/translate.py)
-              └── TranslatorBackend (translators/)
-                    ├── GoogleTranslator (デフォルト)
-                    └── DeepLTranslator (オプション)
+              └── translate_blocks() ─── 改行連結ロジック
+                    └── TranslatorBackend.translate()
+                          ├── GoogleTranslator (デフォルト)
+                          └── DeepLTranslator (オプション)
 ```
 
 ### Strategy パターン
@@ -36,6 +37,46 @@ TranslatorBackend (Protocol)
     ├── GoogleTranslator  - デフォルト、APIキー不要
     └── DeepLTranslator   - 高品質、APIキー必要
 ```
+
+---
+
+## 設計判断: translate_batch の廃止
+
+### 問題分析
+
+deep-translator の `translate_batch()` 内部実装を調査した結果：
+
+```python
+# deep_translator/base.py の実装
+def _translate_batch(self, batch, **kwargs):
+    for i, text in enumerate(batch):
+        translated = self.translate(text, **kwargs)  # 個別に translate() を呼び出し
+```
+
+**`translate_batch()` は内部でループして個別に `translate()` を呼んでいるだけ。**
+
+### 比較分析
+
+| 観点 | 改行連結方式（採用） | translate_batch（不採用） |
+|------|---------------------|--------------------------|
+| API コール数 | **1回** | N回（テキスト数分） |
+| レート制限リスク | **低** | 高（大量リクエスト） |
+| 翻訳品質 | **文脈維持可能** | 文脈断絶（個別翻訳） |
+| パフォーマンス | **高速** | 低速（逐次処理） |
+
+### 学術論文での影響
+
+- 典型的な論文: 100〜500 ブロック
+- `translate_batch` 使用時: 100〜500回の HTTP リクエスト
+- Google の無料翻訳はレート制限あり → **ブロックされるリスク大**
+
+### 結論
+
+**`translate_batch` インターフェースは不要。`translate()` のみで改行連結方式を採用。**
+
+- 改行連結ロジックは `translate_blocks()` 側で実装
+- 各 TranslatorBackend は単純な `translate(text, target_lang)` のみ実装
+- 責務の分離：バックエンドは翻訳のみ、バッチ処理は呼び出し側
 
 ---
 
@@ -86,7 +127,7 @@ __all__ = [
     "GoogleTranslator",
 ]
 
-# DeepL は遅延インポート（aiohttp がない場合に備える）
+
 def get_deepl_translator():
     """DeepLTranslator を取得（aiohttp が必要）"""
     from .deepl import DeepLTranslator
@@ -109,7 +150,12 @@ class TranslationError(Exception):
 
 @runtime_checkable
 class TranslatorBackend(Protocol):
-    """翻訳バックエンドのプロトコル定義"""
+    """
+    翻訳バックエンドのプロトコル定義。
+
+    各バックエンドは translate() メソッドのみ実装する。
+    バッチ処理（改行連結）は translate_blocks() 側で行う。
+    """
 
     @property
     def name(self) -> str:
@@ -120,28 +166,14 @@ class TranslatorBackend(Protocol):
         """
         テキストを翻訳する。
 
+        改行を含むテキストも受け付け、改行を保持して翻訳する。
+
         Args:
-            text: 翻訳するテキスト
+            text: 翻訳するテキスト（改行含む場合あり）
             target_lang: 翻訳先言語（"en", "ja"）
 
         Returns:
             翻訳されたテキスト
-
-        Raises:
-            TranslationError: 翻訳に失敗した場合
-        """
-        ...
-
-    async def translate_batch(self, texts: list[str], target_lang: str) -> list[str]:
-        """
-        複数テキストを一括翻訳する。
-
-        Args:
-            texts: 翻訳するテキストのリスト
-            target_lang: 翻訳先言語（"en", "ja"）
-
-        Returns:
-            翻訳されたテキストのリスト
 
         Raises:
             TranslationError: 翻訳に失敗した場合
@@ -156,6 +188,7 @@ class TranslatorBackend(Protocol):
 """Google 翻訳バックエンド（deep-translator 使用）"""
 
 import asyncio
+
 from deep_translator import GoogleTranslator as DTGoogleTranslator
 from deep_translator.exceptions import TranslationNotFound
 
@@ -177,7 +210,11 @@ class GoogleTranslator:
         return "google"
 
     async def translate(self, text: str, target_lang: str) -> str:
-        """テキストを翻訳"""
+        """
+        テキストを翻訳する。
+
+        改行を含むテキストも対応。1回の API コールで処理。
+        """
         if not text.strip():
             return text
 
@@ -192,34 +229,10 @@ class GoogleTranslator:
                 raise TranslationError(f"Translation failed: {e}")
             except KeyError:
                 raise TranslationError(f"Unsupported language: {target_lang}")
+            except Exception as e:
+                raise TranslationError(f"Google Translate error: {e}")
 
         return await asyncio.to_thread(_translate)
-
-    async def translate_batch(self, texts: list[str], target_lang: str) -> list[str]:
-        """複数テキストを一括翻訳"""
-        if not texts:
-            return []
-
-        def _translate_batch() -> list[str]:
-            try:
-                translator = DTGoogleTranslator(
-                    source="auto",
-                    target=self.LANG_MAP[target_lang]
-                )
-                # 空文字列はスキップして翻訳
-                results = []
-                for text in texts:
-                    if text.strip():
-                        results.append(translator.translate(text))
-                    else:
-                        results.append(text)
-                return results
-            except TranslationNotFound as e:
-                raise TranslationError(f"Batch translation failed: {e}")
-            except KeyError:
-                raise TranslationError(f"Unsupported language: {target_lang}")
-
-        return await asyncio.to_thread(_translate_batch)
 ```
 
 #### 2.4 `src/index_pdf_translation/translators/deepl.py`
@@ -267,7 +280,11 @@ class DeepLTranslator:
         return "deepl"
 
     async def translate(self, text: str, target_lang: str) -> str:
-        """テキストを翻訳"""
+        """
+        テキストを翻訳する。
+
+        改行を含むテキストも対応。1回の API コールで処理。
+        """
         if not text.strip():
             return text
 
@@ -289,30 +306,6 @@ class DeepLTranslator:
                     raise TranslationError(
                         f"DeepL API error (status {response.status}): {error_text}"
                     )
-
-    async def translate_batch(self, texts: list[str], target_lang: str) -> list[str]:
-        """複数テキストを一括翻訳（改行区切りで一括送信）"""
-        if not texts:
-            return []
-
-        # 空文字列のインデックスを記録
-        non_empty_indices = [i for i, t in enumerate(texts) if t.strip()]
-        non_empty_texts = [texts[i] for i in non_empty_indices]
-
-        if not non_empty_texts:
-            return texts
-
-        # 改行で連結して一括翻訳
-        combined_text = "\n".join(non_empty_texts)
-        translated_combined = await self.translate(combined_text, target_lang)
-        translated_parts = translated_combined.split("\n")
-
-        # 結果を元の位置に戻す
-        results = list(texts)  # コピー
-        for idx, translated in zip(non_empty_indices, translated_parts):
-            results[idx] = translated
-
-        return results
 ```
 
 ---
@@ -446,18 +439,17 @@ class TranslationConfig:
 
 主な変更点：
 - `translate_str_data()` を削除
-- `translate_blocks()` の引数を `TranslatorBackend` に変更
+- `translate_blocks()` で改行連結ロジックを実装
 - `pdf_translate()` を簡素化
 
 ```python
 # SPDX-License-Identifier: AGPL-3.0-only
 """翻訳オーケストレーション"""
 
-from typing import Any, Optional
+from typing import Any, Optional, TYPE_CHECKING
 
 from index_pdf_translation.config import TranslationConfig
 from index_pdf_translation.logger import get_logger
-from index_pdf_translation.translators import TranslatorBackend
 from index_pdf_translation.core.pdf_edit import (
     DocumentBlocks,
     create_viewing_pdf,
@@ -469,16 +461,24 @@ from index_pdf_translation.core.pdf_edit import (
     write_pdf_text,
 )
 
+if TYPE_CHECKING:
+    from index_pdf_translation.translators import TranslatorBackend
+
 logger = get_logger("translate")
 
 
 async def translate_blocks(
     blocks: DocumentBlocks,
-    translator: TranslatorBackend,
+    translator: "TranslatorBackend",
     target_lang: str,
 ) -> DocumentBlocks:
     """
     複数のテキストブロックを一括翻訳する。
+
+    全テキストを改行で連結し、1回の API コールで翻訳する。
+    これにより：
+    - API コール数を最小化（レート制限回避）
+    - 文脈を維持した高品質な翻訳
 
     Args:
         blocks: 翻訳するブロック情報のリスト
@@ -494,14 +494,23 @@ async def translate_blocks(
         for block in page:
             texts.append(block["text"])
 
-    # 一括翻訳
-    translated_texts = await translator.translate_batch(texts, target_lang)
+    if not texts:
+        return blocks
 
-    # 翻訳結果を各ブロックに割り当て
+    # 改行で連結して一括翻訳（1回の API コール）
+    combined_text = "\n".join(texts)
+    translated_combined = await translator.translate(combined_text, target_lang)
+
+    # 翻訳結果を分割して各ブロックに割り当て
+    translated_lines = translated_combined.split("\n")
+
     idx = 0
     for page in blocks:
         for block in page:
-            block["text"] = translated_texts[idx] if idx < len(translated_texts) else ""
+            if idx < len(translated_lines):
+                block["text"] = translated_lines[idx]
+            else:
+                block["text"] = ""
             idx += 1
 
     return blocks
@@ -514,7 +523,51 @@ async def preprocess_translation_blocks(
 ) -> DocumentBlocks:
     """翻訳前のブロック前処理"""
     # 既存実装を維持
-    ...
+    results: DocumentBlocks = []
+
+    text = ""
+    coordinates: list[Any] = []
+    block_no: list[int] = []
+    page_no: list[int] = []
+    font_size: list[float] = []
+
+    for page in blocks:
+        page_results: list[dict[str, Any]] = []
+        temp_block_no = 0
+
+        for block in page:
+            text += " " + block["text"]
+            page_no.append(block["page_no"])
+            coordinates.append(block["coordinates"])
+            block_no.append(block["block_no"])
+            font_size.append(block["size"])
+
+            should_save = (
+                text.endswith(end_markers)
+                or block["block_no"] - temp_block_no <= 1
+                or not end_marker_enable
+            )
+
+            if should_save:
+                page_results.append({
+                    "page_no": page_no,
+                    "block_no": block_no,
+                    "coordinates": coordinates,
+                    "text": text,
+                    "size": font_size,
+                })
+                # リセット
+                text = ""
+                coordinates = []
+                block_no = []
+                page_no = []
+                font_size = []
+
+            temp_block_no = block["block_no"]
+
+        results.append(page_results)
+
+    return results
 
 
 async def pdf_translate(
@@ -857,7 +910,6 @@ class TestGoogleTranslator:
         result = await translator.translate("Hello", "ja")
         assert result
         assert result != "Hello"
-        # 「こんにちは」または類似の日本語になることを期待
 
     @pytest.mark.asyncio
     async def test_translate_empty_string(self):
@@ -867,29 +919,22 @@ class TestGoogleTranslator:
         assert result == ""
 
     @pytest.mark.asyncio
-    async def test_translate_batch(self):
-        """バッチ翻訳テスト"""
+    async def test_translate_with_newlines(self):
+        """改行を含むテキストの翻訳（一括翻訳のテスト）"""
         translator = GoogleTranslator()
-        texts = ["Hello", "World", "Good morning"]
-        results = await translator.translate_batch(texts, "ja")
-        assert len(results) == 3
-        assert all(r for r in results)
+        text = "Hello\nWorld\nGood morning"
+        result = await translator.translate(text, "ja")
+        # 改行が保持されていることを確認
+        assert "\n" in result
+        lines = result.split("\n")
+        assert len(lines) == 3
 
     @pytest.mark.asyncio
-    async def test_translate_batch_with_empty(self):
-        """空文字列を含むバッチ翻訳"""
+    async def test_translate_whitespace_only(self):
+        """空白のみの文字列"""
         translator = GoogleTranslator()
-        texts = ["Hello", "", "World"]
-        results = await translator.translate_batch(texts, "ja")
-        assert len(results) == 3
-        assert results[1] == ""
-
-    @pytest.mark.asyncio
-    async def test_translate_batch_empty_list(self):
-        """空リストのバッチ翻訳"""
-        translator = GoogleTranslator()
-        results = await translator.translate_batch([], "ja")
-        assert results == []
+        result = await translator.translate("   ", "ja")
+        assert result == "   "
 
 
 class TestDeepLTranslator:
@@ -1064,11 +1109,11 @@ result = await pdf_translate(pdf_data, config=config)
 
 - [ ] `pyproject.toml` 更新（deep-translator 追加、aiohttp をオプショナルに）
 - [ ] `translators/` モジュール作成
-  - [ ] `base.py` - プロトコル定義
+  - [ ] `base.py` - プロトコル定義（translate のみ）
   - [ ] `google.py` - Google 翻訳実装
   - [ ] `deepl.py` - DeepL 翻訳実装
 - [ ] `config.py` 更新（backend オプション、デフォルト google）
-- [ ] `core/translate.py` 更新（TranslatorBackend 使用）
+- [ ] `core/translate.py` 更新（改行連結ロジック実装）
 - [ ] `cli.py` 更新（--backend オプション）
 - [ ] `__init__.py` 更新
 - [ ] テスト追加
