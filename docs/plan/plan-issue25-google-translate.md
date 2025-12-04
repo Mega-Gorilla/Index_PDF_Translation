@@ -219,6 +219,216 @@ lines = translated.split(BLOCK_SEPARATOR)
 
 ---
 
+## 設計判断: 文字数制限とチャンキング戦略
+
+### 問題分析
+
+deep-translator の GoogleTranslator には **1回のリクエストで 5,000 文字** という制限がある。
+
+参考: [deep-translator Issue #100](https://github.com/nidhaloff/deep-translator/discussions/100)
+
+```
+学術論文の例:
+- 100ブロック × 平均150文字 = 15,000文字
+- セパレータ「[[[BR]]]」× 99 = 約800文字
+- 合計: 約16,000文字 → 制限の3倍超
+```
+
+### 解決策: チャンキング
+
+テキストを文字数制限内の複数チャンクに分割し、それぞれを翻訳後に結合する。
+
+```python
+MAX_CHUNK_SIZE = 4500  # 5000より余裕を持たせる（セパレータ分も考慮）
+
+def chunk_texts_for_translation(
+    texts: list[str],
+    separator: str,
+    max_size: int = MAX_CHUNK_SIZE,
+) -> list[list[str]]:
+    """
+    テキストリストを文字数制限内のチャンクに分割。
+
+    Args:
+        texts: 翻訳するテキストのリスト
+        separator: セパレータトークン
+        max_size: 1チャンクの最大文字数
+
+    Returns:
+        チャンクに分割されたテキストリストのリスト
+    """
+    chunks: list[list[str]] = []
+    current_chunk: list[str] = []
+    current_size = 0
+    separator_len = len(separator)
+
+    for text in texts:
+        # セパレータを含めたサイズを計算
+        item_size = len(text)
+        if current_chunk:
+            item_size += separator_len
+
+        # 現在のチャンクに追加すると制限を超える場合
+        if current_size + item_size > max_size and current_chunk:
+            chunks.append(current_chunk)
+            current_chunk = []
+            current_size = 0
+            item_size = len(text)  # 新チャンクなのでセパレータ不要
+
+        current_chunk.append(text)
+        current_size += item_size
+
+    # 最後のチャンクを追加
+    if current_chunk:
+        chunks.append(current_chunk)
+
+    return chunks
+```
+
+### 翻訳フロー
+
+```
+入力: 100ブロック（合計16,000文字）
+  ↓
+チャンキング: 4チャンク（各約4,000文字）
+  ↓
+翻訳: 4回のAPIコール
+  ↓
+結合: 100ブロックの翻訳結果
+```
+
+### トレードオフ
+
+| 観点 | チャンキングなし | チャンキングあり（採用） |
+|------|-----------------|------------------------|
+| APIコール数 | 1回 | N回（チャンク数） |
+| 文字数制限 | ❌ 超過でエラー | ✅ 対応 |
+| 文脈維持 | 最大 | チャンク境界で分断 |
+| 実装複雑度 | 低 | 中 |
+
+**注意**: チャンク境界での文脈分断は許容。学術論文では段落単位でブロックが分かれるため、実用上の影響は小さい。
+
+---
+
+## 設計判断: エラーリトライ戦略
+
+### 想定されるエラー
+
+| バックエンド | エラー種別 | 原因 |
+|-------------|-----------|------|
+| Google | 429 Too Many Requests | レート制限 |
+| Google | 503 Service Unavailable | 一時的な障害 |
+| DeepL | 429 Too Many Requests | APIクォータ超過 |
+| DeepL | 456 Quota Exceeded | 月間クォータ超過 |
+
+### 解決策: 指数バックオフリトライ
+
+```python
+import asyncio
+from typing import TypeVar
+
+T = TypeVar("T")
+
+async def with_retry(
+    func,
+    max_retries: int = 3,
+    base_delay: float = 1.0,
+    max_delay: float = 30.0,
+) -> T:
+    """
+    指数バックオフでリトライする。
+
+    Args:
+        func: 実行する非同期関数
+        max_retries: 最大リトライ回数
+        base_delay: 初回リトライの遅延秒数
+        max_delay: 最大遅延秒数
+    """
+    last_error = None
+
+    for attempt in range(max_retries + 1):
+        try:
+            return await func()
+        except TranslationError as e:
+            last_error = e
+            if attempt == max_retries:
+                raise
+
+            # 指数バックオフ: 1, 2, 4, 8... 秒
+            delay = min(base_delay * (2 ** attempt), max_delay)
+            logger.warning(
+                f"Translation failed (attempt {attempt + 1}/{max_retries + 1}), "
+                f"retrying in {delay}s: {e}"
+            )
+            await asyncio.sleep(delay)
+
+    raise last_error  # 到達しないはずだが型チェック用
+```
+
+### 適用箇所
+
+`translate_blocks()` 内の各チャンク翻訳でリトライを適用:
+
+```python
+async def translate_blocks(...):
+    ...
+    for chunk in chunks:
+        combined = BLOCK_SEPARATOR.join(chunk)
+
+        async def _translate():
+            return await translator.translate(combined, target_lang)
+
+        translated = await with_retry(_translate)
+        ...
+```
+
+### Phase 1 での実装範囲
+
+**初回リリースではシンプルなリトライのみ実装**:
+- 最大3回リトライ
+- 固定遅延（1秒）
+- 指数バックオフは将来の改善として検討
+
+---
+
+## 設計判断: DeepL セパレータ互換性
+
+### 確認事項
+
+`[[[BR]]]` セパレータは Google 翻訳で検証済みだが、DeepL での動作確認が必要。
+
+### 検証項目
+
+1. **セパレータ保持**: DeepL が `[[[BR]]]` をそのまま保持するか
+2. **tag_handling との相互作用**: `tag_handling: xml` オプションの影響
+3. **空行処理**: 連続セパレータ `[[[BR]]][[[BR]]]` の扱い
+
+### 検証タイミング
+
+**実装時（Phase 4）に DeepL でも同じテストを実施**:
+
+```python
+# tests/test_separator_deepl.py（手動実行用）
+@pytest.mark.integration
+async def test_deepl_separator_preserved():
+    """DeepL でセパレータが保持されるか確認"""
+    translator = DeepLTranslator(api_key=os.environ["DEEPL_API_KEY"])
+
+    text = "Hello[[[BR]]]World[[[BR]]]Good morning"
+    result = await translator.translate(text, "ja")
+
+    parts = result.split("[[[BR]]]")
+    assert len(parts) == 3, f"Expected 3 parts, got {len(parts)}: {result}"
+```
+
+### フォールバック
+
+DeepL でセパレータが翻訳される場合の対策:
+- 別のセパレータ候補: `⟦BR⟧`（Unicode 括弧）
+- XML タグ: `<br/>` （tag_handling: xml で保護）
+
+---
+
 ## 拡張計画: OpenAI GPT 翻訳対応
 
 ### 背景・目的
@@ -1053,6 +1263,96 @@ logger = get_logger("translate")
 # 検証済み: 空行・空白を含む複数テキストで100%の成功率
 BLOCK_SEPARATOR = "[[[BR]]]"
 
+# 文字数制限（deep-translator の Google 翻訳は 5,000 文字制限）
+MAX_CHUNK_SIZE = 4500  # 余裕を持たせる
+
+
+def chunk_texts_for_translation(
+    texts: list[str],
+    separator: str = BLOCK_SEPARATOR,
+    max_size: int = MAX_CHUNK_SIZE,
+) -> list[list[str]]:
+    """
+    テキストリストを文字数制限内のチャンクに分割。
+
+    Args:
+        texts: 翻訳するテキストのリスト
+        separator: セパレータトークン
+        max_size: 1チャンクの最大文字数
+
+    Returns:
+        チャンクに分割されたテキストリストのリスト
+    """
+    chunks: list[list[str]] = []
+    current_chunk: list[str] = []
+    current_size = 0
+    separator_len = len(separator)
+
+    for text in texts:
+        # セパレータを含めたサイズを計算
+        item_size = len(text)
+        if current_chunk:
+            item_size += separator_len
+
+        # 現在のチャンクに追加すると制限を超える場合
+        if current_size + item_size > max_size and current_chunk:
+            chunks.append(current_chunk)
+            current_chunk = []
+            current_size = 0
+            item_size = len(text)  # 新チャンクなのでセパレータ不要
+
+        current_chunk.append(text)
+        current_size += item_size
+
+    # 最後のチャンクを追加
+    if current_chunk:
+        chunks.append(current_chunk)
+
+    return chunks
+
+
+async def translate_chunk_with_retry(
+    translator: "TranslatorBackend",
+    text: str,
+    target_lang: str,
+    max_retries: int = 3,
+    retry_delay: float = 1.0,
+) -> str:
+    """
+    リトライ付きで翻訳を実行。
+
+    Args:
+        translator: 翻訳バックエンド
+        text: 翻訳するテキスト
+        target_lang: 翻訳先言語コード
+        max_retries: 最大リトライ回数
+        retry_delay: リトライ間隔（秒）
+
+    Returns:
+        翻訳されたテキスト
+
+    Raises:
+        TranslationError: リトライ後も失敗した場合
+    """
+    from index_pdf_translation.translators.base import TranslationError
+
+    last_error = None
+    for attempt in range(max_retries + 1):
+        try:
+            return await translator.translate(text, target_lang)
+        except TranslationError as e:
+            last_error = e
+            if attempt < max_retries:
+                logger.warning(
+                    f"Translation failed (attempt {attempt + 1}/{max_retries + 1}), "
+                    f"retrying in {retry_delay}s: {e}"
+                )
+                await asyncio.sleep(retry_delay)
+            else:
+                raise
+
+    raise last_error  # 型チェック用（到達しない）
+
 
 async def translate_blocks(
     blocks: DocumentBlocks,
@@ -1062,8 +1362,9 @@ async def translate_blocks(
     """
     複数のテキストブロックを一括翻訳する。
 
-    セパレータトークン方式で全テキストを連結し、1回の API コールで翻訳する。
+    セパレータトークン方式でテキストを連結し、チャンク単位で翻訳する。
     これにより：
+    - 文字数制限（5,000文字）に対応
     - API コール数を最小化（レート制限回避）
     - 文脈を維持した高品質な翻訳
     - 空行・空白を含むブロックも正確に保持
@@ -1085,25 +1386,45 @@ async def translate_blocks(
     if not texts:
         return blocks
 
-    # セパレータトークンで連結して一括翻訳（1回の API コール）
-    combined_text = BLOCK_SEPARATOR.join(texts)
-    translated_combined = await translator.translate(combined_text, target_lang)
+    # テキストをチャンクに分割
+    chunks = chunk_texts_for_translation(texts, BLOCK_SEPARATOR, MAX_CHUNK_SIZE)
+    logger.info(f"Split {len(texts)} blocks into {len(chunks)} chunks for translation")
 
-    # 翻訳結果を分割して各ブロックに割り当て
-    translated_lines = translated_combined.split(BLOCK_SEPARATOR)
+    # 各チャンクを翻訳
+    translated_texts: list[str] = []
+    for i, chunk in enumerate(chunks):
+        combined_text = BLOCK_SEPARATOR.join(chunk)
+        logger.debug(f"Translating chunk {i + 1}/{len(chunks)} ({len(combined_text)} chars)")
 
-    # 行数検証（フォールバック用ログ）
-    if len(translated_lines) != len(texts):
-        logger.warning(
-            f"Block count mismatch after translation: "
-            f"expected {len(texts)}, got {len(translated_lines)}"
+        translated_combined = await translate_chunk_with_retry(
+            translator, combined_text, target_lang
         )
 
+        # 翻訳結果を分割
+        chunk_results = translated_combined.split(BLOCK_SEPARATOR)
+
+        # チャンク内の行数検証
+        if len(chunk_results) != len(chunk):
+            logger.warning(
+                f"Chunk {i + 1} block count mismatch: "
+                f"expected {len(chunk)}, got {len(chunk_results)}"
+            )
+
+        translated_texts.extend(chunk_results)
+
+    # 全体の行数検証
+    if len(translated_texts) != len(texts):
+        logger.warning(
+            f"Total block count mismatch after translation: "
+            f"expected {len(texts)}, got {len(translated_texts)}"
+        )
+
+    # 翻訳結果を各ブロックに割り当て
     idx = 0
     for page in blocks:
         for block in page:
-            if idx < len(translated_lines):
-                block["text"] = translated_lines[idx]
+            if idx < len(translated_texts):
+                block["text"] = translated_texts[idx]
             else:
                 block["text"] = ""
             idx += 1
@@ -1487,11 +1808,56 @@ if __name__ == "__main__":
 | **ユニットテスト** | CI（常時） | モック | 高速・安定・カバレッジ |
 | **統合テスト** | ローカル/手動 | 実API | 実際の動作確認 |
 
+#### 6.0 既存テストの更新（Breaking Changes 対応）
+
+**削除/更新が必要なテスト（`tests/test_config.py`）**:
+
+| 行番号 | テスト | 対応 |
+|--------|--------|------|
+| L22-23 | `SUPPORTED_LANGUAGES["en"]["deepl"]` | キーを `spacy` のみに変更 |
+| L99-105 | `test_deepl_target_lang_property` | **削除** |
+| L107-113 | `test_deepl_source_lang_property` | **削除** |
+| L46-52 | `test_config_missing_key_raises` | DeepL バックエンド用に変更 |
+| L62 | `api_url` 検証 | 条件付きに変更（DeepL 時のみ） |
+
+**更新後の `tests/test_config.py`（抜粋）**:
+
+```python
+class TestSupportedLanguages:
+    def test_english_supported(self) -> None:
+        assert "en" in SUPPORTED_LANGUAGES
+        # deepl キーは削除されているため spacy のみ確認
+        assert SUPPORTED_LANGUAGES["en"]["spacy"] == "en_core_web_sm"
+
+    def test_japanese_supported(self) -> None:
+        assert "ja" in SUPPORTED_LANGUAGES
+        assert SUPPORTED_LANGUAGES["ja"]["spacy"] == "ja_core_news_sm"
+
+
+class TestTranslationConfig:
+    def test_config_google_default_no_api_key_required(self) -> None:
+        """Google バックエンド（デフォルト）は API キー不要"""
+        config = TranslationConfig()  # api_key なしでもエラーにならない
+        assert config.backend == "google"
+
+    def test_config_deepl_requires_api_key(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """DeepL バックエンドは API キー必須"""
+        monkeypatch.delenv("DEEPL_API_KEY", raising=False)
+        with pytest.raises(ValueError, match="DeepL API key required"):
+            TranslationConfig(backend="deepl", api_key="")
+```
+
+---
+
 #### 6.1 `tests/test_translators.py` 新規作成
 
 ```python
 # SPDX-License-Identifier: AGPL-3.0-only
 """翻訳バックエンドのテスト（モック使用）"""
+
+import os
 
 import pytest
 from unittest.mock import patch, MagicMock
@@ -1665,6 +2031,77 @@ def test_config_create_translator_deepl():
 
 ### Phase 7: ドキュメント更新
 
+#### 7.0 `CHANGELOG.md` 新規作成
+
+```markdown
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+## [3.0.0] - YYYY-MM-DD
+
+### ⚠️ Breaking Changes
+
+- **Default translator changed**: DeepL → Google Translate
+  - API key is no longer required for basic usage
+  - Use `--backend deepl` or `backend="deepl"` for DeepL
+- **`pdf_translate()` signature changed**: Individual parameters replaced with `config` parameter
+  - Before: `pdf_translate(pdf_data, api_key="xxx", target_lang="ja")`
+  - After: `pdf_translate(pdf_data, config=TranslationConfig(...))`
+- **`TranslationConfig` changes**:
+  - `api_key` only required when `backend="deepl"`
+  - Removed `deepl_target_lang` and `deepl_source_lang` properties
+- **`SUPPORTED_LANGUAGES` structure changed**:
+  - Removed `deepl` key (now only contains `spacy`)
+- **`aiohttp` dependency moved to optional**:
+  - Install with `pip install index-pdf-translation[deepl]` for DeepL support
+
+### Added
+
+- Google Translate backend (default, no API key required)
+- `--backend` CLI option to select translator (`google` or `deepl`)
+- Separator token method for reliable block translation
+- Character limit chunking for large documents
+- Retry mechanism for translation errors
+
+### Changed
+
+- Translation backend abstraction using Strategy pattern
+- Improved error messages with migration guidance
+
+### Migration Guide
+
+```python
+# Before (v2.x)
+from index_pdf_translation import pdf_translate
+result = await pdf_translate(
+    pdf_data,
+    api_key="xxx",
+    target_lang="ja"
+)
+
+# After (v3.0.0) - Google Translate (default)
+from index_pdf_translation import pdf_translate, TranslationConfig
+config = TranslationConfig()
+result = await pdf_translate(pdf_data, config=config)
+
+# After (v3.0.0) - DeepL
+config = TranslationConfig(backend="deepl", api_key="xxx")
+result = await pdf_translate(pdf_data, config=config)
+```
+
+## [2.0.0] - Previous Release
+
+- Initial release with DeepL-only support
+```
+
+---
+
 #### 7.1 `readme.md` 更新
 
 ```markdown
@@ -1768,45 +2205,72 @@ result = await pdf_translate(pdf_data, config=config)
 
 ## 完了条件
 
+### Phase 1: 依存関係
 - [ ] `pyproject.toml` 更新（deep-translator 追加、aiohttp をオプショナルに）
+
+### Phase 2: 翻訳バックエンド
 - [ ] `translators/` モジュール作成
+  - [ ] `__init__.py` - エクスポート定義
   - [ ] `base.py` - プロトコル定義（translate のみ）
   - [ ] `google.py` - Google 翻訳実装
   - [ ] `deepl.py` - DeepL 翻訳実装（aiohttp 遅延 import）
+
+### Phase 3: Config
 - [ ] `config.py` 更新（backend オプション、デフォルト google）
+
+### Phase 4: translate.py
 - [ ] `core/translate.py` 更新
   - [ ] aiohttp import 削除
   - [ ] セパレータトークン方式（`[[[BR]]]`）実装
-  - [ ] translate_str_data() 削除
+  - [ ] チャンキング関数（`chunk_texts_for_translation`）実装
+  - [ ] リトライ関数（`translate_chunk_with_retry`）実装
+  - [ ] `translate_str_data()` 削除
+- [ ] DeepL セパレータ互換性検証（実装時）
+
+### Phase 5: CLI
 - [ ] `cli.py` 更新（--backend オプション）
-- [ ] `__init__.py` 更新
-- [ ] テスト追加
-  - [ ] `test_translators.py`（モック使用）
-  - [ ] `test_config.py` 更新
-  - [ ] 統合テスト（`@pytest.mark.integration`）
-- [ ] ドキュメント更新
-  - [ ] `readme.md`
-  - [ ] `CLAUDE.md`
-  - [ ] `CHANGELOG.md`（Breaking Changes）
+
+### Phase 6: テスト
+- [ ] 既存テスト更新（`test_config.py`）
+  - [ ] `SUPPORTED_LANGUAGES` テスト修正（deepl キー削除対応）
+  - [ ] `deepl_target_lang` / `deepl_source_lang` テスト削除
+  - [ ] API キー必須テストを DeepL バックエンド用に変更
+- [ ] `test_translators.py` 新規作成（モック使用）
+- [ ] 統合テスト（`@pytest.mark.integration`）
+- [ ] チャンキング関数のユニットテスト追加
+
+### Phase 7: ドキュメント
+- [ ] `CHANGELOG.md` 新規作成（Breaking Changes）
+- [ ] `readme.md` 更新
+- [ ] `CLAUDE.md` 更新
+
+### 最終確認
+- [ ] `__init__.py` 更新（エクスポート追加）
 - [ ] CI 通過確認（API キー不要で通過）
+- [ ] ローカルで E2E テスト（実際の PDF 翻訳）
 
 ---
 
 ## ファイル変更一覧
 
 ### 新規作成
-- `src/index_pdf_translation/translators/__init__.py`
-- `src/index_pdf_translation/translators/base.py`
-- `src/index_pdf_translation/translators/google.py`
-- `src/index_pdf_translation/translators/deepl.py`
-- `tests/test_translators.py`
+| ファイル | 説明 |
+|---------|------|
+| `src/index_pdf_translation/translators/__init__.py` | エクスポート定義 |
+| `src/index_pdf_translation/translators/base.py` | TranslatorBackend プロトコル |
+| `src/index_pdf_translation/translators/google.py` | Google 翻訳バックエンド |
+| `src/index_pdf_translation/translators/deepl.py` | DeepL 翻訳バックエンド |
+| `tests/test_translators.py` | 翻訳バックエンドのテスト |
+| `CHANGELOG.md` | 変更履歴（Breaking Changes 記載） |
 
 ### 更新
-- `pyproject.toml`
-- `src/index_pdf_translation/__init__.py`
-- `src/index_pdf_translation/config.py`
-- `src/index_pdf_translation/core/translate.py`
-- `src/index_pdf_translation/cli.py`
-- `tests/test_config.py`
-- `readme.md`
-- `CLAUDE.md`
+| ファイル | 主な変更 |
+|---------|---------|
+| `pyproject.toml` | deep-translator 追加、aiohttp をオプショナルに |
+| `src/index_pdf_translation/__init__.py` | エクスポート追加 |
+| `src/index_pdf_translation/config.py` | backend オプション、デフォルト google |
+| `src/index_pdf_translation/core/translate.py` | チャンキング、リトライ、セパレータ方式 |
+| `src/index_pdf_translation/cli.py` | --backend オプション |
+| `tests/test_config.py` | Breaking Changes 対応 |
+| `readme.md` | Quick Start、翻訳バックエンド説明 |
+| `CLAUDE.md` | CLI オプション更新 |
