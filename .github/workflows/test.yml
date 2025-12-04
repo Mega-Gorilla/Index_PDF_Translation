@@ -1,0 +1,53 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - name: Cache uv dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/uv
+          key: uv-${{ runner.os }}-${{ hashFiles('uv.lock') }}
+          restore-keys: |
+            uv-${{ runner.os }}-
+
+      - name: Cache spaCy models
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/spacy
+          key: spacy-${{ runner.os }}-en_core_web_sm
+
+      - name: Install dependencies
+        run: uv sync --extra dev
+
+      - name: Download spaCy model
+        run: uv run python -m spacy download en_core_web_sm
+        env:
+          SPACY_DATA: ~/.cache/spacy
+
+      - name: Run tests
+        run: uv run pytest tests/ -v --tb=short
+
+      - name: Run syntax check
+        run: uv run python -m py_compile src/index_pdf_translation/cli.py
