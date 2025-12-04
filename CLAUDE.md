@@ -28,9 +28,6 @@ python manual_translate_pdf.py
 ```
 Opens file dialog, translates selected PDF, saves to `./output/result_*.pdf`
 
-### Debug Mode
-In `manual_translate_pdf.py`, call `translate_test()` instead of `translate_local()` to generate visualization PDFs showing block classification (blue=body, green=figures, red=removed) in `./debug/`.
-
 ## Configuration
 
 **config.py** - Set your DeepL API key:
