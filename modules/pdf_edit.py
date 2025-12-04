@@ -103,33 +103,6 @@ async def extract_text_coordinates_dict(pdf_data):
     await asyncio.to_thread(document.close)
     return content
 
-async def extract_text_coordinates_dict_dev(pdf_data):
-    """
-    デバッグ用。dictで取得したデータを出力します。
-    """
-    # PDFファイルを開く
-    document = await asyncio.to_thread(fitz.open, stream=pdf_data, filetype="pdf")
-
-    content = []
-    for page_num in range(len(document)):
-        # ページを取得
-        page = await asyncio.to_thread(document.load_page, page_num)
-        # ページからテキストブロックを取得
-        text_instances_dict = await asyncio.to_thread(page.get_text, "dict")
-        text_instances = text_instances_dict["blocks"]
-        page_content = []
-        
-        for lines in text_instances:
-            if lines["type"] != 0:
-                # テキストブロック以外はスキップ
-                continue
-            page_content.append(lines)
-        
-        content.append(page_content)
-
-    await asyncio.to_thread(document.close)
-    return content
-
 def check_first_num_tokens(input_list, keywords, num=2):
     for item in input_list[:num]:
         for keyword in keywords:
@@ -489,41 +462,6 @@ async def write_pdf_text(input_pdf_data, block_info, to_lang='en',text_color=[0,
 
     return output_data
 
-async def write_image_data(input_pdf_data,image_data,rect=(10,10,200,200),position=-1,add_new_page=True):
-    """
-    新しいページを作成し、画像を挿入します。
-    """
-    from PIL import Image
-    import io,os
-
-    doc = await asyncio.to_thread(fitz.open, stream=input_pdf_data, filetype="pdf")
-
-    # 最初のページの寸法を取得
-    first_page = doc[0]  # 最初のページを取得
-    rect = first_page.rect  # 最初のページの寸法を取得
-
-    # ページの追加
-    if add_new_page:
-        doc.insert_page(position, width=rect.width, height=rect.height)
-
-    page = doc[position]
-    image_byte = Image.open(io.BytesIO(image_data))
-    temp_image_path = "temp_image.png"
-    image_byte.save(temp_image_path)
-    page.insert_image(rect,filename=temp_image_path)
-
-    # 保存と終了処理
-    output_buffer = BytesIO()
-    await asyncio.to_thread(doc.save, output_buffer, garbage=4, deflate=True, clean=True)
-
-    # 一時ファイルの削除
-    os.remove(temp_image_path)  # temp_image.pngを削除
-    #ドキュメントのクローズ
-    await asyncio.to_thread(doc.close)
-    
-    # PDFデータをバイトとして返す
-    output_data = output_buffer.getvalue()
-    return output_data
 
 async def write_logo_data(input_pdf_data):
     """
