@@ -33,9 +33,22 @@ python -m spacy download ja_core_news_sm
 
 ### Run Local Translation (CLI)
 ```bash
-python manual_translate_pdf.py
+# Basic usage
+uv run python translate_pdf.py paper.pdf
+
+# With options
+uv run python translate_pdf.py paper.pdf -o ./result.pdf
+uv run python translate_pdf.py paper.pdf --source en --target ja
+uv run python translate_pdf.py paper.pdf --no-logo --debug
 ```
-Opens file dialog, translates selected PDF, saves to `./output/result_*.pdf`
+Translates PDF and saves side-by-side PDF to `./output/translated_*.pdf`
+
+### CLI Options
+- `-o, --output`: Output file path
+- `-s, --source`: Source language (en/ja, default: en)
+- `-t, --target`: Target language (en/ja, default: ja)
+- `--no-logo`: Disable logo watermark
+- `--debug`: Enable debug mode (generate visualization PDFs)
 
 ## Configuration
 
@@ -64,7 +77,7 @@ DEEPL_API_URL = "https://api-free.deepl.com/v2/translate"  # Pro: https://api.de
 
 ### Entry Points
 
-- **manual_translate_pdf.py** - CLI tool for local PDF translation
+- **translate_pdf.py** - CLI tool for local PDF translation (argparse-based)
 
 ### Translation Algorithm
 
