@@ -6,5 +6,9 @@ This subpackage contains:
 - tokenizer.py: spaCy-based text tokenization
 """
 
-# Exports will be added after module migration (Phase 2)
-# from index_pdf_translation.nlp.tokenizer import tokenize_text
+from index_pdf_translation.nlp.tokenizer import tokenize_text, load_model
+
+__all__ = [
+    "tokenize_text",
+    "load_model",
+]
