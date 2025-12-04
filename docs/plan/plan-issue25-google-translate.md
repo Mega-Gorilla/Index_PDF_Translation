@@ -211,7 +211,7 @@ response = await client.beta.chat.completions.parse(
 
 ### 翻訳プロンプト設計
 
-#### システムプロンプト（案）
+#### システムプロンプト（デフォルト）
 
 ```
 You are a professional translator specializing in academic papers.
@@ -225,6 +225,51 @@ Requirements:
 - Preserve any special characters or formatting within each text
 
 Return a JSON object with a "translations" array containing the translated texts.
+```
+
+#### プロンプトのカスタマイズ
+
+**設計方針**: プロンプトは3つのレベルでオーバーライド可能。
+
+| レベル | 用途 | 例 |
+|--------|------|-----|
+| **デフォルト** | 学術論文向けの汎用プロンプト | 上記テンプレート |
+| **コンストラクタ** | プロジェクト固有の固定設定 | 医学論文向け、法律文書向け |
+| **メソッド引数** | 動的な切り替え（A/Bテスト等） | 特定ドキュメントの翻訳スタイル変更 |
+
+#### プレースホルダー
+
+プロンプト内で以下のプレースホルダーを使用可能：
+
+| プレースホルダー | 展開例 | 説明 |
+|-----------------|--------|------|
+| `{source_lang}` | "English" | 翻訳元言語名 |
+| `{target_lang}` | "Japanese" | 翻訳先言語名 |
+
+#### カスタムプロンプトの例
+
+```python
+# 医学論文向け
+MEDICAL_PROMPT = """You are a medical translator specializing in clinical research papers.
+Translate from {source_lang} to {target_lang}.
+
+Requirements:
+- Use standard medical terminology (MeSH terms when applicable)
+- Preserve drug names, dosages, and clinical measurements exactly
+- Maintain the exact number of input/output texts
+
+Return a JSON object with a "translations" array."""
+
+# 用語集指定
+GLOSSARY_PROMPT = """You are a professional translator.
+Translate from {source_lang} to {target_lang}.
+
+Glossary (use these translations consistently):
+- "machine learning" → "機械学習"
+- "neural network" → "ニューラルネットワーク"
+- "gradient descent" → "勾配降下法"
+
+Return a JSON object with a "translations" array."""
 ```
 
 #### 推奨パラメータ
@@ -285,11 +330,15 @@ class OpenAITranslator:
     OpenAI GPT を使用した翻訳バックエンド。
 
     Structured Outputs で配列構造を保証し、改行問題を回避。
+    プロンプトは3レベルでカスタマイズ可能：
+    - デフォルト: 学術論文向け汎用プロンプト
+    - コンストラクタ: プロジェクト固有の固定設定
+    - メソッド引数: 動的な切り替え
     """
 
     DEFAULT_MODEL = "gpt-4.1-nano"
 
-    SYSTEM_PROMPT_TEMPLATE = """You are a professional translator specializing in academic papers.
+    DEFAULT_SYSTEM_PROMPT = """You are a professional translator specializing in academic papers.
 Translate the following texts from {source_lang} to {target_lang}.
 
 Requirements:
@@ -308,33 +357,73 @@ Return a JSON object with a "translations" array."""
         api_key: str,
         model: str = DEFAULT_MODEL,
         source_lang: str = "en",
+        system_prompt: str | None = None,  # コンストラクタでプロンプトをオーバーライド
     ):
+        """
+        Args:
+            api_key: OpenAI API キー
+            model: 使用するモデル（デフォルト: gpt-4.1-nano）
+            source_lang: 翻訳元言語コード
+            system_prompt: カスタムシステムプロンプト（{source_lang}, {target_lang} プレースホルダー使用可能）
+        """
         if not api_key:
             raise ValueError("OpenAI API key is required")
         self._client = AsyncOpenAI(api_key=api_key)
         self._model = model
         self._source_lang = source_lang
+        self._system_prompt = system_prompt or self.DEFAULT_SYSTEM_PROMPT
 
     @property
     def name(self) -> str:
         return "openai"
 
-    async def translate(self, text: str, target_lang: str) -> str:
-        """単一テキストを翻訳（改行区切りで複数テキストとして処理）"""
+    def _format_prompt(self, prompt_template: str, target_lang: str) -> str:
+        """プロンプトテンプレートをフォーマット"""
+        return prompt_template.format(
+            source_lang=self.LANG_NAMES.get(self._source_lang, self._source_lang),
+            target_lang=self.LANG_NAMES.get(target_lang, target_lang),
+        )
+
+    async def translate(
+        self,
+        text: str,
+        target_lang: str,
+        *,
+        system_prompt: str | None = None,  # メソッドレベルでオーバーライド
+    ) -> str:
+        """
+        単一テキストを翻訳（改行区切りで複数テキストとして処理）
+
+        Args:
+            text: 翻訳するテキスト
+            target_lang: 翻訳先言語コード
+            system_prompt: カスタムプロンプト（指定時はコンストラクタ設定を上書き）
+        """
         if not text.strip():
             return text
 
         # 改行で分割して配列として送信
         texts = text.split("\n")
-        translated_texts = await self.translate_texts(texts, target_lang)
+        translated_texts = await self.translate_texts(
+            texts, target_lang, system_prompt=system_prompt
+        )
         return "\n".join(translated_texts)
 
     async def translate_texts(
         self,
         texts: list[str],
-        target_lang: str
+        target_lang: str,
+        *,
+        system_prompt: str | None = None,  # メソッドレベルでオーバーライド
     ) -> list[str]:
-        """複数テキストを Structured Outputs で翻訳"""
+        """
+        複数テキストを Structured Outputs で翻訳
+
+        Args:
+            texts: 翻訳するテキストのリスト
+            target_lang: 翻訳先言語コード
+            system_prompt: カスタムプロンプト（指定時はコンストラクタ設定を上書き）
+        """
         if not texts:
             return []
 
@@ -345,16 +434,15 @@ Return a JSON object with a "translations" array."""
         if not non_empty_texts:
             return texts
 
-        system_prompt = self.SYSTEM_PROMPT_TEMPLATE.format(
-            source_lang=self.LANG_NAMES.get(self._source_lang, self._source_lang),
-            target_lang=self.LANG_NAMES.get(target_lang, target_lang),
-        )
+        # プロンプト解決: メソッド引数 > コンストラクタ > デフォルト
+        effective_prompt = system_prompt or self._system_prompt
+        formatted_prompt = self._format_prompt(effective_prompt, target_lang)
 
         try:
             response = await self._client.beta.chat.completions.parse(
                 model=self._model,
                 messages=[
-                    {"role": "system", "content": system_prompt},
+                    {"role": "system", "content": formatted_prompt},
                     {"role": "user", "content": json.dumps(non_empty_texts)},
                 ],
                 response_format=TranslationResult,
@@ -388,6 +476,7 @@ class TranslationConfig:
     api_key: str = field(default_factory=lambda: os.environ.get("DEEPL_API_KEY", ""))
     openai_api_key: str = field(default_factory=lambda: os.environ.get("OPENAI_API_KEY", ""))
     openai_model: str = "gpt-4.1-nano"
+    openai_system_prompt: str | None = None  # カスタムプロンプト（None でデフォルト使用）
     # ...
 
     def create_translator(self) -> "TranslatorBackend":
@@ -398,6 +487,7 @@ class TranslationConfig:
                 api_key=self.openai_api_key,
                 model=self.openai_model,
                 source_lang=self.source_lang,
+                system_prompt=self.openai_system_prompt,  # カスタムプロンプトを渡す
             )
         # ...
 ```
@@ -408,6 +498,27 @@ class TranslationConfig:
 # 使用例
 translate-pdf paper.pdf --backend openai --openai-model gpt-4.1-nano
 translate-pdf paper.pdf --backend openai --openai-model gpt-4.1  # 高品質
+
+# カスタムプロンプト（ファイルから読み込み）
+translate-pdf paper.pdf --backend openai --openai-prompt-file prompts/medical.txt
+
+# カスタムプロンプト（直接指定）
+translate-pdf paper.pdf --backend openai --openai-prompt "You are a translator for {source_lang} to {target_lang}..."
+```
+
+CLI オプション追加:
+
+```python
+parser.add_argument(
+    "--openai-prompt",
+    help="OpenAI バックエンドのカスタムシステムプロンプト（{source_lang}, {target_lang} プレースホルダー使用可能）",
+)
+
+parser.add_argument(
+    "--openai-prompt-file",
+    type=Path,
+    help="OpenAI バックエンドのカスタムシステムプロンプトを読み込むファイル",
+)
 ```
 
 ### 依存関係
@@ -434,6 +545,7 @@ dev = [
 | 改行保持 | Structured Outputs で 100% 保証 | JSON パースのオーバーヘッド |
 | 依存関係 | openai ライブラリが必要 | パッケージサイズ増加 |
 | API キー | 必須 | Google 翻訳の「APIキー不要」のメリットが薄れる |
+| プロンプト | 3レベルでカスタマイズ可能、用語集対応 | プロンプト設計の学習コスト |
 
 ### 実装優先度
 
