@@ -95,16 +95,20 @@ uv run python translate_pdf.py paper.pdf --no-logo --debug
 
 ```
 Index_PDF_Translation/
-├── translate_pdf.py         # CLIエントリーポイント
-├── config.py                # DeepL API設定、言語設定
-├── modules/
-│   ├── logger.py            # 集中ログ管理
-│   ├── translate.py         # 翻訳オーケストレーション
-│   ├── pdf_edit.py          # PDF処理エンジン（PyMuPDF）
-│   └── spacy_api.py         # テキストトークン化（spaCy）
-├── fonts/                   # フォントファイル
-├── data/indqx_qr.png        # ロゴ画像
-└── output/                  # デフォルト出力先
+├── translate_pdf.py                   # CLIエントリーポイント
+├── config.py                          # DeepL API設定
+├── src/index_pdf_translation/         # パッケージ本体
+│   ├── __init__.py                    # 公開API
+│   ├── core/
+│   │   ├── translate.py               # 翻訳オーケストレーション
+│   │   └── pdf_edit.py                # PDF処理エンジン（PyMuPDF）
+│   ├── nlp/
+│   │   └── tokenizer.py               # テキストトークン化（spaCy）
+│   ├── resources/
+│   │   ├── fonts/                     # フォントファイル
+│   │   └── data/                      # ロゴ画像
+│   └── logger.py                      # 集中ログ管理
+└── output/                            # デフォルト出力先
 ```
 
 ### 翻訳フロー
@@ -156,11 +160,11 @@ DeepL API request failed with status code 403
 ### フォントが見つからない警告
 
 ```
-Font file not found: fonts/LiberationSerif-Regular.ttf
+Font file not found: LiberationSerif-Regular.ttf
 ```
 
 **解決方法**:
-- `fonts/`ディレクトリが存在し、フォントファイルが含まれているか確認
+- パッケージのリソースディレクトリ（`src/index_pdf_translation/resources/fonts/`）にフォントファイルが含まれているか確認
 - フォールバックフォント（PyMuPDF組み込み）が自動的に使用されるため、翻訳は継続されます
 
 ### 出力PDFのテキストが欠落する
@@ -173,12 +177,12 @@ Font file not found: fonts/LiberationSerif-Regular.ttf
 
 ## フォント要件
 
-本プロジェクトでは以下のフォントを使用しています。これらはリポジトリに同梱されており、追加のインストールは不要です。
+本プロジェクトでは以下のフォントを使用しています。これらはパッケージに同梱されており、追加のインストールは不要です。
 
 | フォント | 用途 | ライセンス |
 |----------|------|-----------|
-| Liberation Serif | 英語テキスト | [SIL Open Font License 1.1](fonts/OFL.txt) |
-| IPA明朝 (ipam.ttf) | 日本語テキスト | [IPA Font License v1.0](fonts/IPA_Font_License_Agreement_v1.0.txt) |
+| Liberation Serif | 英語テキスト | [SIL Open Font License 1.1](src/index_pdf_translation/resources/fonts/OFL.txt) |
+| IPA明朝 (ipam.ttf) | 日本語テキスト | [IPA Font License v1.0](src/index_pdf_translation/resources/fonts/IPA_Font_License_Agreement_v1.0.txt) |
 
 フォントファイルが見つからない場合、PyMuPDF組み込みフォントにフォールバックします。
 
@@ -199,14 +203,14 @@ Font file not found: fonts/LiberationSerif-Regular.ttf
 uv sync --extra dev
 
 # 構文チェック
-uv run python -m py_compile translate_pdf.py config.py modules/*.py
+uv run python -m py_compile translate_pdf.py config.py
 ```
 
 ### コード規約
 
 - **型ヒント**: 全ての関数に型アノテーションを使用
 - **ドキュメント**: Google スタイルのdocstringを使用
-- **ロギング**: `modules/logger.py`の`get_logger()`を使用
+- **ロギング**: `index_pdf_translation.logger`の`get_logger()`を使用
 - **ライセンス**: ソースファイルに`# SPDX-License-Identifier: AGPL-3.0-only`を記載
 
 ### モジュール拡張
