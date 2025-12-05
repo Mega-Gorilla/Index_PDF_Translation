@@ -39,11 +39,12 @@
 
 #### Deep Learning ベースのアプローチ
 
-| 手法 | 概要 | 精度 | 参考 |
-|------|------|------|------|
-| **LayoutLMv3** | Text + Layout + Vision のマルチモーダルTransformer | 95% (RVL-CDIP) | [Hugging Face](https://huggingface.co/docs/transformers/model_doc/layoutlm) |
-| **DiT** | Document Image Transformer (Vision only) | 92% (RVL-CDIP) | [Papers with Code](https://paperswithcode.com/task/document-layout-analysis/latest) |
-| **YOLOv8** | 物体検出ベースのレイアウト分析 | 高速・高精度 | [Nature 2025](https://www.nature.com/articles/s41598-025-07439-y) |
+| 手法 | 概要 | 精度 | ライセンス | 参考 |
+|------|------|------|-----------|------|
+| **LayoutLMv3** | Text + Layout + Vision のマルチモーダルTransformer | 95% (RVL-CDIP) | ⚠️ CC BY-NC-SA 4.0 (モデル) | [Hugging Face](https://huggingface.co/docs/transformers/model_doc/layoutlm) |
+| **LiLT** | 言語非依存レイアウトTransformer | 90%+ | ✅ MIT | [GitHub](https://github.com/jpWang/LiLT) |
+| **DiT** | Document Image Transformer (Vision only) | 92% (RVL-CDIP) | ⚠️ CC BY-NC-SA 4.0 (モデル) | [Papers with Code](https://paperswithcode.com/task/document-layout-analysis/latest) |
+| **YOLOv8** | 物体検出ベースのレイアウト分析 | 高速・高精度 | ⚠️ AGPL-3.0 | [Nature 2025](https://www.nature.com/articles/s41598-025-07439-y) |
 
 #### ルールベース/ハイブリッドアプローチ
 
@@ -56,22 +57,67 @@
 
 ### 3.2 主要データセット
 
-| データセット | サイズ | クラス数 | 特徴 |
-|-------------|--------|---------|------|
-| **PubLayNet** | 360K+ pages | 5 | 学術論文特化、自動アノテーション |
-| **DocLayNet** | 80K+ pages | 11 | 多様な文書、手動アノテーション |
-| **OmniDocBench** | 1,355 pages | 15 block + 4 span | CVPR 2025、多言語対応 |
+| データセット | サイズ | クラス数 | ライセンス | 特徴 |
+|-------------|--------|---------|-----------|------|
+| **PubLayNet** | 360K+ pages | 5 | ✅ CDLA-Permissive-1.0 | 学術論文特化、自動アノテーション |
+| **DocLayNet** | 80K+ pages | 11 | ✅ CDLA-Permissive-1.0 | 多様な文書、手動アノテーション |
+| **OmniDocBench** | 1,355 pages | 15 block + 4 span | 要確認 | CVPR 2025、多言語対応 |
 
 ### 3.3 オープンソースツール
 
-| ツール | アプローチ | 特徴 | 参考 |
-|--------|-----------|------|------|
-| **PyMuPDF4LLM + Layout** | ルールベース + AI | ヘッダー/フッター検出、見出し識別 | [PyMuPDF Docs](https://pymupdf.readthedocs.io/en/latest/pymupdf4llm/) |
-| **GROBID** | CRF + Deep Learning | 学術論文特化、90%+ F1 | [GitHub](https://github.com/kermitt2/grobid) |
-| **Unstructured** | Detectron2 + ルール | 汎用文書対応 | [GitHub](https://github.com/Unstructured-IO/unstructured) |
-| **Marker** | マルチモデル統合 | Markdown出力、LLM統合 | [GitHub](https://github.com/VikParuchuri/marker) |
+| ツール | アプローチ | ライセンス | AGPL互換 | 特徴 | 参考 |
+|--------|-----------|-----------|---------|------|------|
+| **PyMuPDF4LLM + Layout** | ルールベース + AI | AGPL-3.0 | ✅ 同一 | ヘッダー/フッター検出、見出し識別 | [PyMuPDF Docs](https://pymupdf.readthedocs.io/en/latest/pymupdf4llm/) |
+| **GROBID** | CRF + Deep Learning | Apache-2.0 | ✅ 互換 | 学術論文特化、90%+ F1 | [GitHub](https://github.com/kermitt2/grobid) |
+| **Unstructured** | Detectron2 + ルール | Apache-2.0 | ✅ 互換 | 汎用文書対応 | [GitHub](https://github.com/Unstructured-IO/unstructured) |
+| **Marker** | マルチモデル統合 | GPL-3.0 (コード) | ✅ 互換 | Markdown出力、LLM統合 | [GitHub](https://github.com/VikParuchuri/marker) |
+| **Detectron2** | 物体検出フレームワーク | Apache-2.0 | ✅ 互換 | Facebook AI Research | [GitHub](https://github.com/facebookresearch/detectron2) |
 
-### 3.4 比較評価 (2024年論文より)
+### 3.4 ライセンス互換性分析
+
+本プロジェクトは **AGPL-3.0** でライセンスされているため、依存関係のライセンス互換性を確認する必要がある。
+
+#### ライセンス互換性マトリックス
+
+| ライセンス | AGPL-3.0との互換性 | 商用利用 | 備考 |
+|-----------|-------------------|---------|------|
+| **AGPL-3.0** | ✅ 同一 | ✅ 可能 | PyMuPDF, PyMuPDF4LLM |
+| **Apache-2.0** | ✅ 互換 | ✅ 可能 | GROBID, Unstructured, Detectron2 |
+| **MIT** | ✅ 互換 | ✅ 可能 | LiLT, scikit-learn的な依存 |
+| **BSD-3-Clause** | ✅ 互換 | ✅ 可能 | scikit-learn |
+| **GPL-3.0** | ✅ 互換 | ✅ 可能 | Marker (コード部分) |
+| **CDLA-Permissive-1.0** | ✅ 互換 | ✅ 可能 | PubLayNet, DocLayNet |
+| **CC BY-NC-SA 4.0** | ⚠️ 非商用のみ | ❌ 不可 | LayoutLMv3/DiTモデル重み |
+
+#### 推奨ツールのライセンス詳細
+
+| ツール | コードライセンス | モデル/データライセンス | 商用利用 |
+|--------|----------------|---------------------|---------|
+| **PyMuPDF4LLM** | AGPL-3.0 | AGPL-3.0 | ✅ (AGPL遵守で可) |
+| **pymupdf-layout** | AGPL-3.0 (PyMuPDF Pro) | - | ✅ (AGPL遵守で可) |
+| **scikit-learn** | BSD-3-Clause | - | ✅ 制限なし |
+| **LiLT** | MIT | MIT | ✅ 制限なし |
+| **GROBID** | Apache-2.0 | Apache-2.0 | ✅ 制限なし |
+
+#### 注意が必要なツール
+
+| ツール | 問題点 | 代替案 |
+|--------|--------|--------|
+| **LayoutLMv3** | モデル重みが CC BY-NC-SA 4.0（非商用） | LiLT (MIT) を使用 |
+| **DiT** | モデル重みが CC BY-NC-SA 4.0（非商用） | LiLT (MIT) を使用 |
+| **Marker** | モデル重みに収益制限あり（$2M未満のみ無料） | PyMuPDF4LLM を使用 |
+| **Unstructured** | 一部依存関係がAGPL（ultralytics等） | 依存関係を確認して使用 |
+
+#### 結論
+
+**推奨アプローチ（Phase 1: PyMuPDF4LLM + Layout）は完全にAGPL-3.0互換**であり、ライセンス上の問題はない。
+
+Phase 3でML強化を行う場合：
+- ✅ scikit-learn (BSD-3-Clause) - 互換
+- ✅ LiLT (MIT) - 互換、商用可
+- ❌ LayoutLMv3 (CC BY-NC-SA 4.0) - 非商用のみ、避けるべき
+
+### 3.5 比較評価 (2024年論文より)
 
 "A Comparative Study of PDF Parsing Tools" の結果:
 
