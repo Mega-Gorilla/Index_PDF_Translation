@@ -7,7 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [3.0.0] - YYYY-MM-DD
+## [3.1.0] - 2025-12-05
+
+### Breaking Changes
+
+- **`pdf_translate()` return type changed**: `Optional[bytes]` -> `Optional[TranslationResult]`
+  - Before: `result = await pdf_translate(pdf_data, config=config)` (result is bytes)
+  - After: `result = await pdf_translate(pdf_data, config=config)` (result is `TranslationResult`)
+  - Access translated PDF via `result.pdf`
+  - Access debug PDF via `result.debug_pdf` (when `config.debug=True`)
+
+### Added
+
+- `TranslationResult` dataclass for structured return values
+- Debug PDF generation with `--debug` CLI option
+  - Histogram pages (tokens, font sizes, scores distribution)
+  - Block visualization with color coding (green=text, yellow=figures, red=excluded)
+- `create_debug_pdf()` function in `pdf_edit.py`
+
+### Migration Guide (3.0.0 -> 3.1.0)
+
+```python
+# Before (v3.0.0)
+result = await pdf_translate(pdf_data, config=config)
+with open("output.pdf", "wb") as f:
+    f.write(result)  # result was bytes
+
+# After (v3.1.0)
+result = await pdf_translate(pdf_data, config=config)
+with open("output.pdf", "wb") as f:
+    f.write(result.pdf)  # access via .pdf attribute
+
+# Debug mode (v3.1.0)
+config = TranslationConfig(debug=True)
+result = await pdf_translate(pdf_data, config=config)
+if result.debug_pdf:
+    with open("debug.pdf", "wb") as f:
+        f.write(result.debug_pdf)
+```
+
+## [3.0.0] - 2025-12-05
 
 ### Breaking Changes
 
