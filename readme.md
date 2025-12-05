@@ -281,6 +281,69 @@ Font file not found: LiberationSerif-Regular.ttf
 
 フォントファイルが見つからない場合、PyMuPDF組み込みフォントにフォールバックします。
 
+## ライブラリとしての使用
+
+Python プログラムから直接呼び出すことも可能です。
+
+### 基本的な使い方
+
+```python
+import asyncio
+from index_pdf_translation import pdf_translate, TranslationConfig, TranslationResult
+
+async def translate_paper(pdf_path: str) -> None:
+    with open(pdf_path, "rb") as f:
+        pdf_data = f.read()
+
+    # Google翻訳（デフォルト）
+    config = TranslationConfig()
+    result: TranslationResult = await pdf_translate(pdf_data, config=config)
+
+    # 翻訳済みPDFを保存
+    with open("translated.pdf", "wb") as f:
+        f.write(result.pdf)
+
+asyncio.run(translate_paper("paper.pdf"))
+```
+
+### デバッグモード
+
+ブロック分類を可視化するデバッグPDFを生成できます。
+
+```python
+config = TranslationConfig(debug=True)
+result = await pdf_translate(pdf_data, config=config)
+
+# 翻訳済みPDF
+with open("translated.pdf", "wb") as f:
+    f.write(result.pdf)
+
+# デバッグPDF（ヒストグラム + ブロック枠）
+if result.debug_pdf:
+    with open("debug.pdf", "wb") as f:
+        f.write(result.debug_pdf)
+```
+
+デバッグPDFには以下が含まれます：
+- トークン数分布ヒストグラム
+- フォントサイズ分布ヒストグラム
+- スコア分布ヒストグラム
+- ブロック枠付きPDF（緑=本文、黄=図表、赤=除外）
+
+### DeepL / OpenAI の使用
+
+```python
+# DeepL
+config = TranslationConfig(backend="deepl", api_key="your-key")
+
+# OpenAI GPT
+config = TranslationConfig(
+    backend="openai",
+    openai_api_key="your-key",
+    openai_model="gpt-4o",
+)
+```
+
 ## 開発者向け情報
 
 ### 依存関係
