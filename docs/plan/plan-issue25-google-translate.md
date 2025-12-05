@@ -44,7 +44,8 @@ cli.py
               └── translate_blocks() ─── 改行連結ロジック
                     └── TranslatorBackend.translate()
                           ├── GoogleTranslator (デフォルト)
-                          └── DeepLTranslator (オプション)
+                          ├── DeepLTranslator (オプション)
+                          └── OpenAITranslator (オプション)
 ```
 
 ### Strategy パターン
@@ -54,7 +55,8 @@ cli.py
 ```
 TranslatorBackend (Protocol)
     ├── GoogleTranslator  - デフォルト、APIキー不要
-    └── DeepLTranslator   - 高品質、APIキー必要
+    ├── DeepLTranslator   - 高品質、APIキー必要
+    └── OpenAITranslator  - カスタマイズ可能、Structured Outputs
 ```
 
 ---
@@ -986,17 +988,16 @@ dev = [
 
 ### 実装優先度
 
-**Phase 1（Issue #25）で実装する範囲**:
+**Issue #25 で実装する範囲**:
 - [x] Google 翻訳（デフォルト）
 - [x] DeepL 翻訳（オプション）
-
-**Phase 2（別 Issue）で実装を検討**:
 - [ ] OpenAI GPT 翻訳（オプション）
 
-理由：
-1. Issue #25 の主目的は「APIキー不要の翻訳」であり、OpenAI は要件を満たさない
-2. Structured Outputs の実装は追加の検証が必要
-3. まずは Google/DeepL で安定稼働させてから拡張
+OpenAI GPT 翻訳の採用理由：
+1. **カスタマイズ性**: プロンプトで専門分野・用語集を指定可能
+2. **Structured Outputs**: JSON配列で改行保持問題を完全解決
+3. **低コスト**: GPT-4.1-nano は論文1本約0.6円
+4. **Strategy パターン**: 既存のアーキテクチャに自然に統合可能
 
 ---
 
@@ -2519,6 +2520,30 @@ result = await pdf_translate(pdf_data, config=config)
 - [ ] `.env.example` 新規作成（APIキーテンプレート）
 - [ ] `.gitignore` 更新（`.env` 追加）
 
+### Phase 8: OpenAI GPT 翻訳
+- [ ] `translators/openai.py` 新規作成
+  - [ ] Structured Outputs（JSON配列）で改行保持
+  - [ ] GPT-4.1-nano デフォルト
+  - [ ] 3レベルプロンプトカスタマイズ
+- [ ] `translators/__init__.py` 更新（`get_openai_translator` 追加）
+- [ ] `config.py` 更新
+  - [ ] `TranslatorBackendType` に `"openai"` 追加
+  - [ ] `openai_api_key`, `openai_model`, `openai_system_prompt` フィールド追加
+  - [ ] `create_translator()` に OpenAI 分岐追加
+- [ ] `cli.py` 更新
+  - [ ] `--backend openai` オプション追加
+  - [ ] `--openai-model` オプション追加
+  - [ ] `--openai-prompt` / `--openai-prompt-file` オプション追加
+- [ ] `pyproject.toml` 更新
+  - [ ] `[project.optional-dependencies]` に `openai` extra 追加
+- [ ] テスト追加
+  - [ ] `test_translators.py` に OpenAI テスト追加
+  - [ ] Structured Outputs の配列保持テスト
+- [ ] ドキュメント更新
+  - [ ] `readme.md` に OpenAI セクション追加
+  - [ ] `CLAUDE.md` 更新
+  - [ ] `CHANGELOG.md` 更新
+
 ### 最終確認
 - [ ] `__init__.py` 更新（エクスポート追加）
 - [ ] CI 通過確認（API キー不要で通過）
@@ -2535,6 +2560,7 @@ result = await pdf_translate(pdf_data, config=config)
 | `src/index_pdf_translation/translators/base.py` | TranslatorBackend プロトコル |
 | `src/index_pdf_translation/translators/google.py` | Google 翻訳バックエンド |
 | `src/index_pdf_translation/translators/deepl.py` | DeepL 翻訳バックエンド |
+| `src/index_pdf_translation/translators/openai.py` | OpenAI GPT 翻訳バックエンド |
 | `tests/test_translators.py` | 翻訳バックエンドのテスト |
 | `CHANGELOG.md` | 変更履歴（Breaking Changes 記載） |
 | `.env.example` | 環境変数テンプレート（APIキー設定用） |
