@@ -1,9 +1,9 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 [project]
 name = "index-pdf-translation"
-version = "3.0.0"
+version = "3.1.0"
 description = "PDF translation tool for academic papers"
-readme = "readme.md"
+readme = "README.md"
 license = {text = "AGPL-3.0-only"}
 requires-python = ">=3.11"
 authors = [

@@ -6,20 +6,36 @@ Provides translation workflow for PDF documents.
 """
 
 import asyncio
+from dataclasses import dataclass
 from typing import Any, Optional, TYPE_CHECKING
 
 from index_pdf_translation.config import TranslationConfig
 from index_pdf_translation.logger import get_logger
 from index_pdf_translation.core.pdf_edit import (
     DocumentBlocks,
+    create_debug_pdf,
     create_viewing_pdf,
     extract_text_coordinates_dict,
+    pdf_draw_blocks,
     preprocess_write_blocks,
     remove_blocks,
     remove_textbox_for_pdf,
     write_logo_data,
     write_pdf_text,
 )
+
+
+@dataclass
+class TranslationResult:
+    """翻訳結果を格納するデータクラス。
+
+    Attributes:
+        pdf: 翻訳済みPDF（見開き）
+        debug_pdf: デバッグ可視化PDF（統合版）
+    """
+
+    pdf: bytes
+    debug_pdf: Optional[bytes] = None
 
 if TYPE_CHECKING:
     from index_pdf_translation.translators import TranslatorBackend
@@ -287,7 +303,7 @@ async def pdf_translate(
     *,
     config: TranslationConfig,
     disable_translate: bool = False,
-) -> Optional[bytes]:
+) -> Optional[TranslationResult]:
     """
     Translate PDF and generate side-by-side PDF (original + translated).
 
@@ -299,6 +315,7 @@ async def pdf_translate(
     5. Insert translated text
     6. Add logo (optional)
     7. Generate side-by-side PDF
+    8. Generate debug PDF (if debug mode)
 
     Args:
         pdf_data: Input PDF binary data
@@ -306,16 +323,22 @@ async def pdf_translate(
         disable_translate: Disable translation (for testing)
 
     Returns:
-        Side-by-side PDF binary data, or None on failure
+        TranslationResult containing PDF data and optional debug PDF
 
     Examples:
         >>> # Google Translate (default)
         >>> config = TranslationConfig()
         >>> result = await pdf_translate(pdf_data, config=config)
+        >>> translated_pdf = result.pdf
 
         >>> # DeepL Translate
         >>> config = TranslationConfig(backend="deepl", api_key="xxx")
         >>> result = await pdf_translate(pdf_data, config=config)
+
+        >>> # Debug mode
+        >>> config = TranslationConfig(debug=True)
+        >>> result = await pdf_translate(pdf_data, config=config)
+        >>> debug_pdf = result.debug_pdf  # Contains histograms + block frames
     """
     # Create translation backend
     translator = config.create_translator()
@@ -325,6 +348,8 @@ async def pdf_translate(
     block_info = await extract_text_coordinates_dict(pdf_data)
 
     # 2. Classify blocks
+    plot_images: Optional[list[bytes]] = None
+    remove_info: Optional[DocumentBlocks] = None
     if config.debug:
         text_blocks, fig_blocks, remove_info, plot_images = await remove_blocks(
             block_info, 10, lang=config.source_lang, debug=True
@@ -395,4 +420,44 @@ async def pdf_translate(
     merged_pdf_data = await create_viewing_pdf(pdf_data, translated_pdf_data)
     logger.info("5. Side-by-side PDF generation complete")
 
-    return merged_pdf_data
+    # 8. Generate debug PDF (if debug mode)
+    debug_pdf: Optional[bytes] = None
+    if config.debug and remove_info is not None:
+        # Draw block frames on original PDF
+        blocks_pdf = pdf_data
+
+        # text_blocks: 緑 (green)
+        blocks_pdf = await pdf_draw_blocks(
+            blocks_pdf,
+            text_blocks,
+            line_color_rgb=[0, 0.7, 0],
+            fill_color_rgb=[0, 0.7, 0],
+            fill_opacity=0.2,
+            width=1,
+        )
+
+        # fig_blocks: 黄 (yellow)
+        blocks_pdf = await pdf_draw_blocks(
+            blocks_pdf,
+            fig_blocks,
+            line_color_rgb=[1, 0.8, 0],
+            fill_color_rgb=[1, 0.8, 0],
+            fill_opacity=0.2,
+            width=1,
+        )
+
+        # removed_blocks: 赤 (red)
+        blocks_pdf = await pdf_draw_blocks(
+            blocks_pdf,
+            remove_info,
+            line_color_rgb=[1, 0, 0],
+            fill_color_rgb=[1, 0, 0],
+            fill_opacity=0.2,
+            width=1,
+        )
+
+        # Create debug PDF with histograms as leading pages
+        debug_pdf = await create_debug_pdf(blocks_pdf, plot_images)
+        logger.info("6. Debug PDF generation complete")
+
+    return TranslationResult(pdf=merged_pdf_data, debug_pdf=debug_pdf)

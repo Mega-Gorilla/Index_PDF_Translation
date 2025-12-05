@@ -816,3 +816,47 @@ def plot_area_distribution(
     buf.seek(0)
 
     return buf.read()
+
+
+async def create_debug_pdf(
+    blocks_pdf: bytes,
+    histogram_images: Optional[list[bytes]],
+) -> bytes:
+    """
+    ヒストグラム画像をPDFの先頭ページとして追加します。
+
+    Args:
+        blocks_pdf: ブロック枠付きPDFデータ
+        histogram_images: ヒストグラムPNG画像のリスト
+
+    Returns:
+        統合されたデバッグPDFデータ
+    """
+    # 新しいPDFドキュメントを作成
+    new_doc = fitz.open()
+
+    # 1. ヒストグラム画像を先頭ページとして追加
+    if histogram_images:
+        for img_data in histogram_images:
+            # A4サイズのページを追加
+            page = new_doc.new_page(width=595, height=842)  # A4 portrait
+
+            # 画像を中央に配置（マージンを持たせる）
+            img_rect = fitz.Rect(50, 50, 545, 792)
+            await asyncio.to_thread(page.insert_image, img_rect, stream=img_data)
+
+    # 2. ブロック枠付きPDFのページを追加
+    blocks_doc = await asyncio.to_thread(
+        fitz.open, stream=blocks_pdf, filetype="pdf"
+    )
+    new_doc.insert_pdf(blocks_doc)
+    await asyncio.to_thread(blocks_doc.close)
+
+    # 出力
+    output_buffer = BytesIO()
+    await asyncio.to_thread(
+        new_doc.save, output_buffer, garbage=4, deflate=True, clean=True
+    )
+    await asyncio.to_thread(new_doc.close)
+
+    return output_buffer.getvalue()
