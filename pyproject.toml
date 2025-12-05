@@ -50,6 +50,6 @@ markers = [
 ]
 
 [tool.uv]
-# spaCy language models need to be downloaded after installation:
-# uv run python -m spacy download en_core_web_sm
-# uv run python -m spacy download ja_core_news_sm
+# spaCy language models need to be installed after uv sync:
+# uv pip install https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl
+# uv pip install https://github.com/explosion/spacy-models/releases/download/ja_core_news_sm-3.8.0/ja_core_news_sm-3.8.0-py3-none-any.whl

@@ -20,8 +20,9 @@ Index PDF Translation is a PDF translation tool designed for academic papers. It
 ### Installation (uv - recommended)
 ```bash
 uv sync
-uv run python -m spacy download en_core_web_sm
-uv run python -m spacy download ja_core_news_sm
+# Install spaCy models (required for text block extraction)
+uv pip install https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl
+uv pip install https://github.com/explosion/spacy-models/releases/download/ja_core_news_sm-3.8.0/ja_core_news_sm-3.8.0-py3-none-any.whl
 ```
 
 ### Installation (pip)
