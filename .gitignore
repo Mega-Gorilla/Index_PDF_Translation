@@ -22,3 +22,8 @@ env/
 
 # Test data (large PDF samples)
 /tests/pdf_sample/
+
+# Environment variables (API keys)
+.env
+.env.local
+.env.*.local

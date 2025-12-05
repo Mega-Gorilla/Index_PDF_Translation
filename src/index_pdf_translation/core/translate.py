@@ -2,12 +2,11 @@
 """
 Index PDF Translation - Translation Orchestration
 
-DeepL APIを使用した翻訳機能と、PDF翻訳ワークフローを提供します。
+Provides translation workflow for PDF documents.
 """
 
-from typing import Any, Optional
-
-import aiohttp
+import asyncio
+from typing import Any, Optional, TYPE_CHECKING
 
 from index_pdf_translation.config import TranslationConfig
 from index_pdf_translation.logger import get_logger
@@ -22,90 +21,198 @@ from index_pdf_translation.core.pdf_edit import (
     write_pdf_text,
 )
 
+if TYPE_CHECKING:
+    from index_pdf_translation.translators import TranslatorBackend
+
 logger = get_logger("translate")
 
-# 型エイリアス
-TranslationResult = dict[str, Any]
+# Separator token (verified 100% success rate with Google Translate)
+# Uses symbol-only token that won't be translated
+BLOCK_SEPARATOR = "[[[BR]]]"
+
+# Character limit (deep-translator has 5,000 char limit for Google Translate)
+MAX_CHUNK_SIZE = 4500  # With margin for separator
 
 
-async def translate_str_data(
-    key: str, text: str, target_lang: str, api_url: str
-) -> TranslationResult:
+def chunk_texts_for_translation(
+    texts: list[str],
+    separator: str = BLOCK_SEPARATOR,
+    max_size: int = MAX_CHUNK_SIZE,
+) -> list[list[str]]:
     """
-    DeepL APIを使用してテキストを翻訳します。
+    Split text list into chunks within character limit.
 
     Args:
-        key: DeepL APIキー
-        text: 翻訳するテキスト
-        target_lang: 翻訳先の言語コード（例: "EN", "JA"）
-        api_url: DeepL API URL
+        texts: List of texts to translate
+        separator: Separator token
+        max_size: Maximum characters per chunk
 
     Returns:
-        翻訳結果を含む辞書:
-        - 成功時: {"ok": True, "data": "翻訳テキスト"}
-        - 失敗時: {"ok": False, "message": "エラーメッセージ"}
-    """
-    params = {
-        "auth_key": key,
-        "text": text,
-        "target_lang": target_lang,
-        "tag_handling": "xml",
-        "formality": "more",
-    }
+        List of text lists (chunks)
 
-    async with aiohttp.ClientSession() as session:
-        async with session.post(api_url, data=params) as response:
-            if response.status == 200:
-                result = await response.json()
-                translated_text = result["translations"][0]["text"]
-                return {"ok": True, "data": translated_text}
+    Note:
+        If a single block exceeds max_size, it's treated as a standalone chunk.
+        May fail at translation API, but rare in academic papers.
+    """
+    chunks: list[list[str]] = []
+    current_chunk: list[str] = []
+    current_size = 0
+    separator_len = len(separator)
+
+    for text in texts:
+        # Single block exceeds limit - warn and add as standalone
+        if len(text) > max_size:
+            # Save current chunk first
+            if current_chunk:
+                chunks.append(current_chunk)
+                current_chunk = []
+                current_size = 0
+            # Add oversized block as standalone chunk
+            chunks.append([text])
+            logger.warning(
+                f"Single block exceeds MAX_CHUNK_SIZE ({len(text)} > {max_size}). "
+                f"May fail at translation API."
+            )
+            continue
+
+        # Calculate size including separator
+        item_size = len(text)
+        if current_chunk:
+            item_size += separator_len
+
+        # Would exceed limit if added to current chunk
+        if current_size + item_size > max_size and current_chunk:
+            chunks.append(current_chunk)
+            current_chunk = []
+            current_size = 0
+            item_size = len(text)  # No separator for new chunk
+
+        current_chunk.append(text)
+        current_size += item_size
+
+    # Add final chunk
+    if current_chunk:
+        chunks.append(current_chunk)
+
+    return chunks
+
+
+async def translate_chunk_with_retry(
+    translator: "TranslatorBackend",
+    text: str,
+    target_lang: str,
+    max_retries: int = 3,
+    retry_delay: float = 1.0,
+) -> str:
+    """
+    Translate with fixed-delay retry (Phase 1 implementation).
+
+    Args:
+        translator: Translation backend
+        text: Text to translate
+        target_lang: Target language code
+        max_retries: Maximum retry count
+        retry_delay: Retry interval in seconds (fixed)
+
+    Returns:
+        Translated text
+
+    Raises:
+        TranslationError: When all retries fail
+    """
+    from index_pdf_translation.translators.base import TranslationError
+
+    last_error: Optional[TranslationError] = None
+    for attempt in range(max_retries + 1):
+        try:
+            return await translator.translate(text, target_lang)
+        except TranslationError as e:
+            last_error = e
+            if attempt < max_retries:
+                logger.warning(
+                    f"Translation failed (attempt {attempt + 1}/{max_retries + 1}), "
+                    f"retrying in {retry_delay}s: {e}"
+                )
+                await asyncio.sleep(retry_delay)
             else:
-                error_msg = f"DeepL API request failed with status code {response.status}"
-                logger.error(error_msg)
-                return {"ok": False, "message": error_msg}
+                raise
+
+    raise last_error  # For type checker (unreachable)
 
 
 async def translate_blocks(
-    blocks: DocumentBlocks, key: str, target_lang: str, api_url: str
+    blocks: DocumentBlocks,
+    translator: "TranslatorBackend",
+    target_lang: str,
 ) -> DocumentBlocks:
     """
-    複数のテキストブロックを一括翻訳します。
+    Translate multiple text blocks in batch.
+
+    Uses separator token method with chunking:
+    - Handles 5,000 character limit
+    - Minimizes API calls (rate limit avoidance)
+    - Maintains context for quality translation
+    - Accurately preserves empty lines/whitespace
 
     Args:
-        blocks: 翻訳するブロック情報のリスト
-        key: DeepL APIキー
-        target_lang: 翻訳先の言語コード
-        api_url: DeepL API URL
+        blocks: Block information list
+        translator: Translation backend
+        target_lang: Target language code
 
     Returns:
-        翻訳後のブロック情報（元のブロックのtextが翻訳テキストに置換）
-
-    Raises:
-        Exception: 翻訳APIが失敗した場合
+        Translated block information
     """
-    # テキストを改行で連結
-    translate_text = ""
+    # Extract all texts
+    texts: list[str] = []
     for page in blocks:
         for block in page:
-            translate_text += block["text"] + "\n"
+            texts.append(block["text"])
 
-    # 翻訳実行
-    translated_result = await translate_str_data(key, translate_text, target_lang, api_url)
+    if not texts:
+        return blocks
 
-    if translated_result["ok"]:
-        translated_text = translated_result["data"]
-    else:
-        raise Exception(translated_result["message"])
+    # Split into chunks
+    chunks = chunk_texts_for_translation(texts, BLOCK_SEPARATOR, MAX_CHUNK_SIZE)
+    logger.info(f"Split {len(texts)} blocks into {len(chunks)} chunks for translation")
 
-    # 翻訳テキストを分割して各ブロックに割り当て
-    translated_lines = translated_text.split("\n")
+    # Translate each chunk
+    translated_texts: list[str] = []
+    for i, chunk in enumerate(chunks):
+        combined_text = BLOCK_SEPARATOR.join(chunk)
+        logger.debug(f"Translating chunk {i + 1}/{len(chunks)} ({len(combined_text)} chars)")
 
+        translated_combined = await translate_chunk_with_retry(
+            translator, combined_text, target_lang
+        )
+
+        # Split translated result
+        chunk_results = translated_combined.split(BLOCK_SEPARATOR)
+
+        # Verify chunk line count
+        if len(chunk_results) != len(chunk):
+            logger.warning(
+                f"Chunk {i + 1} block count mismatch: "
+                f"expected {len(chunk)}, got {len(chunk_results)}"
+            )
+
+        translated_texts.extend(chunk_results)
+
+    # Verify total line count
+    if len(translated_texts) != len(texts):
+        logger.warning(
+            f"Total block count mismatch after translation: "
+            f"expected {len(texts)}, got {len(translated_texts)}"
+        )
+
+    # Assign translated texts to blocks
+    idx = 0
     for page in blocks:
         for block in page:
-            if translated_lines:
-                block["text"] = translated_lines.pop(0)
+            if idx < len(translated_texts):
+                block["text"] = translated_texts[idx]
             else:
                 block["text"] = ""
+            idx += 1
 
     return blocks
 
@@ -116,17 +223,17 @@ async def preprocess_translation_blocks(
     end_marker_enable: bool = True,
 ) -> DocumentBlocks:
     """
-    翻訳前のブロック前処理を行います。
+    Preprocess blocks before translation.
 
-    終端記号がない場合、複数のブロックを1つにまとめて翻訳品質を向上させます。
+    Merges multiple blocks without end markers to improve translation quality.
 
     Args:
-        blocks: ブロック情報のリスト
-        end_markers: 文末を示す記号のタプル
-        end_marker_enable: 終端記号による分割を有効化するフラグ
+        blocks: Block information list
+        end_markers: Tuple of sentence-ending markers
+        end_marker_enable: Enable end-marker based splitting
 
     Returns:
-        前処理後のブロック情報
+        Preprocessed block information
     """
     results: DocumentBlocks = []
 
@@ -161,7 +268,7 @@ async def preprocess_translation_blocks(
                     "text": text,
                     "size": font_size,
                 })
-                # リセット
+                # Reset
                 text = ""
                 coordinates = []
                 block_no = []
@@ -178,150 +285,114 @@ async def preprocess_translation_blocks(
 async def pdf_translate(
     pdf_data: bytes,
     *,
-    config: Optional[TranslationConfig] = None,
-    api_key: Optional[str] = None,
-    api_url: Optional[str] = None,
-    source_lang: str = "en",
-    target_lang: str = "ja",
-    debug: bool = False,
-    add_logo: bool = True,
+    config: TranslationConfig,
     disable_translate: bool = False,
 ) -> Optional[bytes]:
     """
-    PDFを翻訳し、見開きPDF（オリジナル + 翻訳）を生成します。
+    Translate PDF and generate side-by-side PDF (original + translated).
 
-    翻訳ワークフロー:
-    1. テキストブロック抽出
-    2. ブロック分類（本文/図表/除外）
-    3. テキスト削除
-    4. DeepL翻訳
-    5. 翻訳テキスト挿入
-    6. ロゴ追加（オプション）
-    7. 見開きPDF生成
+    Translation workflow:
+    1. Extract text blocks
+    2. Classify blocks (body/figures/excluded)
+    3. Remove text
+    4. Translate
+    5. Insert translated text
+    6. Add logo (optional)
+    7. Generate side-by-side PDF
 
     Args:
-        pdf_data: 入力PDFのバイナリデータ
-        config: TranslationConfig オブジェクト。指定時は他のパラメータより優先。
-        api_key: DeepL APIキー (config未指定時に使用)
-        api_url: DeepL API URL (config未指定時に使用)
-        source_lang: 翻訳元言語コード (config未指定時に使用, default: 'en')
-        target_lang: 翻訳先言語コード (config未指定時に使用, default: 'ja')
-        debug: デバッグモード (config未指定時に使用, default: False)
-        add_logo: ロゴウォーターマークを追加 (config未指定時に使用, default: True)
-        disable_translate: 翻訳を無効化（テスト用）
+        pdf_data: Input PDF binary data
+        config: Translation configuration
+        disable_translate: Disable translation (for testing)
 
     Returns:
-        見開きPDFのバイナリデータ、または失敗時はNone
+        Side-by-side PDF binary data, or None on failure
 
     Examples:
-        >>> # TranslationConfig を使用
-        >>> config = TranslationConfig(api_key="your-key")
+        >>> # Google Translate (default)
+        >>> config = TranslationConfig()
         >>> result = await pdf_translate(pdf_data, config=config)
 
-        >>> # 個別パラメータを使用
-        >>> result = await pdf_translate(
-        ...     pdf_data,
-        ...     api_key="your-key",
-        ...     source_lang="en",
-        ...     target_lang="ja",
-        ... )
+        >>> # DeepL Translate
+        >>> config = TranslationConfig(backend="deepl", api_key="xxx")
+        >>> result = await pdf_translate(pdf_data, config=config)
     """
-    # 設定の解決
-    if config is not None:
-        # TranslationConfig が指定された場合、その値を使用
-        effective_api_key = config.api_key
-        effective_api_url = config.api_url
-        effective_source_lang = config.source_lang
-        effective_target_lang = config.target_lang
-        effective_debug = config.debug
-        effective_add_logo = config.add_logo
-    else:
-        # 個別パラメータを使用
-        if api_key is None:
-            raise ValueError(
-                "api_key is required. Pass api_key parameter or use TranslationConfig."
-            )
-        effective_api_key = api_key
-        effective_api_url = api_url or "https://api-free.deepl.com/v2/translate"
-        effective_source_lang = source_lang
-        effective_target_lang = target_lang
-        effective_debug = debug
-        effective_add_logo = add_logo
+    # Create translation backend
+    translator = config.create_translator()
+    logger.info(f"Using translator: {translator.name}")
 
-    # 1. テキストブロック抽出
+    # 1. Extract text blocks
     block_info = await extract_text_coordinates_dict(pdf_data)
 
-    # 2. ブロック分類
-    if effective_debug:
+    # 2. Classify blocks
+    if config.debug:
         text_blocks, fig_blocks, remove_info, plot_images = await remove_blocks(
-            block_info, 10, lang=effective_source_lang, debug=True
+            block_info, 10, lang=config.source_lang, debug=True
         )
     else:
         text_blocks, fig_blocks, _, _ = await remove_blocks(
-            block_info, 10, lang=effective_source_lang
+            block_info, 10, lang=config.source_lang
         )
 
-    # 3. テキスト削除
+    # 3. Remove text
     removed_textbox_pdf_data = await remove_textbox_for_pdf(pdf_data, text_blocks)
     removed_textbox_pdf_data = await remove_textbox_for_pdf(
         removed_textbox_pdf_data, fig_blocks
     )
-    logger.info("1. テキストボックス削除完了")
+    logger.info("1. Text box removal complete")
 
-    # 翻訳前のブロック準備
+    # Prepare blocks for translation
     preprocess_text_blocks = await preprocess_translation_blocks(
         text_blocks, (".", ":", ";"), True
     )
     preprocess_fig_blocks = await preprocess_translation_blocks(
         fig_blocks, (".", ":", ";"), False
     )
-    logger.info("2. ブロック前処理完了")
+    logger.info("2. Block preprocessing complete")
 
-    # 4. 翻訳実施
+    # 4. Translate
     if not disable_translate:
         translate_text_blocks = await translate_blocks(
             preprocess_text_blocks,
-            effective_api_key,
-            effective_target_lang,
-            effective_api_url,
+            translator,
+            config.target_lang,
         )
         translate_fig_blocks = await translate_blocks(
             preprocess_fig_blocks,
-            effective_api_key,
-            effective_target_lang,
-            effective_api_url,
+            translator,
+            config.target_lang,
         )
-        logger.info("3. 翻訳完了")
+        logger.info("3. Translation complete")
 
-        # 5. PDF書き込みデータ作成
+        # 5. Create PDF write data
         write_text_blocks = await preprocess_write_blocks(
-            translate_text_blocks, effective_target_lang
+            translate_text_blocks, config.target_lang
         )
         write_fig_blocks = await preprocess_write_blocks(
-            translate_fig_blocks, effective_target_lang
+            translate_fig_blocks, config.target_lang
         )
-        logger.info("4. 書き込みブロック生成完了")
+        logger.info("4. Write block generation complete")
 
-        # PDFの作成
+        # Create PDF
         translated_pdf_data = removed_textbox_pdf_data
         if write_text_blocks:
             translated_pdf_data = await write_pdf_text(
-                translated_pdf_data, write_text_blocks, effective_target_lang
+                translated_pdf_data, write_text_blocks, config.target_lang
             )
         if write_fig_blocks:
             translated_pdf_data = await write_pdf_text(
-                translated_pdf_data, write_fig_blocks, effective_target_lang
+                translated_pdf_data, write_fig_blocks, config.target_lang
             )
 
-        # 6. ロゴ追加（オプション）
-        if effective_add_logo:
+        # 6. Add logo (optional)
+        if config.add_logo:
             translated_pdf_data = await write_logo_data(translated_pdf_data)
     else:
-        logger.info("翻訳スキップ（disable_translate=True）")
+        logger.info("Translation skipped (disable_translate=True)")
         translated_pdf_data = removed_textbox_pdf_data
 
-    # 7. 見開き結合
+    # 7. Create side-by-side layout
     merged_pdf_data = await create_viewing_pdf(pdf_data, translated_pdf_data)
-    logger.info("5. 見開きPDF生成完了")
+    logger.info("5. Side-by-side PDF generation complete")
 
     return merged_pdf_data

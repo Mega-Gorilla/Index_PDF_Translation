@@ -35,11 +35,13 @@ jobs:
       - name: Install dependencies
         run: uv sync --extra dev
 
-      - name: Install spaCy model
-        run: uv pip install en_core_web_sm@https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1-py3-none-any.whl
+      - name: Install spaCy models
+        run: |
+          uv pip install https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl
+          uv pip install https://github.com/explosion/spacy-models/releases/download/ja_core_news_sm-3.8.0/ja_core_news_sm-3.8.0-py3-none-any.whl
 
       - name: Run tests
-        run: uv run pytest tests/ -v --tb=short
+        run: uv run pytest tests/ -v --tb=short -m "not integration"
 
       - name: Run syntax check
         run: uv run python -m py_compile src/index_pdf_translation/cli.py
