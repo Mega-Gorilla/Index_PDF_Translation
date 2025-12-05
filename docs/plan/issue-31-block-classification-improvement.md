@@ -1,5 +1,7 @@
 # Issue #31: ブロック分類アルゴリズム改善計画
 
+> **関連ドキュメント**: 各ツール・論文の詳細については [文書レイアウト解析技術調査レポート](../research/document-layout-analysis-survey.md) を参照
+
 ## 1. 概要
 
 現在のブロック分類アルゴリズムを改善し、以下の目標を達成する：
@@ -33,126 +35,45 @@
 | ヒストグラム選択の不安定性 | 最頻出ビン≠本文ブロックの場合あり | 中 |
 | 文脈分析なし | ブロック間の関係性を無視 | 低 |
 
-## 3. 調査結果: 最新の研究・実装
+## 3. 調査結果サマリー
 
-### 3.1 学術研究
+> **詳細**: [文書レイアウト解析技術調査レポート](../research/document-layout-analysis-survey.md)
 
-#### Deep Learning ベースのアプローチ
+### 3.1 調査したツール・技術
 
-| 手法 | 発行年 | 概要 | 精度 | ライセンス | 参考 |
-|------|--------|------|------|-----------|------|
-| **LayoutLM** | KDD 2020 | Text + Layout の事前学習 | 94.4% | ✅ MIT | [arXiv](https://arxiv.org/abs/1912.13318) |
-| **LayoutLMv3** | ACM MM 2022 | Text + Layout + Vision のマルチモーダルTransformer | 95% (RVL-CDIP) | ⚠️ CC BY-NC-SA 4.0 (モデル) | [arXiv](https://arxiv.org/abs/2204.08387) |
-| **LiLT** | ACL 2022 | 言語非依存レイアウトTransformer | 90%+ | ✅ MIT | [ACL Anthology](https://aclanthology.org/2022.acl-long.534/) |
-| **DiT** | ACM MM 2022 | Document Image Transformer (Vision only) | 92% (RVL-CDIP) | ⚠️ CC BY-NC-SA 4.0 (モデル) | [arXiv](https://arxiv.org/abs/2203.02378) |
-| **YOLOv8** | 2023 | 物体検出ベースのレイアウト分析 | 高速・高精度 | ⚠️ AGPL-3.0 | [Ultralytics](https://github.com/ultralytics/ultralytics) |
+| カテゴリ | 対象 |
+|---------|------|
+| オープンソースツール | PyMuPDF4LLM, DocLayout-YOLO, DeepSeek-OCR, GROBID, Unstructured, Marker |
+| 学術研究 | LayoutLM, LayoutLMv3, LiLT, DiT |
+| データセット | PubLayNet, DocLayNet, OmniDocBench |
 
-#### ルールベース/ハイブリッドアプローチ
+### 3.2 主要ツール比較
 
-| 手法 | 概要 | 精度 | 参考 |
-|------|------|------|------|
-| **TBRF** | Rule-based + ML ハイブリッド | 95%+ | [arXiv](https://arxiv.org/html/2305.17401) |
-| **Multi-pass Sieve** | 多段階ルール適用 | 92.6% | [ResearchGate](https://www.researchgate.net/publication/265487498) |
-| **PDFX** | 学術論文特化ルールベース | 77.45 F1 (heading) | - |
-| **SED** | 教師なしルールベース | 82%+ | [IJCSI](https://www.ijcsi.org/papers/IJCSI-17-6-40-47.pdf) |
+| ツール | ライセンス | GPU要件 | 特徴 |
+|--------|-----------|---------|------|
+| **PyMuPDF4LLM + Layout** | AGPL-3.0 | 不要 | ヒューリスティクス + ML、既存PyMuPDF統合容易 |
+| **DocLayout-YOLO** | Apache-2.0 | 推奨 | YOLOv10ベース、高速・高精度 |
+| **DeepSeek-OCR** | MIT | 必須 | 97%精度@10×圧縮、最新 (2025.10) |
+| **GROBID** | Apache-2.0 | オプション | 学術論文特化、参考文献抽出に最適 |
 
-### 3.2 主要データセット
+### 3.3 ライセンス互換性
 
-| データセット | 発行年 | サイズ | クラス数 | ライセンス | 特徴 |
-|-------------|--------|--------|---------|-----------|------|
-| **PubLayNet** | ICDAR 2019 | 360K+ pages | 5 | ✅ CDLA-Permissive-1.0 | 学術論文特化、自動アノテーション、Best Paper Award |
-| **DocLayNet** | KDD 2022 | 80K+ pages | 11 | ✅ CDLA-Permissive-1.0 | 多様な文書、手動アノテーション |
-| **OmniDocBench** | CVPR 2025 | 1,355 pages | 15 block + 4 span | 要確認 | 多言語対応、包括的ベンチマーク |
+本プロジェクト（AGPL-3.0）との互換性:
 
-### 3.3 オープンソースツール
+| 互換性 | ツール |
+|--------|--------|
+| ✅ 互換 | PyMuPDF4LLM, DocLayout-YOLO, DeepSeek-OCR, GROBID, LiLT |
+| ⚠️ 非商用のみ | LayoutLMv3, DiT（モデル重み CC BY-NC-SA 4.0） |
 
-| ツール | 初版/論文 | アプローチ | ライセンス | AGPL互換 | 特徴 | 参考 |
-|--------|----------|-----------|-----------|---------|------|------|
-| **PyMuPDF4LLM + Layout** | 2024 | ヒューリスティクス + ML | AGPL-3.0 | ✅ 同一 | ヘッダー/フッター検出、見出し識別 | [PyMuPDF Docs](https://pymupdf.readthedocs.io/en/latest/pymupdf4llm/) |
-| **DocLayout-YOLO** | 2024 | YOLOv10 + G2L | ✅ Apache-2.0 | ✅ 互換 | 文書レイアウト特化YOLO、高速・高精度 | [GitHub](https://github.com/opendatalab/DocLayout-YOLO) |
-| **DeepSeek-OCR** | 2025.10 | Vision-Language (MoE 3B) | ✅ MIT | ✅ 互換 | 97%精度@10×圧縮、省トークン | [GitHub](https://github.com/deepseek-ai/DeepSeek-OCR) |
-| **GROBID** | ECDL 2009 | CRF + Deep Learning | Apache-2.0 | ✅ 互換 | 学術論文特化、90%+ F1 | [GitHub](https://github.com/kermitt2/grobid) |
-| **Unstructured** | 2022 | Detectron2 + ルール | Apache-2.0 | ✅ 互換 | 汎用文書対応 | [GitHub](https://github.com/Unstructured-IO/unstructured) |
-| **Marker** | 2023 | マルチモデル統合 | GPL-3.0 (コード) | ✅ 互換 | Markdown出力、LLM統合 | [GitHub](https://github.com/VikParuchuri/marker) |
-| **Detectron2** | 2019 | 物体検出フレームワーク | Apache-2.0 | ✅ 互換 | Facebook AI Research | [GitHub](https://github.com/facebookresearch/detectron2) |
+### 3.4 結論
 
-#### ツール補足説明
+**推奨アプローチ: PyMuPDF4LLM + Layout**
+- ✅ 同一ライセンス（AGPL-3.0）で互換性問題なし
+- ✅ GPU不要で軽量
+- ✅ 既存PyMuPDF使用のため統合容易
+- ✅ ヘッダー/フッター/見出し検出をネイティブサポート
 
-**PyMuPDF4LLM + Layout**:
-- `pymupdf-layout` パッケージと組み合わせて使用
-- ヒューリスティクス（ルールベース）と機械学習のハイブリッドアプローチ
-- ヘッダー/フッター、脚注、リスト項目、テキスト段落の検出に対応
-- YOLO等の物体検出モデルは使用していない
-
-**DocLayout-YOLO**:
-- OpenDataLabによる文書レイアウト特化YOLOモデル
-- YOLOv10ベース + Global-to-Local Controllability (G2L) モジュール
-- DocSynth300Kデータセットで事前学習（2024年10月公開）
-- PDF-Extract-Kitに統合済み
-
-**DeepSeek-OCR**:
-- 2025年10月リリース、3Bパラメータ（MoEアーキテクチャ）
-- Vision-Language モデルによる「Context Optical Compression」
-- 10×圧縮で97%精度、100-200トークンでページ全体を処理可能
-- vLLMでサポート、Hugging Faceで公開 (`deepseek-ai/DeepSeek-OCR`)
-
-### 3.4 ライセンス互換性分析
-
-本プロジェクトは **AGPL-3.0** でライセンスされているため、依存関係のライセンス互換性を確認する必要がある。
-
-#### ライセンス互換性マトリックス
-
-| ライセンス | AGPL-3.0との互換性 | 商用利用 | 備考 |
-|-----------|-------------------|---------|------|
-| **AGPL-3.0** | ✅ 同一 | ✅ 可能 | PyMuPDF, PyMuPDF4LLM |
-| **Apache-2.0** | ✅ 互換 | ✅ 可能 | GROBID, Unstructured, Detectron2, DocLayout-YOLO |
-| **MIT** | ✅ 互換 | ✅ 可能 | LiLT, DeepSeek-OCR, scikit-learn的な依存 |
-| **BSD-3-Clause** | ✅ 互換 | ✅ 可能 | scikit-learn |
-| **GPL-3.0** | ✅ 互換 | ✅ 可能 | Marker (コード部分) |
-| **CDLA-Permissive-1.0** | ✅ 互換 | ✅ 可能 | PubLayNet, DocLayNet |
-| **CC BY-NC-SA 4.0** | ⚠️ 非商用のみ | ❌ 不可 | LayoutLMv3/DiTモデル重み |
-
-#### 推奨ツールのライセンス詳細
-
-| ツール | コードライセンス | モデル/データライセンス | 商用利用 |
-|--------|----------------|---------------------|---------|
-| **PyMuPDF4LLM** | AGPL-3.0 | AGPL-3.0 | ✅ (AGPL遵守で可) |
-| **pymupdf-layout** | AGPL-3.0 (PyMuPDF Pro) | - | ✅ (AGPL遵守で可) |
-| **DocLayout-YOLO** | Apache-2.0 | Apache-2.0 | ✅ 制限なし |
-| **DeepSeek-OCR** | MIT | MIT | ✅ 制限なし |
-| **scikit-learn** | BSD-3-Clause | - | ✅ 制限なし |
-| **LiLT** | MIT | MIT | ✅ 制限なし |
-| **GROBID** | Apache-2.0 | Apache-2.0 | ✅ 制限なし |
-
-#### 注意が必要なツール
-
-| ツール | 問題点 | 代替案 |
-|--------|--------|--------|
-| **LayoutLMv3** | モデル重みが CC BY-NC-SA 4.0（非商用） | LiLT (MIT) を使用 |
-| **DiT** | モデル重みが CC BY-NC-SA 4.0（非商用） | LiLT (MIT) を使用 |
-| **Marker** | モデル重みに収益制限あり（$2M未満のみ無料） | PyMuPDF4LLM を使用 |
-| **Unstructured** | 一部依存関係がAGPL（ultralytics等） | 依存関係を確認して使用 |
-
-#### 結論
-
-**推奨アプローチ（Phase 1: PyMuPDF4LLM + Layout）は完全にAGPL-3.0互換**であり、ライセンス上の問題はない。
-
-Phase 3でML強化を行う場合：
-- ✅ scikit-learn (BSD-3-Clause) - 互換
-- ✅ LiLT (MIT) - 互換、商用可
-- ❌ LayoutLMv3 (CC BY-NC-SA 4.0) - 非商用のみ、避けるべき
-
-### 3.5 比較評価 (2024年論文より)
-
-"A Comparative Study of PDF Parsing Tools" の結果:
-
-| ツール | 学術論文 | 特許 | 法律文書 |
-|--------|---------|------|---------|
-| PyMuPDF | 良好 | 困難 | 良好 |
-| Unstructured | 中程度 | 中程度 | 良好 |
-| Nougat | 良好 | 困難 | 困難 |
-
-**結論**: 学術論文特化であればPyMuPDFベースで十分な精度が期待できる
+将来的なML強化では LiLT (MIT) を推奨（商用利用可）。
 
 ## 4. 改善アプローチの選択
 
@@ -619,31 +540,10 @@ translate_headings = True    # 見出しも翻訳
 
 ## 11. 参考資料
 
-### 研究論文
+詳細な参考文献リストは [文書レイアウト解析技術調査レポート](../research/document-layout-analysis-survey.md#7-参考文献) を参照。
 
-#### Document AI モデル
-- Xu et al. (2020) [LayoutLM: Pre-training of Text and Layout for Document Image Understanding](https://arxiv.org/abs/1912.13318) - KDD 2020
-- Huang et al. (2022) [LayoutLMv3: Pre-training for Document AI with Unified Text and Image Masking](https://arxiv.org/abs/2204.08387) - ACM MM 2022
-- Wang et al. (2022) [LiLT: A Simple yet Effective Language-Independent Layout Transformer](https://aclanthology.org/2022.acl-long.534/) - ACL 2022
-- Li et al. (2022) [DiT: Self-supervised Pre-training for Document Image Transformer](https://arxiv.org/abs/2203.02378) - ACM MM 2022
+### 主要リンク
 
-#### データセット
-- Zhong et al. (2019) [PubLayNet: Largest Dataset Ever for Document Layout Analysis](https://arxiv.org/abs/1908.07836) - ICDAR 2019, Best Paper Award
-- Pfitzmann et al. (2022) [DocLayNet: A Large Human-Annotated Dataset for Document-Layout Segmentation](https://arxiv.org/abs/2206.01062) - KDD 2022
-
-#### 比較研究・その他
-- [TBRF: A Framework For Refining Text Classification](https://arxiv.org/html/2305.17401) - 2023
-- [A Comparative Study of PDF Parsing Tools](https://arxiv.org/html/2410.09871v1) - 2024
-
-### オープンソースツール
-- [PyMuPDF4LLM](https://pymupdf.readthedocs.io/en/latest/pymupdf4llm/) - 2024, AGPL-3.0, ヒューリスティクス + ML
-- [DocLayout-YOLO](https://github.com/opendatalab/DocLayout-YOLO) - 2024, Apache-2.0, YOLOv10 + Global-to-Local Controllability
-- [DeepSeek-OCR](https://github.com/deepseek-ai/DeepSeek-OCR) - 2025.10, MIT, Vision-Language MoE 3B, [論文](https://arxiv.org/abs/2510.18234)
-- Lopez (2009) [GROBID](https://github.com/kermitt2/grobid) - ECDL 2009, Apache-2.0
-- [Unstructured](https://github.com/Unstructured-IO/unstructured) - 2022, Apache-2.0
-- [Marker](https://github.com/VikParuchuri/marker) - 2023, GPL-3.0
-
-### データセット
-- [PubLayNet](https://github.com/ibm-aur-nlp/PubLayNet) - CDLA-Permissive-1.0
-- [DocLayNet](https://github.com/DS4SD/DocLayNet) - CDLA-Permissive-1.0
-- [OmniDocBench](https://github.com/opendatalab/OmniDocBench) - CVPR 2025
+- [PyMuPDF4LLM Documentation](https://pymupdf.readthedocs.io/en/latest/pymupdf4llm/)
+- [PyMuPDF Layout Documentation](https://pymupdf.readthedocs.io/en/latest/pymupdf-layout/index.html)
+- [LiLT GitHub](https://github.com/jpWang/LiLT)
