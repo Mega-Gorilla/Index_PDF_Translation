@@ -284,17 +284,183 @@ text = "".join(
 - 句読点を削除
 - 数字を削除
 
-## 8. デバッグモード
+## 8. デバッグ機能
 
-`--debug` オプションを有効にすると、以下の可視化画像が生成されます：
+ブロック分類アルゴリズムの動作を検証するためのデバッグ機能が用意されています。
 
-1. **トークン数分布**: 各ブロックのトークン数ヒストグラム
-2. **フォントサイズ分布**: フォントサイズのヒストグラム
-3. **スコア分布**: 合計スコアのヒストグラム（分類閾値を表示）
+### 8.1 CLIの `--debug` オプション
 
 ```bash
 uv run translate-pdf paper.pdf --debug
 ```
+
+現在の `--debug` オプションは、内部で分類情報を生成しますが、出力ファイルへの保存は今後の実装予定です。
+
+### 8.2 利用可能なデバッグユーティリティ
+
+#### 8.2.1 `remove_blocks()` の debug モード
+
+`remove_blocks()` 関数を `debug=True` で呼び出すと、追加のデバッグ情報が返されます：
+
+```python
+import asyncio
+from index_pdf_translation.core.pdf_edit import (
+    extract_text_coordinates_dict,
+    remove_blocks,
+)
+
+async def analyze_blocks(pdf_path: str):
+    with open(pdf_path, "rb") as f:
+        pdf_data = f.read()
+
+    # ブロック抽出
+    block_info = await extract_text_coordinates_dict(pdf_data)
+
+    # デバッグモードで分類
+    text_blocks, fig_blocks, removed_blocks, plot_images = await remove_blocks(
+        block_info,
+        token_threshold=10,
+        lang="en",
+        debug=True
+    )
+
+    # 結果を確認
+    print(f"本文ブロック数: {sum(len(p) for p in text_blocks)}")
+    print(f"図表ブロック数: {sum(len(p) for p in fig_blocks)}")
+    print(f"除外ブロック数: {sum(len(p) for p in removed_blocks)}")
+
+    # ヒストグラム画像を保存
+    if plot_images:
+        for i, img_data in enumerate(plot_images):
+            with open(f"debug_histogram_{i}.png", "wb") as f:
+                f.write(img_data)
+        print("ヒストグラム画像を保存しました")
+
+    return removed_blocks
+
+asyncio.run(analyze_blocks("paper.pdf"))
+```
+
+#### 8.2.2 返されるデバッグ情報
+
+| 戻り値 | 説明 |
+|--------|------|
+| `text_blocks` | 本文として分類されたブロック |
+| `fig_blocks` | 図表キャプションとして分類されたブロック |
+| `removed_blocks` | 除外されたブロック（スコア情報付き） |
+| `plot_images` | ヒストグラムPNG画像（3枚） |
+
+#### 8.2.3 ヒストグラム画像
+
+`plot_images` には以下の3つのヒストグラムが含まれます：
+
+| インデックス | 内容 | 表示される閾値 |
+|-------------|------|--------------|
+| `[0]` | トークン数分布 | Median, Mean |
+| `[1]` | フォントサイズ分布 | Median, Mean |
+| `[2]` | 合計スコア分布 | Histogram Low, Histogram High |
+
+### 8.3 除外ブロックのスコア情報
+
+除外されたブロックには、除外理由を示すスコア情報が `text` フィールドに格納されます：
+
+```
+[スコア/分類結果] /T:トークンスコア(トークン数)/W:幅スコア/S:サイズスコア(フォントサイズ)
+```
+
+**例**:
+```
+[2.35/False] /T:1.0(5)/W:0.85/S:0.5(24.0)
+```
+
+**解釈**:
+- `2.35`: 合計スコア
+- `False`: 本文として分類されなかった
+- `T:1.0(5)`: トークン数5（閾値10未満）→ スコア1.0
+- `W:0.85`: 幅のIQRスコア
+- `S:0.5(24.0)`: フォントサイズ24.0pt → IQRスコア0.5
+
+### 8.4 ブロック枠の可視化
+
+`pdf_draw_blocks()` 関数を使用して、分類結果をPDF上に可視化できます：
+
+```python
+import asyncio
+from index_pdf_translation.core.pdf_edit import (
+    extract_text_coordinates_dict,
+    remove_blocks,
+    pdf_draw_blocks,
+)
+
+async def visualize_blocks(pdf_path: str):
+    with open(pdf_path, "rb") as f:
+        pdf_data = f.read()
+
+    block_info = await extract_text_coordinates_dict(pdf_data)
+    text_blocks, fig_blocks, removed_blocks, _ = await remove_blocks(
+        block_info, lang="en", debug=True
+    )
+
+    # 本文ブロックを青で描画
+    result_pdf = await pdf_draw_blocks(
+        pdf_data,
+        text_blocks,
+        line_color_rgb=[0, 0, 1],  # 青
+        fill_color_rgb=[0, 0, 1],
+        fill_opacity=0.2,
+        width=2,
+    )
+
+    # 図表ブロックを緑で追加描画
+    result_pdf = await pdf_draw_blocks(
+        result_pdf,
+        fig_blocks,
+        line_color_rgb=[0, 1, 0],  # 緑
+        fill_color_rgb=[0, 1, 0],
+        fill_opacity=0.2,
+        width=2,
+    )
+
+    # 除外ブロックを赤で追加描画
+    result_pdf = await pdf_draw_blocks(
+        result_pdf,
+        removed_blocks,
+        line_color_rgb=[1, 0, 0],  # 赤
+        fill_color_rgb=[1, 0, 0],
+        fill_opacity=0.2,
+        width=2,
+    )
+
+    with open("debug_blocks.pdf", "wb") as f:
+        f.write(result_pdf)
+    print("ブロック可視化PDFを保存しました")
+
+asyncio.run(visualize_blocks("paper.pdf"))
+```
+
+### 8.5 可視化の色分け（推奨）
+
+| ブロックタイプ | 推奨色 | RGB値 |
+|--------------|--------|-------|
+| 本文ブロック | 青 | `[0, 0, 1]` |
+| 図表ブロック | 緑 | `[0, 1, 0]` |
+| 除外ブロック | 赤 | `[1, 0, 0]` |
+
+### 8.6 デバッグ出力の解釈
+
+分類が期待通りでない場合、以下を確認してください：
+
+1. **本文が除外される場合**
+   - トークン数が閾値（デフォルト10）未満 → `token_threshold` を下げる
+   - スコアが最頻出範囲外 → 文書構造が特殊な可能性
+
+2. **タイトルが本文に含まれる場合**
+   - トークン数が閾値以上 → `token_threshold` を上げる
+   - フォントサイズの分散が小さい → 本文との区別が困難
+
+3. **図表キャプションが検出されない場合**
+   - キーワード（"fig", "table"）が先頭にない
+   - 言語設定が正しくない（`lang` パラメータ）
 
 ## 9. アルゴリズムの特徴
 
