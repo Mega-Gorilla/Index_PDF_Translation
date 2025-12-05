@@ -24,6 +24,10 @@ def _get_openai_imports():
         )
 
 
+# Block separator token (same as core/translate.py)
+BLOCK_SEPARATOR = "[[[BR]]]"
+
+
 class OpenAITranslator:
     """
     OpenAI GPT translation backend.
@@ -106,10 +110,10 @@ Return a JSON object with a "translations" array containing the translated texts
         system_prompt: str | None = None,
     ) -> str:
         """
-        Translate text (handles newline-separated blocks).
+        Translate text (handles separator token blocks).
 
         Args:
-            text: Text to translate (may contain separator tokens)
+            text: Text to translate (may contain [[[BR]]] separator tokens)
             target_lang: Target language code
             system_prompt: Custom prompt (overrides constructor setting)
 
@@ -119,12 +123,12 @@ Return a JSON object with a "translations" array containing the translated texts
         if not text.strip():
             return text
 
-        # Split by newlines and translate as array
-        texts = text.split("\n")
+        # Split by separator token and translate as array
+        texts = text.split(BLOCK_SEPARATOR)
         translated_texts = await self.translate_texts(
             texts, target_lang, system_prompt=system_prompt
         )
-        return "\n".join(translated_texts)
+        return BLOCK_SEPARATOR.join(translated_texts)
 
     async def translate_texts(
         self,

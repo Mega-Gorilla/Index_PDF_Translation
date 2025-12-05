@@ -324,3 +324,16 @@ Return a JSON object with a "translations" array."""
         result = await translator.translate("machine learning", "ja")
         assert result
         assert result != "machine learning"
+
+    @pytest.mark.asyncio
+    async def test_separator_preserved(self):
+        """Test that [[[BR]]] separator is preserved in OpenAI translation."""
+        from index_pdf_translation.translators import get_openai_translator
+        OpenAITranslator = get_openai_translator()
+
+        translator = OpenAITranslator(api_key=os.environ["OPENAI_API_KEY"])
+        text = "Hello[[[BR]]]World[[[BR]]]Good morning"
+        result = await translator.translate(text, "ja")
+
+        parts = result.split("[[[BR]]]")
+        assert len(parts) == 3, f"Expected 3 parts, got {len(parts)}: {result}"
