@@ -40,11 +40,29 @@ async def pdf_translate(...) -> Optional[bytes]:
 @dataclass
 class TranslationResult:
     pdf: bytes                              # 翻訳済みPDF（見開き）
-    debug_pdf: Optional[bytes] = None       # デバッグ可視化PDF
-    debug_images: Optional[list[bytes]] = None  # ヒストグラム画像（PNG）
+    debug_pdf: Optional[bytes] = None       # デバッグ可視化PDF（統合版）
 
 async def pdf_translate(...) -> Optional[TranslationResult]:
 ```
+
+### デバッグPDF構成（統合版）
+
+ヒストグラム画像を別ファイルではなく、デバッグPDFの先頭ページとして統合:
+
+```
+debug_blocks.pdf
+├── Page 1: トークン分布ヒストグラム
+├── Page 2: フォントサイズ分布ヒストグラム
+├── Page 3: スコア分布ヒストグラム
+├── Page 4: 元PDF 1ページ目（ブロック枠付き）
+├── Page 5: 元PDF 2ページ目（ブロック枠付き）
+└── ...
+```
+
+**メリット:**
+- 出力ファイルが1つに統合（管理しやすい）
+- デバッグ情報が1ファイルで完結
+- PDFビューアで連続確認可能
 
 ### 色分け設計
 
@@ -62,10 +80,7 @@ async def pdf_translate(...) -> Optional[TranslationResult]:
 入力: paper.pdf
 出力:
   - paper_translated.pdf        # 翻訳済み見開きPDF（既存）
-  - paper_debug_blocks.pdf      # デバッグ可視化PDF（新規）
-  - paper_debug_tokens.png      # トークン分布ヒストグラム（新規・オプション）
-  - paper_debug_sizes.png       # フォントサイズ分布（新規・オプション）
-  - paper_debug_scores.png      # スコア分布（新規・オプション）
+  - paper_debug.pdf             # デバッグ可視化PDF（新規・統合版）
 ```
 
 ## 実装フェーズ
@@ -80,9 +95,8 @@ from dataclasses import dataclass
 @dataclass
 class TranslationResult:
     """翻訳結果を格納するデータクラス。"""
-    pdf: bytes
-    debug_pdf: Optional[bytes] = None
-    debug_images: Optional[list[bytes]] = None
+    pdf: bytes                              # 翻訳済みPDF（見開き）
+    debug_pdf: Optional[bytes] = None       # デバッグ可視化PDF（統合版）
 ```
 
 **ファイル**: `src/index_pdf_translation/__init__.py`
@@ -110,15 +124,14 @@ async def pdf_translate(...) -> Optional[TranslationResult]:
 
     # デバッグPDF生成
     debug_pdf = None
-    debug_images = None
 
     if config.debug:
-        # 元のPDFにブロック枠を描画
-        debug_pdf = pdf_data
+        # 1. 元のPDFにブロック枠を描画
+        blocks_pdf = pdf_data
 
         # text_blocks: 緑
-        debug_pdf = await pdf_draw_blocks(
-            debug_pdf, text_blocks,
+        blocks_pdf = await pdf_draw_blocks(
+            blocks_pdf, text_blocks,
             line_color_rgb=[0, 0.7, 0],
             fill_color_rgb=[0, 0.7, 0],
             fill_opacity=0.2,
@@ -126,8 +139,8 @@ async def pdf_translate(...) -> Optional[TranslationResult]:
         )
 
         # fig_blocks: 黄
-        debug_pdf = await pdf_draw_blocks(
-            debug_pdf, fig_blocks,
+        blocks_pdf = await pdf_draw_blocks(
+            blocks_pdf, fig_blocks,
             line_color_rgb=[1, 0.8, 0],
             fill_color_rgb=[1, 0.8, 0],
             fill_opacity=0.2,
@@ -135,21 +148,70 @@ async def pdf_translate(...) -> Optional[TranslationResult]:
         )
 
         # removed_blocks: 赤
-        debug_pdf = await pdf_draw_blocks(
-            debug_pdf, remove_info,
+        blocks_pdf = await pdf_draw_blocks(
+            blocks_pdf, remove_info,
             line_color_rgb=[1, 0, 0],
             fill_color_rgb=[1, 0, 0],
             fill_opacity=0.2,
             width=1,
         )
 
-        debug_images = plot_images
+        # 2. ヒストグラム画像をPDFページとして統合
+        debug_pdf = await create_debug_pdf(blocks_pdf, plot_images)
 
     return TranslationResult(
         pdf=merged_pdf_data,
         debug_pdf=debug_pdf,
-        debug_images=debug_images,
     )
+```
+
+### Phase 2.5: ヒストグラム統合関数の追加
+
+**ファイル**: `src/index_pdf_translation/core/pdf_edit.py`
+
+PNG画像をPDFの先頭ページとして追加する関数:
+
+```python
+async def create_debug_pdf(
+    blocks_pdf: bytes,
+    histogram_images: list[bytes],
+) -> bytes:
+    """
+    ヒストグラム画像をPDFの先頭ページとして追加します。
+
+    Args:
+        blocks_pdf: ブロック枠付きPDFデータ
+        histogram_images: ヒストグラムPNG画像のリスト
+
+    Returns:
+        統合されたデバッグPDFデータ
+    """
+    # 新しいPDFドキュメントを作成
+    new_doc = fitz.open()
+
+    # 1. ヒストグラム画像を先頭ページとして追加
+    for img_data in histogram_images:
+        # PNG画像からサイズを取得
+        img = fitz.Pixmap(img_data)
+
+        # A4サイズのページを追加（画像をフィット）
+        page = new_doc.new_page(width=595, height=842)  # A4 portrait
+
+        # 画像を中央に配置
+        img_rect = fitz.Rect(50, 50, 545, 792)
+        page.insert_image(img_rect, stream=img_data)
+
+    # 2. ブロック枠付きPDFのページを追加
+    blocks_doc = fitz.open(stream=blocks_pdf, filetype="pdf")
+    new_doc.insert_pdf(blocks_doc)
+    blocks_doc.close()
+
+    # 出力
+    output_buffer = BytesIO()
+    new_doc.save(output_buffer, garbage=4, deflate=True, clean=True)
+    new_doc.close()
+
+    return output_buffer.getvalue()
 ```
 
 ### Phase 3: CLI の修正
@@ -175,25 +237,27 @@ async def run(args: argparse.Namespace) -> int:
     with open(output_path, "wb") as f:
         f.write(result.pdf)
 
-    # Save debug files
+    # Save debug PDF (統合版: ヒストグラム + ブロック枠)
     if args.debug and result.debug_pdf:
-        debug_path = output_path.with_stem(output_path.stem + "_debug_blocks")
+        debug_path = output_path.with_stem(output_path.stem.replace("translated_", "") + "_debug")
         with open(debug_path, "wb") as f:
             f.write(result.debug_pdf)
         print(f"Debug PDF: {debug_path}")
 
-        # Save histogram images (optional)
-        if result.debug_images:
-            image_names = ["tokens", "sizes", "scores"]
-            for i, (img, name) in enumerate(zip(result.debug_images, image_names)):
-                img_path = output_path.with_stem(f"{output_path.stem}_debug_{name}").with_suffix(".png")
-                with open(img_path, "wb") as f:
-                    f.write(img)
-                print(f"Debug image: {img_path}")
-
     print()
     print(f"Complete: {output_path}")
     return 0
+```
+
+**出力例:**
+```
+Input: paper.pdf
+Output: output/translated_paper.pdf
+Backend: google
+Debug mode: enabled
+
+Complete: output/translated_paper.pdf
+Debug PDF: output/paper_debug.pdf
 ```
 
 ### Phase 4: テストの追加
@@ -213,11 +277,10 @@ class TestTranslationResult:
         result = TranslationResult(pdf=b"test")
         assert result.pdf == b"test"
 
-    def test_translation_result_debug_fields_optional(self) -> None:
-        """Debug fields should be optional."""
+    def test_translation_result_debug_pdf_optional(self) -> None:
+        """debug_pdf field should be optional."""
         result = TranslationResult(pdf=b"test")
         assert result.debug_pdf is None
-        assert result.debug_images is None
 
 
 class TestPdfTranslateDebugMode:
@@ -227,39 +290,30 @@ class TestPdfTranslateDebugMode:
     async def test_debug_mode_returns_debug_pdf(
         self, sample_pdf: bytes
     ) -> None:
-        """Debug mode should return debug_pdf."""
+        """Debug mode should return debug_pdf with histograms + block frames."""
         config = TranslationConfig(debug=True)
         result = await pdf_translate(
             sample_pdf, config=config, disable_translate=True
         )
         assert result is not None
         assert result.debug_pdf is not None
+        # デバッグPDFがヒストグラム3ページ + 元PDFページを含むことを確認
+        import fitz
+        doc = fitz.open(stream=result.debug_pdf, filetype="pdf")
+        assert len(doc) >= 4  # 最低4ページ（ヒストグラム3 + 元PDF1）
+        doc.close()
 
     @pytest.mark.asyncio
-    async def test_debug_mode_returns_debug_images(
+    async def test_non_debug_mode_no_debug_pdf(
         self, sample_pdf: bytes
     ) -> None:
-        """Debug mode should return debug_images."""
-        config = TranslationConfig(debug=True)
-        result = await pdf_translate(
-            sample_pdf, config=config, disable_translate=True
-        )
-        assert result is not None
-        assert result.debug_images is not None
-        assert len(result.debug_images) == 3  # tokens, sizes, scores
-
-    @pytest.mark.asyncio
-    async def test_non_debug_mode_no_debug_data(
-        self, sample_pdf: bytes
-    ) -> None:
-        """Non-debug mode should not return debug data."""
+        """Non-debug mode should not return debug_pdf."""
         config = TranslationConfig(debug=False)
         result = await pdf_translate(
             sample_pdf, config=config, disable_translate=True
         )
         assert result is not None
         assert result.debug_pdf is None
-        assert result.debug_images is None
 ```
 
 ### Phase 5: ドキュメント更新
@@ -273,6 +327,7 @@ Section 8「デバッグ機能」を更新し、新しい出力ファイルに�
 | ファイル | 変更内容 |
 |---------|---------|
 | `src/index_pdf_translation/core/translate.py` | `TranslationResult` 追加、`pdf_translate()` 修正 |
+| `src/index_pdf_translation/core/pdf_edit.py` | `create_debug_pdf()` 関数追加 |
 | `src/index_pdf_translation/__init__.py` | `TranslationResult` エクスポート |
 | `src/index_pdf_translation/cli.py` | デバッグファイル保存処理 |
 | `tests/test_translate.py` | デバッグモードテスト追加 |
@@ -287,6 +342,7 @@ Section 8「デバッグ機能」を更新し、新しい出力ファイルに�
 
 - [ ] Phase 1: `TranslationResult` dataclass の追加
 - [ ] Phase 2: `pdf_translate()` でデバッグPDF生成
+- [ ] Phase 2.5: `create_debug_pdf()` 関数追加（ヒストグラム統合）
 - [ ] Phase 3: CLI でデバッグファイル保存
 - [ ] Phase 4: テスト追加・既存テスト修正
 - [ ] Phase 5: ドキュメント更新
