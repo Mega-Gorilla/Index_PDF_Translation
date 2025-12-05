@@ -1023,10 +1023,38 @@ dev = [
     "ruff>=0.1.0",
     "aiohttp>=3.9.0",  # テスト用
 ]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+asyncio_default_fixture_loop_scope = "function"
+markers = [
+    "integration: marks tests as integration tests (requires network/API keys, deselect with '-m \"not integration\"')",
+]
 ```
 
 > **Note**: aiohttp を完全に削除せず `[deepl]` extra として残す。
 > DeepL を使用するユーザーは `pip install index-pdf-translation[deepl]` でインストール。
+
+#### 1.2 CI での統合テスト除外
+
+GitHub Actions で統合テストをスキップする設定:
+
+```yaml
+# .github/workflows/test.yml
+- name: Run tests (excluding integration)
+  run: uv run pytest -m "not integration"
+```
+
+ローカルで統合テストを実行する場合:
+
+```bash
+# 統合テストのみ実行
+uv run pytest -m integration
+
+# 全テスト実行
+uv run pytest
+```
 
 ---
 
@@ -1962,6 +1990,27 @@ if __name__ == "__main__":
 | **ユニットテスト** | CI（常時） | モック | 高速・安定・カバレッジ |
 | **統合テスト** | ローカル/手動 | 実API | 実際の動作確認 |
 
+#### pytest マーカー
+
+統合テストには `@pytest.mark.integration` マーカーを使用:
+
+```python
+import pytest
+
+@pytest.mark.integration
+class TestGoogleTranslatorIntegration:
+    """実際の Google 翻訳 API を使用するテスト"""
+
+    @pytest.mark.asyncio
+    async def test_real_translation(self):
+        ...
+```
+
+**CI での除外**: `pytest -m "not integration"`
+**ローカルでの実行**: `pytest -m integration`
+
+> **Note**: マーカーは Phase 1 の `pyproject.toml` で登録済み。
+
 #### 6.0 既存テストの更新（Breaking Changes 対応）
 
 **削除/更新が必要なテスト（`tests/test_config.py`）**:
@@ -2426,7 +2475,11 @@ result = await pdf_translate(pdf_data, config=config)
 ## 完了条件
 
 ### Phase 1: 依存関係
-- [ ] `pyproject.toml` 更新（deep-translator 追加、aiohttp をオプショナルに）
+- [ ] `pyproject.toml` 更新
+  - [ ] deep-translator 追加
+  - [ ] aiohttp をオプショナルに（`[deepl]` extra）
+  - [ ] pytest markers 追加（`integration`）
+- [ ] `.github/workflows/test.yml` 更新（統合テスト除外: `-m "not integration"`）
 
 ### Phase 2: 翻訳バックエンド
 - [ ] `translators/` モジュール作成
@@ -2489,7 +2542,8 @@ result = await pdf_translate(pdf_data, config=config)
 ### 更新
 | ファイル | 主な変更 |
 |---------|---------|
-| `pyproject.toml` | deep-translator 追加、aiohttp をオプショナルに |
+| `pyproject.toml` | deep-translator 追加、aiohttp オプショナル、pytest markers |
+| `.github/workflows/test.yml` | 統合テスト除外（`-m "not integration"`） |
 | `src/index_pdf_translation/__init__.py` | エクスポート追加 |
 | `src/index_pdf_translation/config.py` | backend オプション、デフォルト google |
 | `src/index_pdf_translation/core/translate.py` | チャンキング、リトライ、セパレータ方式 |
