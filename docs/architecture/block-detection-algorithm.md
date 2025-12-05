@@ -294,7 +294,59 @@ text = "".join(
 uv run translate-pdf paper.pdf --debug
 ```
 
-現在の `--debug` オプションは、内部で分類情報を生成しますが、出力ファイルへの保存は今後の実装予定です。
+`--debug` オプションを使用すると、翻訳PDFに加えてデバッグPDFが自動生成されます：
+
+```
+出力例:
+  Complete: output/translated_paper.pdf
+  Debug PDF: output/paper_debug.pdf
+```
+
+### 8.1.1 デバッグPDFの構成
+
+デバッグPDFは以下のページで構成されます：
+
+| ページ | 内容 |
+|--------|------|
+| Page 1 | トークン数分布ヒストグラム |
+| Page 2 | フォントサイズ分布ヒストグラム |
+| Page 3 | 合計スコア分布ヒストグラム |
+| Page 4+ | 元PDFページ（ブロック枠付き） |
+
+### 8.1.2 ブロック枠の色分け
+
+| ブロックタイプ | 色 | RGB値 | 説明 |
+|--------------|-----|-------|------|
+| 本文ブロック | 緑 | `[0, 0.7, 0]` | 翻訳対象の本文テキスト |
+| 図表ブロック | 黄 | `[1, 0.8, 0]` | 図表キャプション（"Fig.", "Table"で始まる） |
+| 除外ブロック | 赤 | `[1, 0, 0]` | タイトル、ヘッダー、フッターなど |
+
+### 8.1.3 Pythonコードからの使用
+
+```python
+import asyncio
+from index_pdf_translation import pdf_translate, TranslationConfig
+
+async def debug_translation(pdf_path: str):
+    with open(pdf_path, "rb") as f:
+        pdf_data = f.read()
+
+    # デバッグモードで翻訳
+    config = TranslationConfig(debug=True)
+    result = await pdf_translate(pdf_data, config=config, disable_translate=True)
+
+    # 翻訳PDFを保存
+    with open("translated.pdf", "wb") as f:
+        f.write(result.pdf)
+
+    # デバッグPDFを保存
+    if result.debug_pdf:
+        with open("debug.pdf", "wb") as f:
+            f.write(result.debug_pdf)
+        print("デバッグPDFを保存しました")
+
+asyncio.run(debug_translation("paper.pdf"))
+```
 
 ### 8.2 利用可能なデバッグユーティリティ
 
@@ -438,13 +490,15 @@ async def visualize_blocks(pdf_path: str):
 asyncio.run(visualize_blocks("paper.pdf"))
 ```
 
-### 8.5 可視化の色分け（推奨）
+### 8.5 可視化の色分け
 
-| ブロックタイプ | 推奨色 | RGB値 |
-|--------------|--------|-------|
-| 本文ブロック | 青 | `[0, 0, 1]` |
-| 図表ブロック | 緑 | `[0, 1, 0]` |
-| 除外ブロック | 赤 | `[1, 0, 0]` |
+`--debug` オプションおよび `pdf_draw_blocks()` で使用される色分け：
+
+| ブロックタイプ | 色 | RGB値 | 透明度 |
+|--------------|-----|-------|-------|
+| 本文ブロック | 緑 | `[0, 0.7, 0]` | 0.2 |
+| 図表ブロック | 黄 | `[1, 0.8, 0]` | 0.2 |
+| 除外ブロック | 赤 | `[1, 0, 0]` | 0.2 |
 
 ### 8.6 デバッグ出力の解釈
 

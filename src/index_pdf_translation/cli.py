@@ -265,18 +265,31 @@ async def run(args: argparse.Namespace) -> int:
 
     # Execute translation
     try:
-        result_pdf = await pdf_translate(pdf_data, config=config)
+        result = await pdf_translate(pdf_data, config=config)
     except Exception as e:
         print(f"Error: Translation failed: {e}", file=sys.stderr)
         return 1
 
-    if result_pdf is None:
+    if result is None:
         print("Error: Translation failed", file=sys.stderr)
         return 1
 
     # Save result
     with open(output_path, "wb") as f:
-        f.write(result_pdf)
+        f.write(result.pdf)
+
+    # Save debug PDF (統合版: ヒストグラム + ブロック枠)
+    if args.debug and result.debug_pdf:
+        # Generate debug file path: translated_paper.pdf -> paper_debug.pdf
+        stem = output_path.stem
+        if stem.startswith("translated_"):
+            debug_stem = stem[len("translated_"):] + "_debug"
+        else:
+            debug_stem = stem + "_debug"
+        debug_path = output_path.with_stem(debug_stem)
+        with open(debug_path, "wb") as f:
+            f.write(result.debug_pdf)
+        print(f"Debug PDF: {debug_path}")
 
     print()
     print(f"Complete: {output_path}")
