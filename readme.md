@@ -42,34 +42,12 @@ python -m spacy download en_core_web_sm
 python -m spacy download ja_core_news_sm
 ```
 
-### APIキーの設定
-
-[DeepL APIキー管理ページ](https://www.deepl.com/ja/your-account/keys)からAPIキーを取得し、以下のいずれかの方法で設定してください。
-
-#### 方法1: 環境変数（推奨）
-
-```bash
-export DEEPL_API_KEY="your-api-key"
-
-# DeepL API Proユーザーの場合（オプション）
-export DEEPL_API_URL="https://api.deepl.com/v2/translate"
-```
-
-#### 方法2: コマンドラインオプション
-
-```bash
-uv run translate-pdf paper.pdf --api-key "your-api-key"
-
-# DeepL API Proユーザーの場合
-uv run translate-pdf paper.pdf --api-key "your-api-key" --api-url "https://api.deepl.com/v2/translate"
-```
-
 ## 使用方法
 
 ### 基本的な使い方
 
 ```bash
-# uv を使用する場合（推奨）
+# Google翻訳を使用（デフォルト、APIキー不要）
 uv run translate-pdf paper.pdf
 
 # pip でインストールした場合
@@ -78,11 +56,41 @@ translate-pdf paper.pdf
 
 翻訳が完了すると、`./output/translated_<ファイル名>.pdf` に見開きPDF（オリジナル + 翻訳）が保存されます。
 
+### 翻訳バックエンド
+
+#### Google 翻訳（デフォルト）
+
+APIキー不要で即座に使用可能：
+
+```bash
+translate-pdf paper.pdf
+translate-pdf paper.pdf --backend google  # 明示的に指定
+```
+
+#### DeepL（高品質）
+
+高品質な翻訳が必要な場合：
+
+```bash
+export DEEPL_API_KEY="your-api-key"
+translate-pdf paper.pdf --backend deepl
+
+# または
+translate-pdf paper.pdf --backend deepl --api-key "your-api-key"
+```
+
+DeepL を使用するには追加の依存関係が必要：
+
+```bash
+uv pip install index-pdf-translation[deepl]
+```
+
 ### オプション
 
 | オプション | 説明 | デフォルト |
 |------------|------|-----------|
 | `-o, --output` | 出力ファイルのパス | `./output/translated_<input>.pdf` |
+| `-b, --backend` | 翻訳バックエンド (google/deepl) | `google` |
 | `-s, --source` | 翻訳元の言語 (en/ja) | `en` |
 | `-t, --target` | 翻訳先の言語 (en/ja) | `ja` |
 | `--api-key` | DeepL APIキー | 環境変数 `DEEPL_API_KEY` |
@@ -96,12 +104,41 @@ translate-pdf paper.pdf
 # 出力ファイルを指定
 uv run translate-pdf paper.pdf -o ./result.pdf
 
+# DeepLで翻訳
+uv run translate-pdf paper.pdf --backend deepl
+
 # 日本語から英語に翻訳
 uv run translate-pdf paper.pdf -s ja -t en
 
 # ロゴなし + デバッグモード
 uv run translate-pdf paper.pdf --no-logo --debug
 ```
+
+### 環境変数の設定（オプション）
+
+DeepL を使用する場合、環境変数で API キーを設定できます。
+
+#### 方法 1: .env ファイルを使用
+
+```bash
+# .env.example をコピー
+cp .env.example .env
+
+# .env を編集して API キーを設定
+# DEEPL_API_KEY=your-api-key-here
+
+# シェルで読み込んで実行
+source .env && translate-pdf paper.pdf --backend deepl
+```
+
+#### 方法 2: export コマンド
+
+```bash
+export DEEPL_API_KEY="your-api-key"
+translate-pdf paper.pdf --backend deepl
+```
+
+> **Note**: Google 翻訳（デフォルト）は API キー不要のため、環境変数の設定なしで使用できます。
 
 ## アーキテクチャ
 
@@ -132,7 +169,7 @@ pdf_translate()
 ├── extract_text_coordinates_dict()  # テキストブロック抽出
 ├── remove_blocks()                   # ブロック分類（本文/図表/除外）
 ├── remove_textbox_for_pdf()          # 元テキスト削除
-├── translate_blocks()                # DeepL API翻訳
+├── translate_blocks()                # 翻訳（Google/DeepL）
 ├── preprocess_write_blocks()         # フォントサイズ計算
 ├── write_pdf_text()                  # 翻訳テキスト挿入
 ├── write_logo_data()                 # ロゴ追加（オプション）
@@ -164,13 +201,14 @@ uv run python -m spacy download ja_core_news_sm
 ### DeepL APIエラー
 
 ```
-DeepL API request failed with status code 403
+DeepL API error (status 403)
 ```
 
 **解決方法**:
-- 環境変数 `DEEPL_API_KEY` または `--api-key` オプションで設定したAPIキーが正しいか確認
+- `--backend deepl` を指定した場合、`DEEPL_API_KEY` または `--api-key` でAPIキーが設定されているか確認
 - Free APIを使用している場合、`DEEPL_API_URL` が `https://api-free.deepl.com/v2/translate` になっているか確認（デフォルト）
 - Pro APIを使用する場合は `--api-url https://api.deepl.com/v2/translate` を指定
+- Google翻訳を使用したい場合は `--backend google` を指定（APIキー不要）
 
 ### フォントが見つからない警告
 
@@ -207,7 +245,8 @@ Font file not found: LiberationSerif-Regular.ttf
 
 - **PyMuPDF**: PDF処理（テキスト抽出、編集、結合）
 - **spaCy**: 自然言語処理（トークン化、言語検出）
-- **aiohttp**: 非同期HTTPクライアント（DeepL API通信）
+- **deep-translator**: Google翻訳バックエンド
+- **aiohttp**: 非同期HTTPクライアント（DeepL API通信、オプション）
 - **numpy**: 数値計算（ヒストグラム分析）
 - **matplotlib**: デバッグ用可視化
 
@@ -234,10 +273,10 @@ uv run python -m py_compile src/index_pdf_translation/cli.py
 
 ```python
 SUPPORTED_LANGUAGES: dict[str, LanguageConfig] = {
-    "en": {"deepl": "EN", "spacy": "en_core_web_sm"},
-    "ja": {"deepl": "JA", "spacy": "ja_core_news_sm"},
+    "en": {"spacy": "en_core_web_sm"},
+    "ja": {"spacy": "ja_core_news_sm"},
     # 新しい言語を追加
-    "de": {"deepl": "DE", "spacy": "de_core_news_sm"},
+    "de": {"spacy": "de_core_news_sm"},
 }
 ```
 
@@ -249,6 +288,8 @@ PyMuPDFがAGPL-3.0でライセンスされているため、本プロジェク�
 
 ## 謝辞
 
+- [Google Translate](https://translate.google.com/) - 無料の機械翻訳サービス
 - [DeepL](https://www.deepl.com/) - 高品質な機械翻訳API
+- [deep-translator](https://github.com/nidhaloff/deep-translator) - 翻訳APIラッパーライブラリ
 - [PyMuPDF](https://pymupdf.readthedocs.io/) - 強力なPDF処理ライブラリ
 - [spaCy](https://spacy.io/) - 産業用自然言語処理

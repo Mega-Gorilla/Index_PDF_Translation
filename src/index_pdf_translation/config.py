@@ -2,58 +2,68 @@
 """
 Index PDF Translation - Configuration
 
-翻訳設定と言語設定を管理します。
+Manages translation settings and language configuration.
 """
 
 import os
 from dataclasses import dataclass, field
-from typing import TypedDict
+from typing import Literal, TypedDict, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from index_pdf_translation.translators import TranslatorBackend
 
 
 class LanguageConfig(TypedDict):
-    """言語設定の型定義"""
+    """Language configuration type definition."""
 
-    deepl: str  # DeepL API用言語コード
-    spacy: str  # spaCyモデル名
+    spacy: str  # spaCy model name
 
 
-# 言語設定
+# Language configuration
+# - Language code conversion is handled by each TranslatorBackend
+# - Google: uses "en", "ja" as-is
+# - DeepL: converts with .upper() to "EN", "JA"
 SUPPORTED_LANGUAGES: dict[str, LanguageConfig] = {
-    "en": {"deepl": "EN", "spacy": "en_core_web_sm"},
-    "ja": {"deepl": "JA", "spacy": "ja_core_news_sm"},
+    "en": {"spacy": "en_core_web_sm"},
+    "ja": {"spacy": "ja_core_news_sm"},
 }
 
-# デフォルト出力ディレクトリ
+# Default output directory
 DEFAULT_OUTPUT_DIR: str = "./output/"
+
+# Translation backend type
+TranslatorBackendType = Literal["google", "deepl"]
 
 
 @dataclass
 class TranslationConfig:
     """
-    翻訳設定を管理するdataclass。
+    Translation configuration dataclass.
 
-    環境変数または直接パラメータで設定可能。
+    Default is Google Translate (no API key required).
+    Use DeepL for higher quality translation.
 
     Attributes:
-        api_key: DeepL APIキー。環境変数 DEEPL_API_KEY からも取得可能。
-        api_url: DeepL API URL。環境変数 DEEPL_API_URL からも取得可能。
-        source_lang: 翻訳元言語コード (default: "en")
-        target_lang: 翻訳先言語コード (default: "ja")
-        add_logo: ロゴウォーターマークを追加 (default: True)
-        debug: デバッグモード (default: False)
+        backend: Translation backend ("google" or "deepl")
+        api_key: DeepL API key (required only for backend="deepl")
+        api_url: DeepL API URL (used only for backend="deepl")
+        source_lang: Source language code (default: "en")
+        target_lang: Target language code (default: "ja")
+        add_logo: Add logo watermark (default: True)
+        debug: Debug mode (default: False)
 
     Examples:
-        >>> # 環境変数から設定
-        >>> os.environ["DEEPL_API_KEY"] = "your-key"
+        >>> # Google Translate (default, no API key required)
         >>> config = TranslationConfig()
 
-        >>> # 直接パラメータで設定
-        >>> config = TranslationConfig(api_key="your-key", target_lang="ja")
-
-        >>> # 設定オブジェクトを使用
-        >>> result = await pdf_translate(pdf_data, config=config)
+        >>> # DeepL Translate (high quality)
+        >>> config = TranslationConfig(
+        ...     backend="deepl",
+        ...     api_key="your-deepl-key"
+        ... )
     """
 
+    backend: TranslatorBackendType = "google"
     api_key: str = field(
         default_factory=lambda: os.environ.get("DEEPL_API_KEY", "")
     )
@@ -69,14 +79,16 @@ class TranslationConfig:
     debug: bool = False
 
     def __post_init__(self) -> None:
-        """設定値のバリデーション"""
-        if not self.api_key:
+        """Validate configuration values."""
+        # DeepL backend requires API key
+        if self.backend == "deepl" and not self.api_key:
             raise ValueError(
-                "DeepL API key required. "
-                "Set DEEPL_API_KEY environment variable or pass api_key parameter."
+                "DeepL API key required when using 'deepl' backend. "
+                "Set DEEPL_API_KEY environment variable or pass api_key parameter. "
+                "Or use backend='google' for API-key-free translation."
             )
 
-        # 言語コードの検証
+        # Validate language codes
         if self.source_lang not in SUPPORTED_LANGUAGES:
             raise ValueError(
                 f"Unsupported source language: {self.source_lang}. "
@@ -88,12 +100,24 @@ class TranslationConfig:
                 f"Supported: {list(SUPPORTED_LANGUAGES.keys())}"
             )
 
-    @property
-    def deepl_target_lang(self) -> str:
-        """DeepL API用の言語コードを取得"""
-        return SUPPORTED_LANGUAGES[self.target_lang]["deepl"]
+    def create_translator(self) -> "TranslatorBackend":
+        """
+        Create translator backend based on configuration.
 
-    @property
-    def deepl_source_lang(self) -> str:
-        """DeepL API用のソース言語コードを取得"""
-        return SUPPORTED_LANGUAGES[self.source_lang]["deepl"]
+        Returns:
+            TranslatorBackend instance
+
+        Raises:
+            ValueError: When unknown backend is specified
+            ImportError: When DeepL backend is used without aiohttp
+        """
+        from index_pdf_translation.translators import GoogleTranslator
+
+        if self.backend == "google":
+            return GoogleTranslator()
+        elif self.backend == "deepl":
+            from index_pdf_translation.translators import get_deepl_translator
+            DeepLTranslator = get_deepl_translator()
+            return DeepLTranslator(self.api_key, self.api_url)
+        else:
+            raise ValueError(f"Unknown backend: {self.backend}")
