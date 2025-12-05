@@ -32,7 +32,7 @@ SUPPORTED_LANGUAGES: dict[str, LanguageConfig] = {
 DEFAULT_OUTPUT_DIR: str = "./output/"
 
 # Translation backend type
-TranslatorBackendType = Literal["google", "deepl"]
+TranslatorBackendType = Literal["google", "deepl", "openai"]
 
 
 @dataclass
@@ -42,11 +42,15 @@ class TranslationConfig:
 
     Default is Google Translate (no API key required).
     Use DeepL for higher quality translation.
+    Use OpenAI for customizable GPT-based translation.
 
     Attributes:
-        backend: Translation backend ("google" or "deepl")
+        backend: Translation backend ("google", "deepl", or "openai")
         api_key: DeepL API key (required only for backend="deepl")
         api_url: DeepL API URL (used only for backend="deepl")
+        openai_api_key: OpenAI API key (required only for backend="openai")
+        openai_model: OpenAI model (default: "gpt-4o-mini")
+        openai_system_prompt: Custom system prompt for OpenAI (optional)
         source_lang: Source language code (default: "en")
         target_lang: Target language code (default: "ja")
         add_logo: Add logo watermark (default: True)
@@ -61,6 +65,12 @@ class TranslationConfig:
         ...     backend="deepl",
         ...     api_key="your-deepl-key"
         ... )
+
+        >>> # OpenAI GPT Translate (customizable)
+        >>> config = TranslationConfig(
+        ...     backend="openai",
+        ...     openai_api_key="your-openai-key"
+        ... )
     """
 
     backend: TranslatorBackendType = "google"
@@ -73,6 +83,11 @@ class TranslationConfig:
             "https://api-free.deepl.com/v2/translate"
         )
     )
+    openai_api_key: str = field(
+        default_factory=lambda: os.environ.get("OPENAI_API_KEY", "")
+    )
+    openai_model: str = "gpt-4o-mini"
+    openai_system_prompt: str | None = None
     source_lang: str = "en"
     target_lang: str = "ja"
     add_logo: bool = True
@@ -85,6 +100,14 @@ class TranslationConfig:
             raise ValueError(
                 "DeepL API key required when using 'deepl' backend. "
                 "Set DEEPL_API_KEY environment variable or pass api_key parameter. "
+                "Or use backend='google' for API-key-free translation."
+            )
+
+        # OpenAI backend requires API key
+        if self.backend == "openai" and not self.openai_api_key:
+            raise ValueError(
+                "OpenAI API key required when using 'openai' backend. "
+                "Set OPENAI_API_KEY environment variable or pass openai_api_key parameter. "
                 "Or use backend='google' for API-key-free translation."
             )
 
@@ -109,7 +132,7 @@ class TranslationConfig:
 
         Raises:
             ValueError: When unknown backend is specified
-            ImportError: When DeepL backend is used without aiohttp
+            ImportError: When DeepL/OpenAI backend is used without dependencies
         """
         from index_pdf_translation.translators import GoogleTranslator
 
@@ -119,5 +142,14 @@ class TranslationConfig:
             from index_pdf_translation.translators import get_deepl_translator
             DeepLTranslator = get_deepl_translator()
             return DeepLTranslator(self.api_key, self.api_url)
+        elif self.backend == "openai":
+            from index_pdf_translation.translators import get_openai_translator
+            OpenAITranslator = get_openai_translator()
+            return OpenAITranslator(
+                api_key=self.openai_api_key,
+                model=self.openai_model,
+                source_lang=self.source_lang,
+                system_prompt=self.openai_system_prompt,
+            )
         else:
             raise ValueError(f"Unknown backend: {self.backend}")

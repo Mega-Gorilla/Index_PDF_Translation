@@ -85,16 +85,44 @@ DeepL を使用するには追加の依存関係が必要：
 uv pip install index-pdf-translation[deepl]
 ```
 
+#### OpenAI GPT（カスタマイズ可能）
+
+プロンプトでカスタマイズ可能な翻訳が必要な場合：
+
+```bash
+export OPENAI_API_KEY="your-api-key"
+translate-pdf paper.pdf --backend openai
+
+# モデル指定
+translate-pdf paper.pdf --backend openai --openai-model gpt-4o
+
+# カスタムプロンプト
+translate-pdf paper.pdf --backend openai --openai-prompt "You are a medical translator..."
+
+# プロンプトファイルから読み込み
+translate-pdf paper.pdf --backend openai --openai-prompt-file prompts/medical.txt
+```
+
+OpenAI を使用するには追加の依存関係が必要：
+
+```bash
+uv pip install index-pdf-translation[openai]
+```
+
 ### オプション
 
 | オプション | 説明 | デフォルト |
 |------------|------|-----------|
 | `-o, --output` | 出力ファイルのパス | `./output/translated_<input>.pdf` |
-| `-b, --backend` | 翻訳バックエンド (google/deepl) | `google` |
+| `-b, --backend` | 翻訳バックエンド (google/deepl/openai) | `google` |
 | `-s, --source` | 翻訳元の言語 (en/ja) | `en` |
 | `-t, --target` | 翻訳先の言語 (en/ja) | `ja` |
 | `--api-key` | DeepL APIキー | 環境変数 `DEEPL_API_KEY` |
 | `--api-url` | DeepL API URL | `https://api-free.deepl.com/v2/translate` |
+| `--openai-api-key` | OpenAI APIキー | 環境変数 `OPENAI_API_KEY` |
+| `--openai-model` | OpenAI モデル | `gpt-4o-mini` |
+| `--openai-prompt` | カスタムシステムプロンプト | - |
+| `--openai-prompt-file` | プロンプトファイルパス | - |
 | `--no-logo` | ロゴウォーターマークを無効化 | - |
 | `--debug` | デバッグモード（ブロック分類の可視化） | - |
 
@@ -107,6 +135,12 @@ uv run translate-pdf paper.pdf -o ./result.pdf
 # DeepLで翻訳
 uv run translate-pdf paper.pdf --backend deepl
 
+# OpenAI GPTで翻訳
+uv run translate-pdf paper.pdf --backend openai
+
+# OpenAI GPT（カスタムモデル）
+uv run translate-pdf paper.pdf --backend openai --openai-model gpt-4o
+
 # 日本語から英語に翻訳
 uv run translate-pdf paper.pdf -s ja -t en
 
@@ -116,7 +150,7 @@ uv run translate-pdf paper.pdf --no-logo --debug
 
 ### 環境変数の設定（オプション）
 
-DeepL を使用する場合、環境変数で API キーを設定できます。
+DeepL や OpenAI を使用する場合、環境変数で API キーを設定できます。
 
 #### 方法 1: .env ファイルを使用
 
@@ -126,16 +160,24 @@ cp .env.example .env
 
 # .env を編集して API キーを設定
 # DEEPL_API_KEY=your-api-key-here
+# OPENAI_API_KEY=your-api-key-here
 
 # シェルで読み込んで実行
-source .env && translate-pdf paper.pdf --backend deepl
+set -a && source .env && set +a
+translate-pdf paper.pdf --backend deepl
+translate-pdf paper.pdf --backend openai
 ```
 
 #### 方法 2: export コマンド
 
 ```bash
+# DeepL
 export DEEPL_API_KEY="your-api-key"
 translate-pdf paper.pdf --backend deepl
+
+# OpenAI
+export OPENAI_API_KEY="your-api-key"
+translate-pdf paper.pdf --backend openai
 ```
 
 > **Note**: Google 翻訳（デフォルト）は API キー不要のため、環境変数の設定なしで使用できます。

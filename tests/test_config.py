@@ -119,3 +119,56 @@ class TestTranslationConfig:
         config = TranslationConfig(backend="deepl", api_key="test-key")
         translator = config.create_translator()
         assert translator.name == "deepl"
+
+    def test_config_openai_requires_api_key(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """OpenAI backend should require API key."""
+        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+        with pytest.raises(ValueError, match="OpenAI API key required"):
+            TranslationConfig(backend="openai", openai_api_key="")
+
+    def test_config_openai_with_api_key(self) -> None:
+        """OpenAI backend should work with API key."""
+        config = TranslationConfig(backend="openai", openai_api_key="test-key")
+        assert config.backend == "openai"
+        assert config.openai_api_key == "test-key"
+
+    def test_config_openai_from_env(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Config should read openai_api_key from environment variable."""
+        monkeypatch.setenv("OPENAI_API_KEY", "env-openai-key")
+        config = TranslationConfig(backend="openai")
+        assert config.openai_api_key == "env-openai-key"
+
+    def test_config_openai_custom_model(self) -> None:
+        """OpenAI config should accept custom model."""
+        config = TranslationConfig(
+            backend="openai",
+            openai_api_key="test-key",
+            openai_model="gpt-4o"
+        )
+        assert config.openai_model == "gpt-4o"
+
+    def test_config_openai_default_model(self) -> None:
+        """OpenAI config should have default model."""
+        config = TranslationConfig(
+            backend="openai",
+            openai_api_key="test-key"
+        )
+        assert config.openai_model == "gpt-4o-mini"
+
+    def test_config_openai_custom_prompt(self) -> None:
+        """OpenAI config should accept custom system prompt."""
+        custom_prompt = "You are a medical translator."
+        config = TranslationConfig(
+            backend="openai",
+            openai_api_key="test-key",
+            openai_system_prompt=custom_prompt
+        )
+        assert config.openai_system_prompt == custom_prompt
+
+    def test_config_create_translator_openai(self) -> None:
+        """create_translator() should create OpenAI backend."""
+        config = TranslationConfig(backend="openai", openai_api_key="test-key")
+        translator = config.create_translator()
+        assert translator.name == "openai"

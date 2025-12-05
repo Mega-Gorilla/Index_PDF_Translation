@@ -28,7 +28,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Google Translate backend (default, no API key required)
-- `--backend` CLI option to select translator (`google` or `deepl`)
+- OpenAI GPT backend (customizable prompts, Structured Outputs)
+- `--backend` CLI option to select translator (`google`, `deepl`, or `openai`)
+- OpenAI CLI options (`--openai-model`, `--openai-prompt`, `--openai-prompt-file`)
 - Separator token method (`[[[BR]]]`) for reliable block translation
 - Character limit chunking for large documents (4500 chars per chunk)
 - Retry mechanism for translation errors (3 retries, 1s delay)
@@ -58,6 +60,19 @@ result = await pdf_translate(pdf_data, config=config)
 
 # After (v3.0.0) - DeepL
 config = TranslationConfig(backend="deepl", api_key="xxx")
+result = await pdf_translate(pdf_data, config=config)
+
+# After (v3.0.0) - OpenAI GPT
+config = TranslationConfig(backend="openai", openai_api_key="xxx")
+result = await pdf_translate(pdf_data, config=config)
+
+# OpenAI with custom model and prompt
+config = TranslationConfig(
+    backend="openai",
+    openai_api_key="xxx",
+    openai_model="gpt-4o",
+    openai_system_prompt="You are a medical translator..."
+)
 result = await pdf_translate(pdf_data, config=config)
 ```
 

@@ -11,12 +11,14 @@ Usage:
 Examples:
     translate-pdf paper.pdf                      # Google Translate (default)
     translate-pdf paper.pdf --backend deepl      # DeepL (high quality)
+    translate-pdf paper.pdf --backend openai     # OpenAI GPT (customizable)
     translate-pdf paper.pdf -o ./translated.pdf
     translate-pdf paper.pdf --source en --target ja
 
 Environment Variables:
     DEEPL_API_KEY: DeepL API key (required for --backend deepl)
     DEEPL_API_URL: DeepL API URL (optional, default: Free API)
+    OPENAI_API_KEY: OpenAI API key (required for --backend openai)
 """
 
 import argparse
@@ -49,14 +51,20 @@ def parse_args() -> argparse.Namespace:
 Examples:
   %(prog)s paper.pdf                        # Google Translate (default)
   %(prog)s paper.pdf --backend deepl        # DeepL (high quality)
+  %(prog)s paper.pdf --backend openai       # OpenAI GPT (customizable)
   %(prog)s paper.pdf -o result.pdf          # Specify output file
   %(prog)s paper.pdf -s en -t ja            # English to Japanese
   %(prog)s paper.pdf --no-logo              # Without logo
   %(prog)s paper.pdf --debug                # Debug mode
 
+OpenAI Options:
+  %(prog)s paper.pdf --backend openai --openai-model gpt-4o
+  %(prog)s paper.pdf --backend openai --openai-prompt "Translate medical terminology..."
+
 Environment Variables:
   DEEPL_API_KEY    DeepL API key (required for --backend deepl)
   DEEPL_API_URL    DeepL API URL (optional)
+  OPENAI_API_KEY   OpenAI API key (required for --backend openai)
 """,
     )
 
@@ -77,7 +85,7 @@ Environment Variables:
         "-b",
         "--backend",
         default="google",
-        choices=["google", "deepl"],
+        choices=["google", "deepl", "openai"],
         help="Translation backend (default: google)",
     )
 
@@ -105,6 +113,29 @@ Environment Variables:
     parser.add_argument(
         "--api-url",
         help="DeepL API URL (optional)",
+    )
+
+    # OpenAI options
+    parser.add_argument(
+        "--openai-api-key",
+        help="OpenAI API key (required for --backend openai)",
+    )
+
+    parser.add_argument(
+        "--openai-model",
+        default="gpt-4o-mini",
+        help="OpenAI model (default: gpt-4o-mini)",
+    )
+
+    parser.add_argument(
+        "--openai-prompt",
+        help="Custom system prompt for OpenAI ({source_lang}, {target_lang} placeholders)",
+    )
+
+    parser.add_argument(
+        "--openai-prompt-file",
+        type=Path,
+        help="File containing custom system prompt for OpenAI",
     )
 
     parser.add_argument(
@@ -160,6 +191,31 @@ async def run(args: argparse.Namespace) -> int:
             "DEEPL_API_URL", "https://api-free.deepl.com/v2/translate"
         )
 
+    # Get OpenAI options (only for OpenAI backend)
+    openai_api_key = ""
+    openai_model = "gpt-4o-mini"
+    openai_system_prompt = None
+    if args.backend == "openai":
+        openai_api_key = args.openai_api_key or os.environ.get("OPENAI_API_KEY", "")
+        if not openai_api_key:
+            print(
+                "Error: OpenAI API key is required for --backend openai.\n"
+                "  Set --openai-api-key option or OPENAI_API_KEY environment variable.\n"
+                "  Or use --backend google for API-key-free translation.",
+                file=sys.stderr,
+            )
+            return 1
+        openai_model = args.openai_model
+
+        # Load custom prompt from file or command line
+        if args.openai_prompt_file:
+            if not args.openai_prompt_file.exists():
+                print(f"Error: Prompt file not found: {args.openai_prompt_file}", file=sys.stderr)
+                return 1
+            openai_system_prompt = args.openai_prompt_file.read_text(encoding="utf-8")
+        elif args.openai_prompt:
+            openai_system_prompt = args.openai_prompt
+
     # Determine output path
     if args.output:
         output_path: Path = args.output
@@ -174,6 +230,10 @@ async def run(args: argparse.Namespace) -> int:
     print(f"Input: {input_path}")
     print(f"Output: {output_path}")
     print(f"Backend: {args.backend}")
+    if args.backend == "openai":
+        print(f"Model: {openai_model}")
+        if openai_system_prompt:
+            print("Custom prompt: enabled")
     print(f"Translation: {args.source.upper()} -> {args.target.upper()}")
     if args.no_logo:
         print("Logo: disabled")
@@ -187,6 +247,9 @@ async def run(args: argparse.Namespace) -> int:
             backend=args.backend,
             api_key=api_key,
             api_url=api_url,
+            openai_api_key=openai_api_key,
+            openai_model=openai_model,
+            openai_system_prompt=openai_system_prompt,
             source_lang=args.source,
             target_lang=args.target,
             add_logo=not args.no_logo,
