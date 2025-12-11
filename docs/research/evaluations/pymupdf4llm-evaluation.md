@@ -130,9 +130,110 @@ ability to perform new tasks from textual instructions or from a few examples...
 }
 ```
 
-## 6. 定性的評価
+## 6. 追加調査: 座標情報とヘッダー/フッター
 
-### 6.1 良かった点
+### 6.1 座標情報の保持方法
+
+**結論**: `to_json()` 関数を使用することで、完全な座標情報を取得可能。
+
+#### `to_json()` の出力構造
+
+```json
+{
+  "pages": [{
+    "page_number": 1,
+    "width": 595.28,
+    "height": 841.89,
+    "boxes": [
+      {
+        "x0": 117.27,
+        "y0": 75.68,
+        "x1": 478.01,
+        "y1": 88.59,
+        "boxclass": "title",
+        "textlines": [...]
+      }
+    ],
+    "fulltext": [
+      {
+        "type": 0,
+        "bbox": [117.27, 75.68, 478.01, 88.59],
+        "lines": [{
+          "spans": [{
+            "size": 14.35,
+            "font": "NimbusRomNo9L-Medi",
+            "text": "LLaMA: Open and Efficient...",
+            "bbox": [117.27, 75.68, 478.01, 88.59]
+          }]
+        }]
+      }
+    ]
+  }]
+}
+```
+
+#### 取得可能な情報
+
+| データ | 取得方法 | 詳細 |
+|--------|----------|------|
+| ブロック座標 | `boxes[].x0/y0/x1/y1` | ピクセル単位の正確な座標 |
+| ブロック分類 | `boxes[].boxclass` | `title`, `text`, `section-header`, `page-header` 等 |
+| テキスト座標 | `fulltext[].bbox` | ブロック単位の座標 |
+| フォント情報 | `fulltext[].lines[].spans[]` | size, font名, color, flags |
+| 行・スパン座標 | `spans[].bbox` | 文字単位の座標 |
+
+### 6.2 ヘッダー/フッターの識別
+
+**結論**: `boxclass == 'page-header'` でページヘッダーを識別可能。
+
+#### 検出された boxclass 一覧
+
+| boxclass | 意味 | 用途 |
+|----------|------|------|
+| `page-header` | ページヘッダー | **除外対象** |
+| `title` | タイトル | 見出し検出 |
+| `section-header` | セクション見出し | 見出し検出 |
+| `text` | 本文 | 翻訳対象 |
+
+#### margins パラメータについて
+
+⚠️ **注意**: `margins` パラメータは現在のバージョンでは効果なし（テストで確認）。
+代わりに `boxclass` を使用してフィルタリングすることを推奨。
+
+```python
+# ヘッダーを除外する例
+import pymupdf4llm
+import json
+
+result = pymupdf4llm.to_json("paper.pdf")
+data = json.loads(result)
+
+for page in data["pages"]:
+    for box in page["boxes"]:
+        if box["boxclass"] != "page-header":
+            # ヘッダー以外を処理
+            process_block(box)
+```
+
+### 6.3 `page_chunks` の page_boxes
+
+`to_markdown(page_chunks=True)` でも座標とブロック分類を取得可能:
+
+```python
+result = pymupdf4llm.to_markdown("paper.pdf", page_chunks=True)
+# result[0]["page_boxes"] = [(x0, y0, x1, y1, 'boxclass'), ...]
+```
+
+| boxclass | 例 |
+|----------|-----|
+| `page-header` | `(10, 263, 38, 610, 'page-header')` |
+| `title` | `(117, 75, 479, 89, 'title')` |
+| `section-header` | `(157, 215, 203, 227, 'section-header')` |
+| `text` | `(111, 114, 485, 171, 'text')` |
+
+## 7. 定性的評価
+
+### 7.1 良かった点
 
 | 項目 | 評価 | 詳細 |
 |------|------|------|
@@ -142,52 +243,86 @@ ability to perform new tasks from textual instructions or from a few examples...
 | リスト検出 | ✅ 良好 | 箇条書きを認識 |
 | コード検出 | ✅ 対応 | コードブロックを識別 |
 | GPU不要 | ✅ | CPUのみで動作 |
+| **座標保持** | ✅ | `to_json()` で完全な座標情報取得可能 |
+| **ヘッダー識別** | ✅ | `boxclass='page-header'` で識別可能 |
+| **フォント情報** | ✅ | font名, size, color 等すべて取得可能 |
 
-### 6.2 問題点・制限
+### 7.2 問題点・制限
 
 | 項目 | 評価 | 詳細 |
 |------|------|------|
 | 処理速度 | ⚠️ 遅い | Baselineの約190倍 |
-| ヘッダー/フッター | ❓ 未確認 | 明示的な除外機能は未検証 |
-| 座標情報 | ❌ 損失 | Markdown出力では座標が失われる |
+| margins | ❌ 機能せず | パラメータは効果なし（v0.2.7時点） |
 | OCR | ⚠️ 無効 | OpenCV未インストールのため無効 |
+| フッター識別 | ⚠️ 不明確 | `page-footer` boxclass は未確認 |
 
-### 6.3 本プロジェクトへの適合性
+### 7.3 本プロジェクトへの適合性
 
 | 観点 | 評価 | 理由 |
 |------|------|------|
 | 見出し検出要件 | ✅ 適合 | H1-H4を正確に検出 |
 | 本文抽出要件 | ✅ 適合 | 段落を適切に結合 |
-| 翻訳ワークフロー | ⚠️ 要検討 | 座標情報が必要な場合は追加処理要 |
+| 翻訳ワークフロー | ✅ **適合** | `to_json()` で座標情報取得可能 |
+| ヘッダー除外 | ✅ 適合 | `boxclass` でフィルタリング可能 |
 | 処理速度 | ⚠️ 許容範囲 | バッチ処理なら許容可能 |
 | ライセンス | ✅ 互換 | AGPL-3.0 |
 
-## 7. 結論
+## 8. 結論
 
 ### 推奨度
 
-- [x] **推奨** - 見出し検出・ブロック分類に有効
+- [x] **強く推奨** - 見出し検出・ブロック分類・座標保持すべてに対応
 
 ### 理由
 
 1. **見出し検出が正確**: H1-H4を適切に区別でき、Issue #31の主要目標を達成可能
-2. **追加のML不要**: GPUなしで動作、依存関係が軽量
-3. **ライセンス互換**: AGPL-3.0で本プロジェクトと同一
-4. **処理速度は許容範囲**: 学術論文翻訳はリアルタイム性不要
+2. **座標情報を完全保持**: `to_json()` で bbox、font情報、ブロック分類すべて取得可能
+3. **ヘッダー識別可能**: `boxclass='page-header'` で除外対象を識別
+4. **追加のML不要**: GPUなしで動作、依存関係が軽量
+5. **ライセンス互換**: AGPL-3.0で本プロジェクトと同一
+6. **処理速度は許容範囲**: 学術論文翻訳はリアルタイム性不要
+
+### 統合方法の提案
+
+```python
+# 推奨: to_json() を使用した統合方法
+import pymupdf4llm
+import json
+
+def extract_blocks_with_coordinates(pdf_path):
+    result = pymupdf4llm.to_json(pdf_path)
+    data = json.loads(result)
+
+    blocks = []
+    for page in data["pages"]:
+        for box in page["boxes"]:
+            # ヘッダーを除外
+            if box["boxclass"] == "page-header":
+                continue
+
+            blocks.append({
+                "bbox": (box["x0"], box["y0"], box["x1"], box["y1"]),
+                "boxclass": box["boxclass"],
+                "page": page["page_number"],
+            })
+
+    return blocks
+```
 
 ### 注意点
 
-1. **座標情報の扱い**: 現行実装では座標ベースの処理を行っているため、統合方法の検討が必要
-2. **処理時間**: 大きなPDFでは30秒以上かかる場合あり
+1. **処理時間**: 大きなPDFでは30秒以上かかる場合あり
+2. **フッター**: `page-footer` boxclass の存在は未確認（追加調査推奨）
+3. **margins パラメータ**: 機能しないため使用不可
 
-## 8. 次のステップ
+## 9. 評価完了項目
 
 - [x] 基本評価完了
-- [ ] 座標情報を保持した抽出方法の調査
-- [ ] ヘッダー/フッター除外機能の検証
-- [ ] 現行実装との統合設計
+- [x] 座標情報を保持した抽出方法の調査 → **`to_json()` で取得可能**
+- [x] ヘッダー/フッター除外機能の検証 → **`boxclass` でフィルタリング可能**
+- [ ] 現行実装との統合設計（次フェーズ）
 
-## 9. 出力ファイル一覧
+## 10. 出力ファイル一覧
 
 評価で生成されたファイルは `tests/evaluation/outputs/` に保存:
 
@@ -207,7 +342,7 @@ tests/evaluation/outputs/
 └── evaluation_summary.md
 ```
 
-## 10. 参考
+## 11. 参考
 
 - [PyMuPDF4LLM Documentation](https://pymupdf.readthedocs.io/en/latest/pymupdf4llm/)
 - [PyMuPDF Layout Documentation](https://pymupdf.readthedocs.io/en/latest/pymupdf-layout/index.html)
