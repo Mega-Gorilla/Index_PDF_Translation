@@ -10,7 +10,9 @@ We explore how generating a _chain of thought_ —a series of intermediate reaso
 
 Experiments on three large language models show that chain-of-thought prompting improves performance on a range of arithmetic, commonsense, and symbolic reasoning tasks. The empirical gains can be striking. For instance, prompting a PaLM 540B with just eight chain-of-thought exemplars achieves state-of-the-art accuracy on the GSM8K benchmark of math word problems, surpassing even finetuned GPT-3 with a verifier. 
 
-**==> picture [382 x 187] intentionally omitted <==**
+
+![](tests/evaluation/outputs/PyMuPDF4LLM_Layout/2201.11903v6/images/tests/evaluation/fixtures/complex/2201.11903v6.pdf-0001-07.png)
+
 
 **----- Start of picture text -----**<br>
 Standard Prompting Chain-of-Thought Prompting<br>Model Input Model Input<br>Q: Roger has 5 tennis balls. He buys 2 more cans of  Q: Roger has 5 tennis balls. He buys 2 more cans of<br>tennis balls. Each can has 3 tennis balls. How many  tennis balls. Each can has 3 tennis balls. How many<br>tennis balls does he have now?
@@ -24,7 +26,9 @@ Figure 1: Chain-of-thought prompting enables large language models to tackle com
 
 ## **1 Introduction** 
 
-**==> picture [171 x 158] intentionally omitted <==**
+
+![](tests/evaluation/outputs/PyMuPDF4LLM_Layout/2201.11903v6/images/tests/evaluation/fixtures/complex/2201.11903v6.pdf-0002-01.png)
+
 
 **----- Start of picture text -----**<br>
 Finetuned GPT-3 175B<br>Prior best<br>PaLM 540B: standard prompting<br>PaLM 540B: chain-of-thought prompting<br>100<br>80<br>60 55 57<br>40 33<br>18<br>20<br>0<br>Math Word Problems (GSM8K)<br>Solve rate (%)<br>**----- End of picture text -----**<br>
@@ -80,7 +84,9 @@ We explore chain-of-thought prompting for various language models on multiple be
 
 3 
 
-**==> picture [396 x 316] intentionally omitted <==**
+
+![](tests/evaluation/outputs/PyMuPDF4LLM_Layout/2201.11903v6/images/tests/evaluation/fixtures/complex/2201.11903v6.pdf-0004-00.png)
+
 
 **----- Start of picture text -----**<br>
 Math Word Problems (free response) Math Word Problems (multiple choice) CSQA (commonsense)<br>Q: Roger has 5 tennis balls. He buys  Q: How many keystrokes are needed  Q: Sammy wanted to go to where the<br>2 more cans of tennis balls. Each can  to type the numbers from 1 to 500? people were. Where might he go?<br>has 3 tennis balls. How many tennis  Answer Choices: (a) 1156 (b) 1392 (c) 1480  Options: (a) race track (b) populated areas<br>balls does he have now?
@@ -104,7 +110,9 @@ The strongest results of chain-of-thought prompting are summarized in Figure 4, 
 
 4 
 
-**==> picture [188 x 312] intentionally omitted <==**
+
+![](tests/evaluation/outputs/PyMuPDF4LLM_Layout/2201.11903v6/images/tests/evaluation/fixtures/complex/2201.11903v6.pdf-0005-00.png)
+
 
 **----- Start of picture text -----**<br>
 Standard prompting<br>Chain-of-thought prompting<br>Prior supervised best<br>LaMDA GPT PaLM<br>60<br>40<br>20<br>0<br>80<br>60<br>40<br>20<br>0<br>100<br>75<br>50<br>25<br>0<br>0.4 8 137 0.4 7 175 8 62 540<br>Model scale (# parameters in billions)<br>GSM8K<br>solve rate (%)<br>SVAMP<br>solve rate (%)<br>MAWPS<br>solve rate (%)<br>**----- End of picture text -----**<br>
@@ -130,7 +138,9 @@ The observed benefits of using chain-of-thought prompting raises the natural que
 
 **Chain of thought after answer.** Another potential benefit of chain-of-thought prompting could simply be that such prompts allow the model to better access relevant knowledge acquired during pretraining. Therefore, we test an alternative configuration where the chain of thought prompt is only given after the answer, isolating whether the model actually depends on the produced chain of thought to give the final answer. This variant performs about the same as the baseline, which suggests that the sequential reasoning embodied in the chain of thought is useful for reasons beyond just activating knowledge. 
 
-**==> picture [132 x 167] intentionally omitted <==**
+
+![](tests/evaluation/outputs/PyMuPDF4LLM_Layout/2201.11903v6/images/tests/evaluation/fixtures/complex/2201.11903v6.pdf-0006-02.png)
+
 
 **----- Start of picture text -----**<br>
 Standard prompting<br>Equation only<br>Variable compute only<br>Reasoning after answer<br>Chain-of-thought prompting<br>60<br>40<br>20<br>0<br>LaMDA PaLM<br>GSM8K solve rate (%)<br>**----- End of picture text -----**<br>
@@ -140,7 +150,9 @@ Figure 5: Ablation study for different variations of prompting using LaMDA 137B 
 
 ## **3.4 Robustness of Chain of Thought** 
 
-**==> picture [157 x 216] intentionally omitted <==**
+
+![](tests/evaluation/outputs/PyMuPDF4LLM_Layout/2201.11903v6/images/tests/evaluation/fixtures/complex/2201.11903v6.pdf-0006-05.png)
+
 
 **----- Start of picture text -----**<br>
 Standard prompting<br>Chain-of-thought prompting<br>·<br> different annotator (B)<br>·<br> different annotator (C)<br>·<br> intentionally concise style<br>·  exemplars from GSM8K ( α )<br>·<br> exemplars from GSM8K ( β )<br>·<br> exemplars from GSM8K ( γ )<br>20 60<br>15<br>40<br>10<br>20<br>5<br>0 0<br>GSM8K MAWPS<br>Solve rate (%)<br>**----- End of picture text -----**<br>
@@ -172,7 +184,9 @@ Although chain of thought is particularly suitable for math word problems, the l
 
 **Results.** Figure 7 highlights these results for PaLM (full results for LaMDA, GPT-3, and different model scales are shown in Table 4). For all tasks, scaling up model size improved the performance of standard prompting; chain-of-thought prompting led to further gains, with improvements appearing to be largest for PaLM 540B. With chain-of-thought prompting, PaLM 540B achieved strong performance relative to baselines, outperforming the prior state of the art on StrategyQA (75.6% vs 69.4%) and outperforming an unaided sports enthusiast on sports understanding (95.4% vs 84%). These results demonstrate that chain-of-thought prompting can also improve performance on tasks requiring a range of commonsense reasoning abilities (though note that gain was minimal on CSQA). 
 
-**==> picture [381 x 105] intentionally omitted <==**
+
+![](tests/evaluation/outputs/PyMuPDF4LLM_Layout/2201.11903v6/images/tests/evaluation/fixtures/complex/2201.11903v6.pdf-0007-07.png)
+
 
 **----- Start of picture text -----**<br>
 CSQA StrategyQA Date Sports SayCan<br>100 90 80 100 100<br>80 80 60 80 Standard prompting<br>80<br>Chain of thought<br>60 70 40 60<br>60 Prior supervised best<br>40 60 20 40 Human<br>20 50 0 40 20<br>8 62 540 8 62 540 8 62 540 8 62 540 8 62 540<br>Model scale (# parameters in billions)<br>Solve rate (%)<br>**----- End of picture text -----**<br>
@@ -184,7 +198,9 @@ Figure 7: Chain-of-thought prompting also improves the commonsense reasoning abi
 
 7 
 
-**==> picture [152 x 252] intentionally omitted <==**
+
+![](tests/evaluation/outputs/PyMuPDF4LLM_Layout/2201.11903v6/images/tests/evaluation/fixtures/complex/2201.11903v6.pdf-0008-00.png)
+
 
 **----- Start of picture text -----**<br>
 Standard prompting<br>Chain-of-thought prompting<br>Letter Concat: 2 Letter Concat: 4<br>(in domain) (OOD)<br>100<br>75<br>50<br>25<br>0<br>Coin Flip: 2 Coin Flip: 4<br>(in domain) (OOD)<br>100<br>80<br>60<br>40<br>8 62 540 8 62 540<br>Model scale (# parameters in billions)<br>Solve rate (%)<br>Solve rate (%)<br>**----- End of picture text -----**<br>
@@ -488,7 +504,9 @@ The question of why model scale improves chain-of-thought prompting is certainly
 
 As shown in Figure 9, scaling PaLM to 540B parameters fixed a substantial portion of errors in all three categories. Examples of semantic understanding and one-step missing errors that were fixed by scaling PaLM to 540B are given in Figure 10. This result appears consistent with a hypothesis that language models acquire a range of semantic understanding and logical reasoning skills as a function of model scale (though note that model scale is often conflated with other factors, such as amount of training compute). 
 
-**==> picture [318 x 127] intentionally omitted <==**
+
+![](tests/evaluation/outputs/PyMuPDF4LLM_Layout/2201.11903v6/images/tests/evaluation/fixtures/complex/2201.11903v6.pdf-0016-05.png)
+
 
 **----- Start of picture text -----**<br>
 Types of errors made by<br>a 62B language model:<br>Semantic understanding<br>(62B made 20 errors of this type,<br>540B fixes 6 of them)<br>One step missing<br>(62B made 18 errors of this type,<br>540B fixes 12 of them)<br>Errors fixed by<br>Other  scaling from<br>(62B made 7 errors of this type,  62B to 540B<br>540B fixes 4 of them)<br>**----- End of picture text -----**<br>
@@ -502,7 +520,9 @@ In summary, the success of chain-of-thought reasoning as a result of model scale
 
 16 
 
-**==> picture [388 x 434] intentionally omitted <==**
+
+![](tests/evaluation/outputs/PyMuPDF4LLM_Layout/2201.11903v6/images/tests/evaluation/fixtures/complex/2201.11903v6.pdf-0017-00.png)
+
 
 **----- Start of picture text -----**<br>
 Question 62B Model Output 540B Model Output<br>Tracy used a piece of wire 4  She cut the wire into 6 inch pieces.  The wire was 4 feet long. This<br>feet long to support tomato  This means she got 4 * 6 = 24  means it was 4 * 12 = 48 inches<br>plants in the garden. The  pieces. The answer is 24.  long. It was cut into pieces 6 inches<br>wire was cut into pieces 6  (Incorrect: semantic  long. This means she obtained 48 /<br>inches long. How many  understanding error) 6 = 8 pieces. The answer is 8.<br>pieces did she obtain? (Correct)<br>Question 62B Model Output 540B Model Output<br>Tom's ship can travel at 10  He travels from 1 to 4 PM. That  He travels at 10 mph from 1 to 4<br>miles per hour. He is sailing  means he travels for 3 hours. He  PM. This means he travels 3 hours.<br>from 1 to 4 PM. He then  travels back at 6 mph. That means  3 hours at 10 mph means he travels<br>travels back at a rate of 6  he travels for 3 * 6 = 18 miles. The  3 * 10 = 30 miles. He then travels<br>mph. How long does it take  answer is 18.  (Incorrect: semantic  back at 6 mph. This means he<br>him to get back? understanding error) travels 6 miles per hour. He has to<br>travel 30 miles, so it takes him 30 / 6<br>= 5 hours. The answer is 5.<br>(Correct)<br>Question 62B Model Output 540B Model Output<br>Stephen placed an online  The final price of Stephen's  Stephen's bill was $40.00. The<br>order for groceries. His final  groceries was $40.00. The delivery  delivery vendor added 25% to the<br>bill came to $40.00.  vendor added 25% to the final total,  bill. This means the bill was<br>Because this was through a  so the final total was 125% of  increased by 25% of $40.00. This is<br>delivery vendor, they tacked  $40.00. This means the final total  0.25 * $40.00 = $10.00. The delivery<br>on a 25% fee to his final  was 125% * $40.00 = $50.00. The  fee was $3.00. The tip was $4.00.<br>total and charged him $3.00  delivery vendor also charged $3.00  So the total bill was $40.00 + $10.00<br>in delivery fees. Stephen  in delivery fees. So the final price of  + $3.00 + 540b model $4.00 =<br>also added a $4.00 tip. After  Stephen's groceries was $50.00 +  $57.00. The answer is 57.  (Correct)<br>the extra fees, what was the  $3.00 = $53.00. The answer is<br>final price of Stephen's  $53.00.  (Incorrect: one step<br>groceries? missing error)<br>Question 62B Model Output 540B Model Output<br>There are four schools  There are 4 schools. Each school  Each school has sent 2 teams, each<br>competing at a basketball  has sent a girls’ basketball team and  with 5 players. This means each<br>tournament. Each school  a boys’ basketball team. Each team  school has sent 2 * 5 = 10 players.<br>has sent a girls’ basketball  has 5 players each. That means  Each school has also sent 2<br>team and a boys’ basketball  there are 4 * 2 * 5 = 40 players.  coaches. This means each school<br>team and each team has 5  Each team has a coach. That  has sent 10 + 2 = 12 people. There<br>players each. Each school  means there are 40 + 4 = 44  are 4 schools, so in total all of the<br>has also sent a coach for  coaches. The answer is 44.  schools have sent 4 * 12 = 48<br>each team. In total, how  (Incorrect: one step missing  people. The answer is 48.  (Correct)<br>many people have all of the  error)<br>schools sent?<br>**----- End of picture text -----**<br>
@@ -800,7 +820,9 @@ As the experiments in the main paper use a fixed number of few-shot exemplars (8
 
 28 
 
-**==> picture [393 x 146] intentionally omitted <==**
+
+![](tests/evaluation/outputs/PyMuPDF4LLM_Layout/2201.11903v6/images/tests/evaluation/fixtures/complex/2201.11903v6.pdf-0029-00.png)
+
 
 **----- Start of picture text -----**<br>
 Standard prompting<br>Chain of thought prompting<br>MultiArith Sports Last Letter<br>GSM8K (MAWPS) Understanding Coin Flip Concatenation<br>15 60 100 100 100<br>75 75 75<br>10 40<br>50 50 50<br>5 20<br>25 25 25<br>0 0 0 0 0<br>1 2 4 6 8 1 2 4 6 8 1 2 4 6 8 1 2 4 6 8 1 2 3 4<br>Number of few-shot exemplars<br>Solve rate (%)<br>**----- End of picture text -----**<br>

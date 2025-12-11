@@ -1,5 +1,5 @@
 {
-  "filename": "tests/fixtures/sample_llama.pdf",
+  "filename": "tests/evaluation/fixtures/simple/sample_llama.pdf",
   "page_count": 1,
   "toc": [],
   "pages": [

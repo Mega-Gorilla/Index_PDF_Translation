@@ -112,11 +112,15 @@ def evaluate_pymupdf_baseline(pdf_path: Path) -> EvaluationResult:
     )
 
 
-def evaluate_pymupdf4llm_layout(pdf_path: Path) -> EvaluationResult:
+def evaluate_pymupdf4llm_layout(
+    pdf_path: Path,
+    image_output_dir: Path | None = None,
+) -> EvaluationResult:
     """
     PyMuPDF4LLM + Layout によるレイアウト解析評価
 
     to_json() を使用して正確な座標情報を取得します。
+    image_output_dir を指定すると、画像をファイルとして保存します。
     """
     start_time = time.perf_counter()
     errors: list[str] = []
@@ -140,8 +144,22 @@ def evaluate_pymupdf4llm_layout(pdf_path: Path) -> EvaluationResult:
         json_output = pymupdf4llm.to_json(str(pdf_path))
         json_data = json.loads(json_output)
 
-        # Markdown形式でも抽出（参照用）
-        markdown_output = pymupdf4llm.to_markdown(str(pdf_path))
+        # Markdown形式で抽出（画像出力オプション付き）
+        if image_output_dir:
+            image_output_dir.mkdir(parents=True, exist_ok=True)
+            # PyMuPDF4LLMはPDFパスを含むファイル名で画像を保存するため、
+            # PDFパスに対応するディレクトリ構造を作成する必要がある
+            pdf_parent_in_images = image_output_dir / pdf_path.parent
+            pdf_parent_in_images.mkdir(parents=True, exist_ok=True)
+            markdown_output = pymupdf4llm.to_markdown(
+                str(pdf_path),
+                write_images=True,
+                image_path=str(image_output_dir),
+                image_format="png",
+                dpi=150,
+            )
+        else:
+            markdown_output = pymupdf4llm.to_markdown(str(pdf_path))
 
         # ページ数取得
         total_pages = len(json_data.get("pages", []))
@@ -291,26 +309,32 @@ def run_evaluation(
 
     results: list[EvaluationResult] = []
 
-    tool_functions = {
-        "baseline": evaluate_pymupdf_baseline,
-        "pymupdf4llm": evaluate_pymupdf4llm_layout,
-    }
-
     for tool in tools:
-        if tool in tool_functions:
-            print(f"Evaluating {tool} on {pdf_path.name}...")
-            result = tool_functions[tool](pdf_path)
-            results.append(result)
-            print(f"  - Blocks detected: {result.blocks_detected}")
-            print(f"  - Processing time: {result.processing_time_seconds:.3f}s")
-            print(f"  - Types: {result.blocks_by_type}")
-            if result.errors:
-                print(f"  - Errors: {result.errors}")
+        print(f"Evaluating {tool} on {pdf_path.name}...")
 
-            # 出力保存
+        if tool == "baseline":
+            result = evaluate_pymupdf_baseline(pdf_path)
+        elif tool == "pymupdf4llm":
+            # 画像出力ディレクトリを設定
+            image_output_dir = None
             if output_dir:
-                saved = save_evaluation_outputs(result, output_dir)
-                print(f"  - Saved: {list(saved.keys())}")
+                image_output_dir = output_dir / "PyMuPDF4LLM_Layout" / pdf_path.stem / "images"
+            result = evaluate_pymupdf4llm_layout(pdf_path, image_output_dir)
+        else:
+            print(f"  - Unknown tool: {tool}")
+            continue
+
+        results.append(result)
+        print(f"  - Blocks detected: {result.blocks_detected}")
+        print(f"  - Processing time: {result.processing_time_seconds:.3f}s")
+        print(f"  - Types: {result.blocks_by_type}")
+        if result.errors:
+            print(f"  - Errors: {result.errors}")
+
+        # 出力保存
+        if output_dir:
+            saved = save_evaluation_outputs(result, output_dir)
+            print(f"  - Saved: {list(saved.keys())}")
 
     return results
 

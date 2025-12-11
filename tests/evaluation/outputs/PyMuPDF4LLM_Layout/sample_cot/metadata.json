@@ -3,7 +3,7 @@
   "pdf_path": "tests/fixtures/sample_cot.pdf",
   "pdf_name": "sample_cot",
   "total_pages": 1,
-  "processing_time_seconds": 0.4237664699994639,
+  "processing_time_seconds": 0.4677048609992198,
   "blocks_detected": 9,
   "blocks_by_type": {
     "heading_1": 1,
@@ -13,5 +13,5 @@
     "footer": 1
   },
   "errors": [],
-  "evaluation_timestamp": "2025-12-11T14:15:42.229149"
+  "evaluation_timestamp": "2025-12-11T14:27:45.991096"
 }

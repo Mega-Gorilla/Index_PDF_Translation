@@ -8,7 +8,9 @@
 
 > _±_ University of Washington, _∓_ Xidian University 
 
-**==> picture [396 x 125] intentionally omitted <==**
+
+![](tests/evaluation/outputs/PyMuPDF4LLM_Layout/sample_autogen/images/tests/fixtures/sample_autogen.pdf-0001-06.png)
+
 
 **----- Start of picture text -----**<br>
 Conversable agent Plot a chart of META and TESLA  Output:<br>stock price change<br>YTD. $<br>Execute the<br>following code… Month<br>Multi-Agent Conversations Error package  No, please plot %<br>yfinance is not  change!<br>installed<br>Got it! Here is the<br>… … … pip install yfinanceSorry! Please first  revised code …<br>… and then execute the code Output:<br>… … … … Installing… %<br>Joint chat Hierarchical chat<br>Month<br>Agent Customization Flexible Conversation Patterns Example Agent Chat<br>**----- End of picture text -----**<br>
