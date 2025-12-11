@@ -1,0 +1,17 @@
+{
+  "tool_name": "PyMuPDF4LLM_Layout",
+  "pdf_path": "tests/pdf_sample/2302.13971v1.pdf",
+  "pdf_name": "2302.13971v1",
+  "total_pages": 27,
+  "processing_time_seconds": 15.436881288000222,
+  "blocks_detected": 354,
+  "blocks_by_type": {
+    "heading_1": 1,
+    "body": 187,
+    "heading_2": 52,
+    "table": 17,
+    "list": 97
+  },
+  "errors": [],
+  "evaluation_timestamp": "2025-12-11T12:16:17.675318"
+}

@@ -1,0 +1,15 @@
+{
+  "tool_name": "PyMuPDF4LLM_Layout",
+  "pdf_path": "tests/fixtures/sample_cot.pdf",
+  "pdf_name": "sample_cot",
+  "total_pages": 1,
+  "processing_time_seconds": 0.21891909599980863,
+  "blocks_detected": 13,
+  "blocks_by_type": {
+    "heading_1": 1,
+    "body": 11,
+    "heading_2": 1
+  },
+  "errors": [],
+  "evaluation_timestamp": "2025-12-11T12:15:22.796919"
+}

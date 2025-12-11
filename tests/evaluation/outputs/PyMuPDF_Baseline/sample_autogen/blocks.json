@@ -1,0 +1,496 @@
+[
+  {
+    "bbox": [
+      148.11898803710938,
+      99.8338394165039,
+      463.88397216796875,
+      136.97422790527344
+    ],
+    "text": "AutoGen : Enabling Next-Gen LLM Applications via Multi-Agent Conversation",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 17.21540069580078,
+    "page_num": 0
+  },
+  {
+    "bbox": [
+      159.64100646972656,
+      179.58541870117188,
+      451.8586730957031,
+      191.05714416503906
+    ],
+    "text": "Qingyun Wu † , Gagan Bansal ∗ , Jieyu Zhang ± , Yiran Wu † , Beibin Li ∗",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 8.468199968338013,
+    "page_num": 0
+  },
+  {
+    "bbox": [
+      154.30599975585938,
+      202.22543334960938,
+      457.1965637207031,
+      213.69715881347656
+    ],
+    "text": "Erkang Zhu ∗ , Li Jiang ∗ , Xiaoyun Zhang ∗ , Shaokun Zhang † , Jiale Liu ∓",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 8.468199968338013,
+    "page_num": 0
+  },
+  {
+    "bbox": [
+      167.40597534179688,
+      224.51638793945312,
+      446.0780029296875,
+      235.98915100097656
+    ],
+    "text": "Ahmed Awadallah ∗ , Ryen W. White ∗ , Doug Burger ∗ , Chi Wang ∗ 1",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 8.302155547671848,
+    "page_num": 0
+  },
+  {
+    "bbox": [
+      200.27093505859375,
+      247.10760498046875,
+      411.73046875,
+      259.112548828125
+    ],
+    "text": "∗ Microsoft Research,  † Pennsylvania State University",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 8.468199968338013,
+    "page_num": 0
+  },
+  {
+    "bbox": [
+      211.24594116210938,
+      269.22161865234375,
+      400.75433349609375,
+      281.2265625
+    ],
+    "text": "± University of Washington, ∓ Xidian University",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 8.468199968338013,
+    "page_num": 0
+  },
+  {
+    "bbox": [
+      126.37826538085938,
+      432.6607971191406,
+      190.0105438232422,
+      439.7710876464844
+    ],
+    "text": "Agent Customization",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 6.3655195236206055,
+    "page_num": 0
+  },
+  {
+    "bbox": [
+      125.95881652832031,
+      323.1159973144531,
+      179.48202514648438,
+      330.2262878417969
+    ],
+    "text": "Conversable agent",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 6.3655195236206055,
+    "page_num": 0
+  },
+  {
+    "bbox": [
+      212.78256225585938,
+      431.9664001464844,
+      306.1557922363281,
+      439.0766906738281
+    ],
+    "text": "Flexible Conversation Patterns",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 6.3655195236206055,
+    "page_num": 0
+  },
+  {
+    "bbox": [
+      213.7115020751953,
+      385.02215576171875,
+      242.0272979736328,
+      388.5773010253906
+    ],
+    "text": "… …",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 2.9223521947860718,
+    "page_num": 0
+  },
+  {
+    "bbox": [
+      226.27865600585938,
+      409.0458679199219,
+      228.9405975341797,
+      412.0192565917969
+    ],
+    "text": "…",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 2.661944627761841,
+    "page_num": 0
+  },
+  {
+    "bbox": [
+      276.3674621582031,
+      385.7828063964844,
+      279.0294189453125,
+      388.7561950683594
+    ],
+    "text": "…",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 2.661944627761841,
+    "page_num": 0
+  },
+  {
+    "bbox": [
+      255.8407440185547,
+      408.7481689453125,
+      300.1985778808594,
+      412.4190368652344
+    ],
+    "text": "… … …",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 3.009154717127482,
+    "page_num": 0
+  },
+  {
+    "bbox": [
+      220.8441925048828,
+      416.21636962890625,
+      309.8433532714844,
+      423.9886474609375
+    ],
+    "text": "Hierarchical chat Joint chat",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 6.3655195236206055,
+    "page_num": 0
+  },
+  {
+    "bbox": [
+      222.2646942138672,
+      361.2512512207031,
+      303.1924743652344,
+      368.3615417480469
+    ],
+    "text": "Multi-Agent Conversations",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 6.3655195236206055,
+    "page_num": 0
+  },
+  {
+    "bbox": [
+      307.5250244140625,
+      384.2513122558594,
+      317.4274597167969,
+      401.7742919921875
+    ],
+    "text": "…",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 14.351353645324707,
+    "page_num": 0
+  },
+  {
+    "bbox": [
+      361.9663391113281,
+      345.92828369140625,
+      398.03985595703125,
+      357.7235412597656
+    ],
+    "text": "Execute the  following code…",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 4.803073406219482,
+    "page_num": 0
+  },
+  {
+    "bbox": [
+      449.3830871582031,
+      375.7883605957031,
+      491.473876953125,
+      381.8546447753906
+    ],
+    "text": "Got it! Here is the ",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 4.803073406219482,
+    "page_num": 0
+  },
+  {
+    "bbox": [
+      457.6715393066406,
+      381.517333984375,
+      489.6489562988281,
+      387.5836181640625
+    ],
+    "text": "revised code …",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 4.803073406219482,
+    "page_num": 0
+  },
+  {
+    "bbox": [
+      441.3346862792969,
+      359.81671142578125,
+      481.2621765136719,
+      371.6119689941406
+    ],
+    "text": "No, please plot %  change!",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 4.803073406219482,
+    "page_num": 0
+  },
+  {
+    "bbox": [
+      349.3071594238281,
+      320.9870300292969,
+      391.90081787109375,
+      344.240234375
+    ],
+    "text": "Plot a chart of  META and TESLA  stock price change  YTD.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 4.803073406219482,
+    "page_num": 0
+  },
+  {
+    "bbox": [
+      442.5006408691406,
+      323.0703125,
+      459.2912292480469,
+      329.1365966796875
+    ],
+    "text": "Output:",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 4.803073406219482,
+    "page_num": 0
+  },
+  {
+    "bbox": [
+      442.762451171875,
+      338.9392395019531,
+      445.4329528808594,
+      344.30426025390625
+    ],
+    "text": "$",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 4.803073406219482,
+    "page_num": 0
+  },
+  {
+    "bbox": [
+      456.1143798828125,
+      352.30682373046875,
+      469.3958435058594,
+      357.6718444824219
+    ],
+    "text": "Month",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 4.803073406219482,
+    "page_num": 0
+  },
+  {
+    "bbox": [
+      441.5927734375,
+      391.35498046875,
+      458.38336181640625,
+      397.4212646484375
+    ],
+    "text": "Output:",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 4.803073406219482,
+    "page_num": 0
+  },
+  {
+    "bbox": [
+      442.76348876953125,
+      405.02496337890625,
+      447.0334167480469,
+      410.3899841308594
+    ],
+    "text": "%",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 4.803073406219482,
+    "page_num": 0
+  },
+  {
+    "bbox": [
+      457.29095458984375,
+      422.0382080078125,
+      470.5724182128906,
+      427.4032287597656
+    ],
+    "text": "Month",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 4.803073406219482,
+    "page_num": 0
+  },
+  {
+    "bbox": [
+      347.2499694824219,
+      360.68475341796875,
+      381.07501220703125,
+      378.2089538574219
+    ],
+    "text": "Error package  yfinance is not  installed",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 4.803073406219482,
+    "page_num": 0
+  },
+  {
+    "bbox": [
+      354.4752197265625,
+      380.82293701171875,
+      397.6158752441406,
+      392.61822509765625
+    ],
+    "text": "Sorry! Please first  pip install yfinance",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 4.803073406219482,
+    "page_num": 0
+  },
+  {
+    "bbox": [
+      357.657958984375,
+      392.2808837890625,
+      397.61474609375,
+      398.34716796875
+    ],
+    "text": "and then execute ",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 4.803073406219482,
+    "page_num": 0
+  },
+  {
+    "bbox": [
+      377.0196228027344,
+      398.00982666015625,
+      395.791015625,
+      404.07611083984375
+    ],
+    "text": "the code",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 4.803073406219482,
+    "page_num": 0
+  },
+  {
+    "bbox": [
+      345.8828125,
+      406.5743408203125,
+      369.898193359375,
+      412.640625
+    ],
+    "text": "Installing…",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 4.803073406219482,
+    "page_num": 0
+  },
+  {
+    "bbox": [
+      379.671630859375,
+      430.6354064941406,
+      441.31878662109375,
+      437.7456970214844
+    ],
+    "text": "Example Agent Chat",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 6.3655195236206055,
+    "page_num": 0
+  },
+  {
+    "bbox": [
+      107.99998474121094,
+      449.299560546875,
+      504.0038146972656,
+      504.94049072265625
+    ],
+    "text": "Figure 1:  AutoGen  enables diverse LLM-based applications using multi-agent conversations. (Left) AutoGen  agents are conversable, customizable, and can be based on LLMs, tools, humans, or even a combination of them. (Top-middle) Agents can converse to solve tasks. (Right) They can form a chat, potentially with humans in the loop. (Bottom-middle) The framework supports flexible conversation patterns.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 0
+  },
+  {
+    "bbox": [
+      283.75799560546875,
+      523.2701416015625,
+      328.2432861328125,
+      535.225341796875
+    ],
+    "text": "Abstract",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 11.9552001953125,
+    "page_num": 0
+  },
+  {
+    "bbox": [
+      143.865966796875,
+      546.4225463867188,
+      468.138671875,
+      671.1344604492188
+    ],
+    "text": "AutoGen 2   is an open-source framework that allows developers to build LLM ap- plications via multiple  agents  that can converse with each other to accomplish tasks.  AutoGen  agents are customizable,  conversable , and can operate in vari- ous modes that employ combinations of LLMs, human inputs, and tools. Using AutoGen , developers can also flexibly define agent interaction behaviors. Both natural language and computer code can be used to program flexible conversation patterns for different applications.  AutoGen  serves as a generic framework for building diverse applications of various complexities and LLM capacities. Em- pirical studies demonstrate the effectiveness of the framework in many example applications, with domains ranging from mathematics, coding, question answer- ing, operations research, online decision-making, entertainment, etc.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.832651946855629,
+    "page_num": 0
+  },
+  {
+    "bbox": [
+      119.98799896240234,
+      695.3013305664062,
+      318.5226135253906,
+      717.0455932617188
+    ],
+    "text": "1 Corresponding author. Email: auto-gen@outlook.com 2 https://github.com/microsoft/autogen",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 7.4720001220703125,
+    "page_num": 0
+  },
+  {
+    "bbox": [
+      10.940000534057617,
+      223.94000244140625,
+      37.619998931884766,
+      555.0
+    ],
+    "text": "arXiv:2308.08155v2  [cs.AI]  3 Oct 2023",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 20.0,
+    "page_num": 0
+  }
+]
