@@ -266,6 +266,60 @@ DeepSeek-OCRは、DeepSeekが2025年10月にリリースしたVision-Languageモ
 - GOT-OCR2.0 (256トークン/ページ) を100トークンで上回る
 - MinerU2.0 (6000+トークン/ページ) を800トークン未満で上回る
 
+#### GPU/VRAM要件
+
+**モデルサイズとVRAM消費**:
+
+| 項目 | 値 |
+|------|-----|
+| パラメータ数 | 3B (MoEで570Mアクティブ) |
+| BF16重み | ~6.7 GB |
+| 推論時合計 (512トークン) | ~13 GB |
+| 推奨VRAM | 16 GB以上 |
+
+**量子化によるVRAM削減**:
+
+| 精度 | 重みサイズ | 推論時VRAM | 品質への影響 |
+|------|-----------|-----------|-------------|
+| BF16 (フル) | ~6.7 GB | ~13 GB | なし（最高品質） |
+| INT8 (Q8_0) | ~3.4 GB | ~7 GB | 軽微 |
+| INT4 (Q4_K) | ~1.7 GB | ~4 GB | 中程度 |
+
+**コンシューマGPU動作可否**:
+
+| GPU | VRAM | BF16 | INT8 | INT4 |
+|-----|------|------|------|------|
+| RTX 3060 | 12 GB | ❌ | ✅ | ✅ |
+| RTX 3080 | 10 GB | ❌ | ⚠️ | ✅ |
+| RTX 3080 Ti | 12 GB | ❌ | ✅ | ✅ |
+| RTX 4070 Ti | 12 GB | ❌ | ✅ | ✅ |
+| RTX 4080 | 16 GB | ⚠️ | ✅ | ✅ |
+| RTX 4090 | 24 GB | ✅ | ✅ | ✅ |
+| T4 (Colab無料) | 16 GB | ⚠️ | ✅ | ✅ |
+| A100 | 40/80 GB | ✅ | ✅ | ✅ |
+
+凡例: ✅ 動作可能 / ⚠️ ギリギリ / ❌ VRAM不足
+
+**4-bit量子化での実行方法**:
+
+```python
+# 4-bit量子化でのロード例
+from transformers import AutoModelForCausalLM, BitsAndBytesConfig
+
+quantization_config = BitsAndBytesConfig(
+    load_in_4bit=True,
+    bnb_4bit_compute_dtype=torch.float16,
+)
+
+model = AutoModelForCausalLM.from_pretrained(
+    "deepseek-ai/DeepSeek-OCR",
+    quantization_config=quantization_config,
+    trust_remote_code=True,
+)
+```
+
+**参考**: [4-bit推論 Colab Notebook](https://colab.research.google.com/github/Alireza-Akhavan/LLM/blob/main/deepseek_ocr_inference_4bit.ipynb)
+
 #### インストール
 
 ```bash
