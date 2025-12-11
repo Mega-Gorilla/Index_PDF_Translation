@@ -27,6 +27,12 @@ evaluation = [
     "pymupdf4llm>=0.2.0",
     "pymupdf-layout>=1.26.0",
 ]
+# DocLayout-YOLO評価用（GPU推奨）
+evaluation-yolo = [
+    "doclayout-yolo>=0.0.4",
+    "huggingface-hub>=0.20.0",
+    "pillow>=10.0.0",
+]
 dev = [
     "pytest>=8.0.0",
     "pytest-asyncio>=0.23.0",
