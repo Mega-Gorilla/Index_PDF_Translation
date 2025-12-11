@@ -11,7 +11,7 @@ We explore how generating a _chain of thought_ —a series of intermediate reaso
 Experiments on three large language models show that chain-of-thought prompting improves performance on a range of arithmetic, commonsense, and symbolic reasoning tasks. The empirical gains can be striking. For instance, prompting a PaLM 540B with just eight chain-of-thought exemplars achieves state-of-the-art accuracy on the GSM8K benchmark of math word problems, surpassing even finetuned GPT-3 with a verifier. 
 
 
-![](tests/evaluation/outputs/PyMuPDF4LLM_Layout/sample_cot/images/tests/fixtures/sample_cot.pdf-0001-07.png)
+![](images/tests/fixtures/sample_cot.pdf-0001-07.png)
 
 
 **----- Start of picture text -----**<br>

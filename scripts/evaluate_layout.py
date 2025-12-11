@@ -158,6 +158,12 @@ def evaluate_pymupdf4llm_layout(
                 image_format="png",
                 dpi=150,
             )
+            # 画像パスを相対パスに修正
+            # PyMuPDF4LLMは絶対パスで出力するため、Markdownファイルからの相対パスに変換
+            # 例: "tests/evaluation/outputs/.../images/..." → "images/..."
+            abs_image_path = str(image_output_dir)
+            rel_image_path = "images"
+            markdown_output = markdown_output.replace(abs_image_path, rel_image_path)
         else:
             markdown_output = pymupdf4llm.to_markdown(str(pdf_path))
 

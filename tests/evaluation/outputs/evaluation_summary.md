@@ -1,6 +1,6 @@
 # レイアウト解析評価結果サマリー
 
-**評価日時**: 2025-12-11 14:27:46
+**評価日時**: 2025-12-11 14:35:58
 
 ## 1. 評価概要
 
@@ -13,8 +13,8 @@
 
 | PDF | ページ数 | ブロック数 | 処理時間 | タイプ分布 |
 |-----|---------|-----------|---------|-----------|
-| sample_autogen | 1 | 11 | 0.887s | body: 9, heading_1: 1, heading_2: 1 |
-| sample_cot | 1 | 9 | 0.468s | body: 5, caption: 1, footer: 1, heading_1: 1, heading_2: 1 |
-| sample_llama | 1 | 14 | 0.604s | body: 10, heading_1: 1, heading_2: 3 |
+| sample_autogen | 1 | 11 | 0.871s | body: 9, heading_1: 1, heading_2: 1 |
+| sample_cot | 1 | 9 | 0.437s | body: 5, caption: 1, footer: 1, heading_1: 1, heading_2: 1 |
+| sample_llama | 1 | 14 | 0.525s | body: 10, heading_1: 1, heading_2: 3 |
 
-**合計**: 34 ブロック, 1.960s
+**合計**: 34 ブロック, 1.833s

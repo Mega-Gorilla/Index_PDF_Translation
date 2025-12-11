@@ -9,7 +9,7 @@
 > _±_ University of Washington, _∓_ Xidian University 
 
 
-![](tests/evaluation/outputs/PyMuPDF4LLM_Layout/sample_autogen/images/tests/fixtures/sample_autogen.pdf-0001-06.png)
+![](images/tests/fixtures/sample_autogen.pdf-0001-06.png)
 
 
 **----- Start of picture text -----**<br>

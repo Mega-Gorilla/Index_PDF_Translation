@@ -11,7 +11,7 @@ We explore how generating a _chain of thought_ —a series of intermediate reaso
 Experiments on three large language models show that chain-of-thought prompting improves performance on a range of arithmetic, commonsense, and symbolic reasoning tasks. The empirical gains can be striking. For instance, prompting a PaLM 540B with just eight chain-of-thought exemplars achieves state-of-the-art accuracy on the GSM8K benchmark of math word problems, surpassing even finetuned GPT-3 with a verifier. 
 
 
-![](tests/evaluation/outputs/PyMuPDF4LLM_Layout/2201.11903v6/images/tests/evaluation/fixtures/complex/2201.11903v6.pdf-0001-07.png)
+![](images/tests/evaluation/fixtures/complex/2201.11903v6.pdf-0001-07.png)
 
 
 **----- Start of picture text -----**<br>
@@ -27,7 +27,7 @@ Figure 1: Chain-of-thought prompting enables large language models to tackle com
 ## **1 Introduction** 
 
 
-![](tests/evaluation/outputs/PyMuPDF4LLM_Layout/2201.11903v6/images/tests/evaluation/fixtures/complex/2201.11903v6.pdf-0002-01.png)
+![](images/tests/evaluation/fixtures/complex/2201.11903v6.pdf-0002-01.png)
 
 
 **----- Start of picture text -----**<br>
@@ -85,7 +85,7 @@ We explore chain-of-thought prompting for various language models on multiple be
 3 
 
 
-![](tests/evaluation/outputs/PyMuPDF4LLM_Layout/2201.11903v6/images/tests/evaluation/fixtures/complex/2201.11903v6.pdf-0004-00.png)
+![](images/tests/evaluation/fixtures/complex/2201.11903v6.pdf-0004-00.png)
 
 
 **----- Start of picture text -----**<br>
@@ -111,7 +111,7 @@ The strongest results of chain-of-thought prompting are summarized in Figure 4, 
 4 
 
 
-![](tests/evaluation/outputs/PyMuPDF4LLM_Layout/2201.11903v6/images/tests/evaluation/fixtures/complex/2201.11903v6.pdf-0005-00.png)
+![](images/tests/evaluation/fixtures/complex/2201.11903v6.pdf-0005-00.png)
 
 
 **----- Start of picture text -----**<br>
@@ -139,7 +139,7 @@ The observed benefits of using chain-of-thought prompting raises the natural que
 **Chain of thought after answer.** Another potential benefit of chain-of-thought prompting could simply be that such prompts allow the model to better access relevant knowledge acquired during pretraining. Therefore, we test an alternative configuration where the chain of thought prompt is only given after the answer, isolating whether the model actually depends on the produced chain of thought to give the final answer. This variant performs about the same as the baseline, which suggests that the sequential reasoning embodied in the chain of thought is useful for reasons beyond just activating knowledge. 
 
 
-![](tests/evaluation/outputs/PyMuPDF4LLM_Layout/2201.11903v6/images/tests/evaluation/fixtures/complex/2201.11903v6.pdf-0006-02.png)
+![](images/tests/evaluation/fixtures/complex/2201.11903v6.pdf-0006-02.png)
 
 
 **----- Start of picture text -----**<br>
@@ -151,7 +151,7 @@ Figure 5: Ablation study for different variations of prompting using LaMDA 137B 
 ## **3.4 Robustness of Chain of Thought** 
 
 
-![](tests/evaluation/outputs/PyMuPDF4LLM_Layout/2201.11903v6/images/tests/evaluation/fixtures/complex/2201.11903v6.pdf-0006-05.png)
+![](images/tests/evaluation/fixtures/complex/2201.11903v6.pdf-0006-05.png)
 
 
 **----- Start of picture text -----**<br>
@@ -185,7 +185,7 @@ Although chain of thought is particularly suitable for math word problems, the l
 **Results.** Figure 7 highlights these results for PaLM (full results for LaMDA, GPT-3, and different model scales are shown in Table 4). For all tasks, scaling up model size improved the performance of standard prompting; chain-of-thought prompting led to further gains, with improvements appearing to be largest for PaLM 540B. With chain-of-thought prompting, PaLM 540B achieved strong performance relative to baselines, outperforming the prior state of the art on StrategyQA (75.6% vs 69.4%) and outperforming an unaided sports enthusiast on sports understanding (95.4% vs 84%). These results demonstrate that chain-of-thought prompting can also improve performance on tasks requiring a range of commonsense reasoning abilities (though note that gain was minimal on CSQA). 
 
 
-![](tests/evaluation/outputs/PyMuPDF4LLM_Layout/2201.11903v6/images/tests/evaluation/fixtures/complex/2201.11903v6.pdf-0007-07.png)
+![](images/tests/evaluation/fixtures/complex/2201.11903v6.pdf-0007-07.png)
 
 
 **----- Start of picture text -----**<br>
@@ -199,7 +199,7 @@ Figure 7: Chain-of-thought prompting also improves the commonsense reasoning abi
 7 
 
 
-![](tests/evaluation/outputs/PyMuPDF4LLM_Layout/2201.11903v6/images/tests/evaluation/fixtures/complex/2201.11903v6.pdf-0008-00.png)
+![](images/tests/evaluation/fixtures/complex/2201.11903v6.pdf-0008-00.png)
 
 
 **----- Start of picture text -----**<br>
@@ -505,7 +505,7 @@ The question of why model scale improves chain-of-thought prompting is certainly
 As shown in Figure 9, scaling PaLM to 540B parameters fixed a substantial portion of errors in all three categories. Examples of semantic understanding and one-step missing errors that were fixed by scaling PaLM to 540B are given in Figure 10. This result appears consistent with a hypothesis that language models acquire a range of semantic understanding and logical reasoning skills as a function of model scale (though note that model scale is often conflated with other factors, such as amount of training compute). 
 
 
-![](tests/evaluation/outputs/PyMuPDF4LLM_Layout/2201.11903v6/images/tests/evaluation/fixtures/complex/2201.11903v6.pdf-0016-05.png)
+![](images/tests/evaluation/fixtures/complex/2201.11903v6.pdf-0016-05.png)
 
 
 **----- Start of picture text -----**<br>
@@ -521,7 +521,7 @@ In summary, the success of chain-of-thought reasoning as a result of model scale
 16 
 
 
-![](tests/evaluation/outputs/PyMuPDF4LLM_Layout/2201.11903v6/images/tests/evaluation/fixtures/complex/2201.11903v6.pdf-0017-00.png)
+![](images/tests/evaluation/fixtures/complex/2201.11903v6.pdf-0017-00.png)
 
 
 **----- Start of picture text -----**<br>
@@ -821,7 +821,7 @@ As the experiments in the main paper use a fixed number of few-shot exemplars (8
 28 
 
 
-![](tests/evaluation/outputs/PyMuPDF4LLM_Layout/2201.11903v6/images/tests/evaluation/fixtures/complex/2201.11903v6.pdf-0029-00.png)
+![](images/tests/evaluation/fixtures/complex/2201.11903v6.pdf-0029-00.png)
 
 
 **----- Start of picture text -----**<br>
