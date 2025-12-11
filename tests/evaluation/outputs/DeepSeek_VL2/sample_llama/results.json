@@ -1,0 +1,27 @@
+{
+  "pdf_name": "sample_llama",
+  "total_pages": 1,
+  "pages_processed": 1,
+  "ocr_results": [
+    {
+      "page": 0,
+      "text": "LLaMA: Open and Efficient Foundation Language Models Hugo Touvron; Thibaut Lavril; Gautier Izacard; Xavier Martinet Marie-Anne Lachaux, Timothee Lacroix, Baptiste Roziere, Naman Goyal Eric Hambro, Faisal Azhar, Aurelien Rodriguez, Armand Joulin Edouard Grave; Guillaume Lample* Meta AI\n\nAbstract\n\nWe introduce LLaMA, a collection of foundation language models ranging from 7B to 65B parameters. We train our models on trillions of tokens, and show that it is possible to train state-of-the-art models using publicly available datasets exclusively, without resorting to proprietary and inaccessible datasets. In particular, LLaMA-13B outperforms GPT-3 (175B) on most benchmarks, and LLaMA-65B is competitive with the best models, Chinchilla-70B and PaLM-540B. We release all our models to the research community!\n\n1 Introduction\n\nLarge Languages Models (LLMs) trained on massive corpora of texts have shown their ability to perform new tasks from textual instructions or from a few examples (Brown et al., 2020). These few-shot properties first appeared when scaling models to a sufficient size (Kaplan et al., 2020), resulting in a line of work that focuses on further scaling these models (Chowdhery et al., 2022; Rae et al., 2021). These efforts are based on the assumption that more parameters will lead to better performance. However, recent work from Hoffmann et al. (2022) shows that, for a given compute budget, the best performances are not achieved by the largest models, but by smaller models trained on more data.\n\nThe objective of the scaling laws from Hoffmann et al. (2022) is to determine how to best scale the dataset and model sizes for a particular training compute budget. However, this objective disregards the inference budget, which becomes critical when serving a language model at scale. In this context, given a target level of performance, the preferred model is not the fastest to train but the fastest at inference, and although it may be cheaper to train a large model to reach a certain level of performance, a smaller one trained longer will ultimately be cheaper at inference. For instance, although Hoffmann et al. (2022) recommends training a 10B model on 200B tokens, we find that the performance of a 7B model",
+      "time_seconds": 12.844183921813965,
+      "text_length": 2245
+    }
+  ],
+  "layout_results": [
+    {
+      "page": 0,
+      "analysis": "Title: LLaMA: Open and Efficient Foundation Language Models\n\nSection headers:\n- 1. Introduction\n- 2. Model architecture details\n- 3. Training methods\n- 4. Results and analysis\n- 5. Conclusion and future work\n\nBody text:\n- We introduce LLaMA, a collection of foundation language models ranging from 7B to 65B parameters.\n- We train our models on trillions of tokens, and show that it is possible to train state-of-the-art models using publicly available datasets exclusively, without resorting to proprietary and inaccessible datasets.\n\nFigure/Tables with captions:\n- Figure 1: A comparison between different foundation language models' performance on trillions of tokens.\n\nPage headers/footers:\n- Meta AI\n- https://github.com/facebookresearch/llama",
+      "time_seconds": 4.48823618888855
+    }
+  ],
+  "summary": {
+    "total_ocr_time": 12.844183921813965,
+    "total_layout_time": 4.48823618888855,
+    "total_time": 17.332420110702515,
+    "pages_per_minute_ocr": 4.671375025866672,
+    "pages_per_minute_layout": 13.368280427964326
+  }
+}

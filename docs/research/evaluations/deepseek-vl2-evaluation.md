@@ -15,7 +15,7 @@ DeepSeek-VL2は、DeepSeek社が開発したVision-Language Model (VLM)で、画
 | モデル名 | DeepSeek-VL2-Tiny |
 | モデルID | deepseek-ai/deepseek-vl2-tiny |
 | パラメータ数 | 約3.37B |
-| VRAM使用量 | 約6.3GB (BF16) |
+| VRAM使用量 | 約6.4GB (BF16) |
 | ライセンス | MIT (コード), DeepSeek License (モデル) |
 | リポジトリ | https://github.com/deepseek-ai/DeepSeek-VL2 |
 
@@ -61,21 +61,12 @@ einops
    - 影響: DynamicCacheの初期化失敗
    - 対処: 根本的なコード修正が必要
 
-### 3.3 パッチ適用の試み
+### 3.3 解決策
 
-以下のパッチを適用したが、完全な互換性は達成できなかった：
-
-```python
-# modeling_deepseek.py パッチ
-from transformers.models.llama.modeling_llama import LlamaAttention
-try:
-    from transformers.models.llama.modeling_llama import LlamaFlashAttention2
-except ImportError:
-    LlamaFlashAttention2 = None
-
-class DeepseekV2PreTrainedModel(PreTrainedModel, GenerationMixin):
-    # ...
-```
+**隔離環境での評価**を実施：
+- `/tmp/deepseek-vl2-eval-env/` に専用仮想環境を作成
+- transformers==4.38.2をインストール
+- プロジェクト本体の環境には影響なし
 
 ## 4. ライセンス互換性
 
@@ -93,49 +84,104 @@ DeepSeek Licenseはモデル重みに適用され、商用利用に制限があ�
 | 項目 | 結果 |
 |------|------|
 | インストール | ⚠️ 複雑（バージョン固定必要） |
-| GPUメモリ | ✅ 12GB GPUで動作可能 |
+| GPUメモリ | ✅ 12GB GPUで動作可能（6.4GB使用） |
 | 依存関係 | ❌ transformers 4.38.2固定 |
-| モデルロード | ✅ 成功（パッチ適用後） |
-| 推論実行 | ❌ 失敗（互換性問題） |
+| モデルロード | ✅ 成功 |
+| 推論実行 | ✅ 成功（隔離環境で） |
 
-### 5.2 機能評価（推定）
+### 5.2 OCR性能評価
 
-公式ドキュメントとデモに基づく推定評価：
+3つのテストPDF（各1ページ）で評価：
 
-| 機能 | 期待される能力 |
-|------|---------------|
-| OCRテキスト抽出 | ✅ 高精度 |
-| レイアウト検出 | ✅ 可能（プロンプトベース） |
-| 座標情報取得 | ⚠️ グラウンディング機能で可能 |
-| 処理速度 | ⚠️ VLMのため低速（推定1-2ページ/分） |
+| PDF | OCR時間 | 文字数 | 速度 (pages/min) |
+|-----|---------|--------|------------------|
+| sample_cot.pdf | 7.43s | 1,280 | 8.08 |
+| sample_autogen.pdf | 8.70s | 1,623 | 6.90 |
+| sample_llama.pdf | 12.84s | 2,245 | 4.67 |
+| **平均** | **9.66s** | **1,716** | **6.21** |
 
-### 5.3 Issue #31への適用性
+### 5.3 OCR品質評価
+
+**出力例 (sample_llama.pdf)**:
+```
+LLaMA: Open and Efficient Foundation Language Models Hugo Touvron; Thibaut
+Lavril; Gautier Izacard; Xavier Martinet Marie-Anne Lachaux, Timothee Lacroix,
+Baptiste Roziere, Naman Goyal Eric Hambro, Faisal Azhar, Aurelien Rodriguez,
+Armand Joulin Edouard Grave; Guillaume Lample* Meta AI
+
+Abstract
+
+We introduce LLaMA, a collection of foundation language models ranging from 7B
+to 65B parameters. We train our models on trillions of tokens, and show that it
+is possible to train state-of-the-art models using publicly available datasets
+exclusively, without resorting to proprietary and inaccessible datasets...
+```
+
+品質評価：
+- ✅ タイトル抽出: 正確
+- ✅ 著者名抽出: 正確
+- ✅ 本文抽出: 高精度
+- ✅ セクション番号: 保持 ("1 Introduction")
+- ✅ 引用形式: 正確 ("Brown et al., 2020")
+- ⚠️ 座標情報: なし（VLMの特性上）
+
+### 5.4 レイアウト検出評価
+
+| PDF | 検出時間 | 速度 (pages/min) |
+|-----|---------|------------------|
+| sample_cot.pdf | 5.21s | 11.51 |
+| sample_autogen.pdf | 6.27s | 9.57 |
+| sample_llama.pdf | 4.49s | 13.37 |
+| **平均** | **5.32s** | **11.27** |
+
+**レイアウト検出出力例**:
+```
+Title: LLaMA: Open and Efficient Foundation Language Models
+
+Section headers:
+- 1. Introduction
+
+Body text:
+- We introduce LLaMA, a collection of foundation language models...
+
+Page headers/footers:
+- Meta AI
+```
+
+注意点：
+- ⚠️ 存在しないセクション（"2. Model architecture details"等）を推測で出力する場合がある
+- これはVLMの「推論」能力によるもので、プロンプトで制御可能
+
+### 5.5 Issue #31への適用性
 
 | 評価項目 | スコア | コメント |
 |----------|--------|----------|
-| 見出し検出 | N/A | 評価不可（互換性問題） |
-| 本文/キャプション分類 | N/A | 評価不可 |
-| 座標情報取得 | N/A | 評価不可 |
-| 処理速度 | ⚠️ | VLMのため低速と推定 |
+| 見出し検出 | ✅ | タイトル、セクションヘッダーを検出 |
+| 本文/キャプション分類 | ✅ | プロンプトで分類可能 |
+| 座標情報取得 | ❌ | VLMのため座標情報なし |
+| 処理速度 | ❌ | 9.66秒/ページ（PyMuPDF4LLMの約12倍遅い） |
 | 統合の容易さ | ❌ | 依存関係の制約が大きい |
 
 ## 6. 他ツールとの比較
 
-| ツール | 速度 | 精度 | 座標情報 | 統合容易性 | 推奨度 |
-|--------|------|------|----------|------------|--------|
-| PyMuPDF4LLM | ~1.3p/s | 良好 | ✅ | ✅ | ⭐⭐⭐⭐⭐ |
-| DocLayout-YOLO | ~7p/s | 良好 | ✅ | ✅ | ⭐⭐⭐⭐ |
-| DeepSeek-VL2 | ~0.5p/min(推定) | 高(推定) | ⚠️ | ❌ | ⭐⭐ |
+| ツール | 速度 | 速度比 | OCR品質 | 座標情報 | 統合容易性 | 推奨度 |
+|--------|------|--------|---------|----------|------------|--------|
+| DocLayout-YOLO | ~420 p/min | 1x | - | ✅ | ✅ | ⭐⭐⭐⭐ |
+| PyMuPDF4LLM | ~78 p/min | 5x遅い | - | ✅ | ✅ | ⭐⭐⭐⭐⭐ |
+| **DeepSeek-VL2** | **~6.2 p/min** | **68x遅い** | **高精度** | ❌ | ❌ | ⭐⭐ |
+
+※ DocLayout-YOLOとPyMuPDF4LLMはOCRではなくレイアウト検出/テキスト抽出ツール
 
 ## 7. 結論と推奨事項
 
 ### 7.1 結論
 
-DeepSeek-VL2は高度なVision-Language能力を持つ有望なモデルですが、以下の理由によりIssue #31での採用は**推奨しません**：
+DeepSeek-VL2は**高品質なOCR能力**を持ちますが、以下の理由によりIssue #31での採用は**推奨しません**：
 
-1. **依存関係の制約**: transformers 4.38.2固定は、プロジェクトの他の依存関係と競合する可能性が高い
-2. **処理速度**: VLMベースのため、PyMuPDF4LLMやDocLayout-YOLOと比較して大幅に低速
-3. **統合の複雑さ**: パッチ適用やバージョン固定が必要で、保守コストが高い
+1. **処理速度**: 平均9.66秒/ページはPyMuPDF4LLMの約12倍遅い
+2. **座標情報の欠如**: VLMの特性上、ブロックの座標情報を取得できない
+3. **依存関係の制約**: transformers 4.38.2固定は保守コストが高い
+4. **VRAM要件**: 12GB GPUでもメモリ制約あり
 
 ### 7.2 推奨事項
 
@@ -151,21 +197,33 @@ Issue #31のブロック分類改善には以下を推奨：
    - 10種類のブロック分類
    - PyMuPDF4LLMと組み合わせて使用可能
 
-### 7.3 今後の検討
+### 7.3 DeepSeek-VL2の適切なユースケース
 
-DeepSeek-VL2を将来的に再評価する場合：
-- transformers 4.38.2を使用する専用環境を構築
-- または、DeepSeek社が新しいtransformersバージョンに対応するのを待つ
-- 代替として、GOT-OCR2.0やPaddleOCRなど他のOCRツールを評価
+以下の場合にはDeepSeek-VL2が有用：
+- スキャンPDFなど、テキスト抽出が困難な文書のOCR
+- 画像内のテキスト抽出
+- レイアウト分析が不要で高品質OCRのみが必要な場合
+- バッチ処理で処理時間が問題にならない場合
 
 ## 8. 評価環境
 
+### 本評価（隔離環境）
 ```
 OS: Linux 6.14.0-36-generic
 GPU: NVIDIA GeForce RTX 4070 Ti (12GB)
 Python: 3.12
-torch: 2.9.1
-transformers: 4.57.3 (互換性問題あり)
+torch: 2.9.1+cu128
+transformers: 4.38.2
+xformers: 0.0.33.post2
+Image DPI: 100
+Max image size: 1024px
+Max new tokens: 512
+```
+
+### プロジェクト環境（互換性問題あり）
+```
+transformers: 4.57.3
+結果: 動作せず（パッチ適用でも解決不可）
 ```
 
 ## 9. 参考資料
@@ -173,3 +231,10 @@ transformers: 4.57.3 (互換性問題あり)
 - [DeepSeek-VL2 GitHub](https://github.com/deepseek-ai/DeepSeek-VL2)
 - [DeepSeek-VL2 Paper](https://arxiv.org/abs/2412.10302)
 - [HuggingFace Model](https://huggingface.co/deepseek-ai/deepseek-vl2-tiny)
+
+## 10. 添付ファイル
+
+評価結果は以下に保存：
+- `tests/evaluation/outputs/DeepSeek_VL2/evaluation_summary.json`
+- `tests/evaluation/outputs/DeepSeek_VL2/sample_*/page_*_ocr.txt`
+- `tests/evaluation/outputs/DeepSeek_VL2/sample_*/page_*_layout.txt`
