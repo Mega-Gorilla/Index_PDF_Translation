@@ -172,7 +172,230 @@ Page headers/footers:
 
 ※ DocLayout-YOLOとPyMuPDF4LLMはOCRではなくレイアウト検出/テキスト抽出ツール
 
-## 7. 結論と推奨事項
+## 7. 具体的な出力例の比較
+
+同じPDF（sample_cot.pdf: Chain-of-Thought論文）に対する各ツールの出力を比較します。
+
+### 7.1 DeepSeek-VL2 OCR出力
+
+```
+Chain-of-Thought Prompting Elicits Reasoning in Large Language Models
+
+Jason Wei Xuezhi Wang Dale Schuurmans Maarten Bosma Brian Ichter Fei Xia
+Ed H. Chi Quoc V. Le Denny Zhou Google Research, Brain Team
+{jasonwei,dennyzhou}@google.com
+
+Abstract
+
+We explore how generating a chain of thought—a series of intermediate reasoning
+steps—significantly improves the ability of large language models to perform
+complex reasoning. In particular, we show how such reasoning abilities emerge
+naturally in sufficiently large language models via a simple method called
+chain-of-thought prompting, where a few chain of thought demonstrations are
+provided as exemplars in prompting.
+
+Experiments on three large language models show that chain-of-thought prompting
+improves performance on a range of arithmetic, commonsense, and symbolic
+reasoning tasks. The empirical gains can be striking. For instance, prompting
+a PaLM 540B with just eight chain-of-thought exemplars achieves state-of-the-art
+accuracy on the GSM8K benchmark of math word problems, surpassing even finetuned
+GPT-3 with a verifier.
+
+Figure 1: Chain-of-thought prompting enables large language models to tackle
+complex arithmetic, commonsense, and symbolic reasoning tasks. Chain-of-thought
+reasoning processes are highlighted.
+```
+
+**特徴**:
+- ✅ 自然なテキスト形式
+- ✅ 構造（タイトル、著者、Abstract、本文）が読み取れる
+- ❌ 座標情報なし
+- ❌ ブロックタイプの明示的な分類なし
+
+### 7.2 DeepSeek-VL2 レイアウト検出出力
+
+```
+Title: Chain-of-Thought Prompting Elicits Reasoning in Large Language Models
+
+Section headers:
+- Introduction: "We explore how generating a chain of thought—a series of
+  intermediate reasoning steps—significantly improves the ability of large
+  language models to perform complex reasoning."
+- Chain-of-Thought Prompting: "We show how such reasoning abilities emerge
+  naturally in sufficiently large language models via a simple method called
+  chain-of-thought prompting."
+
+Body text:
+- Experiments on three large language models show that chain-of-thought
+  prompting improves performance on a range of arithmetic, commonsense,
+  and symbolic reasoning tasks.
+- The empirical gains can be striking.
+
+Figure Caption:
+- Figure 1: Chain-of-thought prompting enables large language models to tackle
+  complex arithmetic, commonsense, and symbolic reasoning tasks. Chain-of-thought
+  reasoning processes are highlighted.
+
+Page Headers/Footers:
+- 36th Conference on Neural Information Processing Systems (NeurIPS 2022).
+```
+
+**特徴**:
+- ✅ レイアウト要素を分類
+- ⚠️ セクションヘッダーを推測で生成する場合あり
+- ❌ 座標情報なし
+- プロンプトで出力形式をカスタマイズ可能
+
+### 7.3 PyMuPDF4LLM 出力（Markdown形式）
+
+```markdown
+# **Chain-of-Thought Prompting Elicits Reasoning in Large Language Models**
+
+**Jason Wei**
+
+**Jason Wei Xuezhi Wang Dale Schuurmans Maarten Bosma Brian Ichter Fei Xia
+Ed H. Chi Quoc V. Le Denny Zhou** Google Research, Brain Team
+`{jasonwei,dennyzhou}@google.com`
+
+## **Abstract**
+
+We explore how generating a _chain of thought_ —a series of intermediate
+reasoning steps—significantly improves the ability of large language models
+to perform complex reasoning. In particular, we show how such reasoning
+abilities emerge naturally in sufficiently large language models via a simple
+method called _chain-ofthought prompting_ , where a few chain of thought
+demonstrations are provided as exemplars in prompting.
+
+Experiments on three large language models show that chain-of-thought prompting
+improves performance on a range of arithmetic, commonsense, and symbolic
+reasoning tasks...
+
+Figure 1: Chain-of-thought prompting enables large language models to tackle
+complex arithmetic, commonsense, and symbolic reasoning tasks.
+
+36th Conference on Neural Information Processing Systems (NeurIPS 2022).
+```
+
+**JSON形式（ブロック情報）**:
+```json
+[
+  {
+    "text": "**Chain-of-Thought Prompting Elicits Reasoning...**",
+    "block_type": "heading_1",
+    "confidence": 1.0,
+    "page_num": 0
+  },
+  {
+    "text": "**Abstract**",
+    "block_type": "heading_2",
+    "confidence": 1.0,
+    "page_num": 0
+  },
+  {
+    "text": "We explore how generating a _chain of thought_...",
+    "block_type": "body",
+    "confidence": 1.0,
+    "page_num": 0
+  }
+]
+```
+
+**特徴**:
+- ✅ Markdownフォーマットで構造化
+- ✅ 見出しレベル（H1, H2）を自動検出
+- ✅ ブロックタイプ分類（heading_1, heading_2, body）
+- ⚠️ 座標は[0,0,0,0]（`to_json()`で取得可能）
+
+### 7.4 DocLayout-YOLO 出力（JSON形式）
+
+```json
+[
+  {
+    "bbox": [271.92, 203.01, 1006.29, 287.79],
+    "text": "",
+    "block_type": "title",
+    "confidence": 0.949,
+    "page_num": 0
+  },
+  {
+    "bbox": [590.15, 575.13, 686.07, 602.76],
+    "text": "",
+    "block_type": "title",
+    "confidence": 0.918,
+    "page_num": 0
+  },
+  {
+    "bbox": [299.19, 628.53, 978.69, 766.51],
+    "text": "",
+    "block_type": "plain_text",
+    "confidence": 0.972,
+    "page_num": 0
+  },
+  {
+    "bbox": [236.75, 943.49, 1037.06, 1334.69],
+    "text": "",
+    "block_type": "figure",
+    "confidence": 0.910,
+    "page_num": 0
+  },
+  {
+    "bbox": [220.47, 1352.69, 1057.41, 1400.01],
+    "text": "",
+    "block_type": "figure_caption",
+    "confidence": 0.927,
+    "page_num": 0
+  },
+  {
+    "bbox": [32.44, 448.29, 77.93, 1166.41],
+    "text": "",
+    "block_type": "abandoned_text",
+    "confidence": 0.712,
+    "page_num": 0
+  }
+]
+```
+
+**特徴**:
+- ✅ 正確な座標情報（bbox）
+- ✅ 10種類のブロック分類（title, plain_text, figure, figure_caption等）
+- ✅ 信頼度スコア
+- ❌ テキスト抽出なし（レイアウト検出のみ）
+
+### 7.5 出力形式の比較まとめ
+
+| 特徴 | DeepSeek-VL2 | PyMuPDF4LLM | DocLayout-YOLO |
+|------|--------------|-------------|----------------|
+| テキスト抽出 | ✅ 高精度 | ✅ PDF内蔵テキスト | ❌ なし |
+| 座標情報 | ❌ なし | ✅ `to_json()`で取得 | ✅ bbox |
+| ブロック分類 | ⚠️ プロンプト依存 | ✅ heading/body | ✅ 10種類 |
+| 出力形式 | テキスト/構造化 | Markdown/JSON | JSON |
+| カスタマイズ | ✅ プロンプトで可能 | ⚠️ 限定的 | ❌ 固定 |
+
+### 7.6 Issue #31への推奨組み合わせ
+
+```
+PDF → PyMuPDF4LLM (テキスト抽出 + 見出し検出)
+    ↓
+    to_json() で座標情報取得
+    ↓
+    boxclass でヘッダー/フッター除外
+    ↓
+翻訳対象ブロックの特定
+```
+
+または、より高度な分類が必要な場合：
+
+```
+PDF → DocLayout-YOLO (レイアウト検出)
+    ↓
+    各ブロックの座標とタイプを取得
+    ↓
+PDF → PyMuPDF (座標に基づくテキスト抽出)
+    ↓
+翻訳対象ブロックの特定
+```
+
+## 8. 結論と推奨事項
 
 ### 7.1 結論
 
