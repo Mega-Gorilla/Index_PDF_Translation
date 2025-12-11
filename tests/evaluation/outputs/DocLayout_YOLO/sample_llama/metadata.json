@@ -1,0 +1,16 @@
+{
+  "tool_name": "DocLayout_YOLO",
+  "pdf_path": "tests/fixtures/sample_llama.pdf",
+  "pdf_name": "sample_llama",
+  "total_pages": 1,
+  "processing_time_seconds": 0.6513487070005795,
+  "blocks_detected": 15,
+  "blocks_by_type": {
+    "plain_text": 9,
+    "abandoned_text": 3,
+    "title": 3
+  },
+  "device": "cuda:0",
+  "errors": [],
+  "evaluation_timestamp": "2025-12-11T12:35:47.845708"
+}
