@@ -1,0 +1,15 @@
+Title: Chain-of-Thought Prompting Elicits Reasoning in Large Language Models
+
+Section headers:
+- Introduction: "We explore how generating a chain of thought—a series of intermediate reasoning steps—significantly improves the ability of large language models to perform complex reasoning."
+- Chain-of-Thought Prompting: "We show how such reasoning abilities emerge naturally in sufficiently large language models via a simple method called chain-of-thought prompting."
+
+Body text:
+- Experiments on three large language models show that chain-of-thought prompting improves performance on a range of arithmetic, commonsense, and symbolic reasoning tasks.
+- The empirical gains can be striking.
+
+Figure Caption:
+- Figure 1: Chain-of-thought prompting enables large language models to tackle complex arithmetic, commonsense, and symbolic reasoning tasks. Chain-of-thought reasoning processes are highlighted.
+
+Page Headers/Footers:
+- 36th Conference on Neural Information Processing Systems (NeurIPS 2022).

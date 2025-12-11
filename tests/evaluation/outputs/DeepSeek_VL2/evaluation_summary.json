@@ -1,0 +1,105 @@
+{
+  "tool_name": "DeepSeek-VL2-Tiny",
+  "model_id": "deepseek-ai/deepseek-vl2-tiny",
+  "evaluation_timestamp": "2025-12-11T13:35:08.153502",
+  "transformers_version": "4.38.2",
+  "torch_version": "2.9.1+cu128",
+  "device": "cuda:0",
+  "settings": {
+    "image_dpi": 100,
+    "max_image_size": 1024,
+    "max_new_tokens": 512
+  },
+  "pdfs_evaluated": 3,
+  "results": [
+    {
+      "pdf_name": "sample_cot",
+      "total_pages": 1,
+      "pages_processed": 1,
+      "ocr_results": [
+        {
+          "page": 0,
+          "text": "Chain-of-Thought Prompting Elicits Reasoning in Large Language Models\n\nJason Wei Xuezhi Wang Dale Schuurmans Maarten Bosma Brian Ichter Fei Xia Ed H. Chi Quoc V. Le Denny Zhou Google Research, Brain Team {jasonwei,dennyzhou}@google.com\n\nAbstract\n\nWe explore how generating a chain of thought—a series of intermediate reasoning steps—significantly improves the ability of large language models to perform complex reasoning. In particular, we show how such reasoning abilities emerge naturally in sufficiently large language models via a simple method called chain-of-thought prompting, where a few chain of thought demonstrations are provided as exemplars in prompting.\n\nExperiments on three large language models show that chain-of-thought prompting improves performance on a range of arithmetic, commonsense, and symbolic reasoning tasks. The empirical gains can be striking. For instance, prompting a PaLM 540B with just eight chain-of-thought exemplars achieves state-of-the-art accuracy on the GSM8K benchmark of math word problems, surpassing even finetuned GPT-3 with a verifier.\n\nFigure 1: Chain-of-thought prompting enables large language models to tackle complex arithmetic, commonsense, and symbolic reasoning tasks. Chain-of-thought reasoning processes are highlighted.",
+          "time_seconds": 7.425044536590576,
+          "text_length": 1280
+        }
+      ],
+      "layout_results": [
+        {
+          "page": 0,
+          "analysis": "Title: Chain-of-Thought Prompting Elicits Reasoning in Large Language Models\n\nSection headers:\n- Introduction: \"We explore how generating a chain of thought—a series of intermediate reasoning steps—significantly improves the ability of large language models to perform complex reasoning.\"\n- Chain-of-Thought Prompting: \"We show how such reasoning abilities emerge naturally in sufficiently large language models via a simple method called chain-of-thought prompting.\"\n\nBody text:\n- Experiments on three large language models show that chain-of-thought prompting improves performance on a range of arithmetic, commonsense, and symbolic reasoning tasks.\n- The empirical gains can be striking.\n\nFigure Caption:\n- Figure 1: Chain-of-thought prompting enables large language models to tackle complex arithmetic, commonsense, and symbolic reasoning tasks. Chain-of-thought reasoning processes are highlighted.\n\nPage Headers/Footers:\n- 36th Conference on Neural Information Processing Systems (NeurIPS 2022).",
+          "time_seconds": 5.212291479110718
+        }
+      ],
+      "summary": {
+        "total_ocr_time": 7.425044536590576,
+        "total_layout_time": 5.212291479110718,
+        "total_time": 12.637336015701294,
+        "pages_per_minute_ocr": 8.08075961084413,
+        "pages_per_minute_layout": 11.511251863112758
+      }
+    },
+    {
+      "pdf_name": "sample_autogen",
+      "total_pages": 1,
+      "pages_processed": 1,
+      "ocr_results": [
+        {
+          "page": 0,
+          "text": "AutoGen: Enabling Next-Gen LLM Applications via Multi-Agent Conversation\n\nQingyun Wu†, Gagan Bansal*, Jieyu Zhang‡, Yiran Wu†, Beibin Li*\n\nErkang Zhu*, Li Jiang*, Xiaoyun Zhang*, Shaokun Zhang†, Jiale Liu‡\n\nAhmed Awadallah*, Ryen W. White*, Doug Burger*, Chi Wang*¹\n\n*Microsoft Research, †Pennsylvania State University\n\n‡University of Washington, ‡Xidian University\n\nFigure 1: AutoGen enables diverse LLM-based applications using multi-agent conversations. (Left) AutoGen agents are conversable, customizable, and can be based on LLMs, tools, humans, or even a combination of them. (Top-middle) Agents can converse to solve tasks. (Right) They can form a chat, potentially with humans in the loop. (Bottom-middle) The framework supports flexible conversation patterns.\n\nAbstract\n\nAutoGen2 is an open-source framework that allows developers to build LLM applications via multiple agents that can converse with each other to accomplish tasks. AutoGen agents are customizable, conversable, and can operate in various modes that employ combinations of LLMs, human inputs, and tools. Using AutoGen, developers can also flexibly define agent interaction behaviors. Both natural language and computer code can be used to program flexible conversation patterns for different applications. AutoGen serves as a generic framework for building diverse applications of various complexities and LLM capacities. Empirical studies demonstrate the effectiveness of the framework in many example applications, with domains ranging from mathematics, coding, question-answering, operations research, online decision-making, entertainment, etc.",
+          "time_seconds": 8.70120620727539,
+          "text_length": 1623
+        }
+      ],
+      "layout_results": [
+        {
+          "page": 0,
+          "analysis": "Title: AutoGen: Enabling Next-Gen LLM Applications via Multi-Agent Conversation\n\nSection headers:\n- 1. Introduction\n- 2. AutoGen agents\n- 3. Multi-Agent Conversations\n- 4. Example Agent Chat\n- 5. Abstract\n\nBody text:\n- AutoGen enables diverse LLM-based applications using multi-agent conversations.\n- AutoGen agents are conversable, customizable, and can be based on LLMs, tools, humans, or even a combination of them.\n- Agents can conversing to solve tasks.\n- They can form a chat, potentially with humans in the loop.\n- The framework supports flexible conversation patterns.\n\nFigure caption:\nFigure 1: AutoGen enables diverse LLM-based applications using multi-agent conversations.\n\nFigure caption:\nFigure 2: AutoGen agents can conversing to solve tasks.\n\nFigure caption:\nFigure 3: AutoGen serves as a generic framework for building diverse applications of various complexities and LLM capacities.\n\nFigure caption:\nFigure 4: Empirical studies demonstrate the effectiveness of the framework in many example applications, with domains ranging from mathematics, coding, question answering, operations research, online decision-making, entertainment, etc.",
+          "time_seconds": 6.26849365234375
+        }
+      ],
+      "summary": {
+        "total_ocr_time": 8.70120620727539,
+        "total_layout_time": 6.26849365234375,
+        "total_time": 14.96969985961914,
+        "pages_per_minute_ocr": 6.895595687622234,
+        "pages_per_minute_layout": 9.571677555670233
+      }
+    },
+    {
+      "pdf_name": "sample_llama",
+      "total_pages": 1,
+      "pages_processed": 1,
+      "ocr_results": [
+        {
+          "page": 0,
+          "text": "LLaMA: Open and Efficient Foundation Language Models Hugo Touvron; Thibaut Lavril; Gautier Izacard; Xavier Martinet Marie-Anne Lachaux, Timothee Lacroix, Baptiste Roziere, Naman Goyal Eric Hambro, Faisal Azhar, Aurelien Rodriguez, Armand Joulin Edouard Grave; Guillaume Lample* Meta AI\n\nAbstract\n\nWe introduce LLaMA, a collection of foundation language models ranging from 7B to 65B parameters. We train our models on trillions of tokens, and show that it is possible to train state-of-the-art models using publicly available datasets exclusively, without resorting to proprietary and inaccessible datasets. In particular, LLaMA-13B outperforms GPT-3 (175B) on most benchmarks, and LLaMA-65B is competitive with the best models, Chinchilla-70B and PaLM-540B. We release all our models to the research community!\n\n1 Introduction\n\nLarge Languages Models (LLMs) trained on massive corpora of texts have shown their ability to perform new tasks from textual instructions or from a few examples (Brown et al., 2020). These few-shot properties first appeared when scaling models to a sufficient size (Kaplan et al., 2020), resulting in a line of work that focuses on further scaling these models (Chowdhery et al., 2022; Rae et al., 2021). These efforts are based on the assumption that more parameters will lead to better performance. However, recent work from Hoffmann et al. (2022) shows that, for a given compute budget, the best performances are not achieved by the largest models, but by smaller models trained on more data.\n\nThe objective of the scaling laws from Hoffmann et al. (2022) is to determine how to best scale the dataset and model sizes for a particular training compute budget. However, this objective disregards the inference budget, which becomes critical when serving a language model at scale. In this context, given a target level of performance, the preferred model is not the fastest to train but the fastest at inference, and although it may be cheaper to train a large model to reach a certain level of performance, a smaller one trained longer will ultimately be cheaper at inference. For instance, although Hoffmann et al. (2022) recommends training a 10B model on 200B tokens, we find that the performance of a 7B model",
+          "time_seconds": 12.844183921813965,
+          "text_length": 2245
+        }
+      ],
+      "layout_results": [
+        {
+          "page": 0,
+          "analysis": "Title: LLaMA: Open and Efficient Foundation Language Models\n\nSection headers:\n- 1. Introduction\n- 2. Model architecture details\n- 3. Training methods\n- 4. Results and analysis\n- 5. Conclusion and future work\n\nBody text:\n- We introduce LLaMA, a collection of foundation language models ranging from 7B to 65B parameters.\n- We train our models on trillions of tokens, and show that it is possible to train state-of-the-art models using publicly available datasets exclusively, without resorting to proprietary and inaccessible datasets.\n\nFigure/Tables with captions:\n- Figure 1: A comparison between different foundation language models' performance on trillions of tokens.\n\nPage headers/footers:\n- Meta AI\n- https://github.com/facebookresearch/llama",
+          "time_seconds": 4.48823618888855
+        }
+      ],
+      "summary": {
+        "total_ocr_time": 12.844183921813965,
+        "total_layout_time": 4.48823618888855,
+        "total_time": 17.332420110702515,
+        "pages_per_minute_ocr": 4.671375025866672,
+        "pages_per_minute_layout": 13.368280427964326
+      }
+    }
+  ],
+  "overall_stats": {
+    "total_pages_processed": 3,
+    "total_ocr_time_seconds": 28.97043466567993,
+    "total_layout_time_seconds": 15.969021320343018,
+    "avg_ocr_seconds_per_page": 9.656811555226644,
+    "avg_layout_seconds_per_page": 5.323007106781006,
+    "pages_per_minute_ocr": 6.213230905135107
+  }
+}
