@@ -1,12 +1,12 @@
 [
   {
     "bbox": [
-      0,
-      0,
-      0,
-      0
+      117.27200317382812,
+      75.69712829589844,
+      478.00732421875,
+      88.5943603515625
     ],
-    "text": "**LLaMA: Open and Efficient Foundation Language Models**",
+    "text": "LLaMA: Open and Efficient Foundation Language Models",
     "block_type": "heading_1",
     "confidence": 1.0,
     "font_size": null,
@@ -14,12 +14,12 @@
   },
   {
     "bbox": [
-      0,
-      0,
-      0,
-      0
+      111.01296997070312,
+      114.29439544677734,
+      484.26629638671875,
+      170.2776336669922
     ],
-    "text": "**Hugo Touvron, Thibaut Lavril** _[∗][∗]_ **, Gautier Izacard** _[∗]_ **, Xavier Martinet Marie-Anne Lachaux, Timothee Lacroix, Baptiste Rozière, Naman Goyal Eric Hambro, Faisal Azhar, Aurelien Rodriguez, Armand Joulin Edouard Grave** _[∗]_ **, Guillaume Lample** _[∗]_",
+    "text": "Hugo Touvron, Thibaut Lavril [∗] [∗] , Gautier Izacard [∗] , Xavier Martinet Marie-Anne Lachaux, Timothee Lacroix, Baptiste Rozière, Naman Goyal Eric Hambro, Faisal Azhar, Aurelien Rodriguez, Armand Joulin Edouard Grave [∗] , Guillaume Lample [∗]",
     "block_type": "body",
     "confidence": 1.0,
     "font_size": null,
@@ -27,10 +27,10 @@
   },
   {
     "bbox": [
-      0,
-      0,
-      0,
-      0
+      277.552978515625,
+      182.03237915039062,
+      317.7224426269531,
+      192.72032165527344
     ],
     "text": "Meta AI",
     "block_type": "heading_2",
@@ -40,12 +40,12 @@
   },
   {
     "bbox": [
-      0,
-      0,
-      0,
-      0
+      157.7579803466797,
+      215.30889892578125,
+      202.24327087402344,
+      226.05662536621094
     ],
-    "text": "**Abstract**",
+    "text": "Abstract",
     "block_type": "heading_2",
     "confidence": 1.0,
     "font_size": null,
@@ -53,12 +53,12 @@
   },
   {
     "bbox": [
-      0,
-      0,
-      0,
-      0
+      87.54497528076172,
+      238.25732421875,
+      273.7760925292969,
+      378.669921875
     ],
-    "text": "We introduce LLaMA, a collection of foundation language models ranging from 7B to 65B parameters. We train our models on trillions of tokens, and show that it is possible to train state-of-the-art models using publicly available datasets exclusively, without resorting to proprietary and inaccessible datasets. In particular, LLaMA-13B outperforms GPT-3 (175B) on most benchmarks, and LLaMA65B is competitive with the best models, Chinchilla-70B and PaLM-540B. We release all our models to the research community[1] .",
+    "text": "We introduce LLaMA, a collection of founda- tion language models ranging from 7B to 65B parameters. We train our models on trillions of tokens, and show that it is possible to train state-of-the-art models using publicly avail- able datasets exclusively, without resorting to proprietary and inaccessible datasets. In particular, LLaMA-13B outperforms GPT-3 (175B) on most benchmarks, and LLaMA- 65B is competitive with the best models, Chinchilla-70B and PaLM-540B. We release all our models to the research community [1] .",
     "block_type": "body",
     "confidence": 1.0,
     "font_size": null,
@@ -66,12 +66,12 @@
   },
   {
     "bbox": [
-      0,
-      0,
-      0,
-      0
+      70.865966796875,
+      391.7159118652344,
+      153.6796417236328,
+      402.463623046875
     ],
-    "text": "**1 Introduction**",
+    "text": "1 Introduction",
     "block_type": "heading_2",
     "confidence": 1.0,
     "font_size": null,
@@ -79,12 +79,12 @@
   },
   {
     "bbox": [
-      0,
-      0,
-      0,
-      0
+      70.52799987792969,
+      413.3986511230469,
+      291.0461120605469,
+      599.2904052734375
     ],
-    "text": "Large Languages Models (LLMs) trained on massive corpora of texts have shown their ability to perform new tasks from textual instructions or from a few examples (Brown et al., 2020). These few-shot properties first appeared when scaling models to a sufficient size (Kaplan et al., 2020), resulting in a line of work that focuses on further scaling these models (Chowdhery et al., 2022; Rae et al., 2021). These efforts are based on the assumption that more parameters will lead to better performance. However, recent work from Hoffmann et al. (2022) shows that, for a given compute budget, the best performances are not achieved by the largest models, but by smaller models trained on more data.",
+    "text": "Large Languages Models (LLMs) trained on mas- sive corpora of texts have shown their ability to per- form new tasks from textual instructions or from a few examples (Brown et al., 2020). These few-shot properties first appeared when scaling models to a sufficient size (Kaplan et al., 2020), resulting in a line of work that focuses on further scaling these models (Chowdhery et al., 2022; Rae et al., 2021). These efforts are based on the assumption that more parameters will lead to better performance. However, recent work from Hoffmann et al. (2022) shows that, for a given compute budget, the best performances are not achieved by the largest mod- els, but by smaller models trained on more data.",
     "block_type": "body",
     "confidence": 1.0,
     "font_size": null,
@@ -92,12 +92,12 @@
   },
   {
     "bbox": [
-      0,
-      0,
-      0,
-      0
+      70.86599731445312,
+      603.086669921875,
+      291.0416259765625,
+      734.7824096679688
     ],
-    "text": "The objective of the scaling laws from Hoffmann et al. (2022) is to determine how to best scale the dataset and model sizes for a particular _training_ compute budget. However, this objective disregards the _inference_ budget, which becomes critical when serving a language model at scale. In this context, given a target level of performance, the preferred model is not the fastest to train but the fastest at inference, and although it may be cheaper to train a large model to reach a certain level of",
+    "text": "The objective of the scaling laws from Hoff- mann et al. (2022) is to determine how to best scale the dataset and model sizes for a particular training  compute budget. However, this objective disregards the  inference  budget, which becomes critical when serving a language model at scale. In this context, given a target level of performance, the preferred model is not the fastest to train but the fastest at inference, and although it may be cheaper to train a large model to reach a certain level of",
     "block_type": "body",
     "confidence": 1.0,
     "font_size": null,
@@ -105,12 +105,12 @@
   },
   {
     "bbox": [
-      0,
-      0,
-      0,
-      0
+      70.86599731445312,
+      741.9188232421875,
+      291.3751220703125,
+      761.96630859375
     ],
-    "text": "> _∗_ Equal contribution. Correspondence: {htouvron, thibautlav,gizacard,egrave,glample}@meta.com",
+    "text": "∗ Equal contribution. Correspondence: {htouvron, thibautlav,gizacard,egrave,glample}@meta.com",
     "block_type": "body",
     "confidence": 1.0,
     "font_size": null,
@@ -118,12 +118,12 @@
   },
   {
     "bbox": [
-      0,
-      0,
-      0,
-      0
+      83.51899719238281,
+      763.1622314453125,
+      256.8096923828125,
+      772.6806030273438
     ],
-    "text": "> 1https://github.com/facebookresearch/llama",
+    "text": "1https://github.com/facebookresearch/llama",
     "block_type": "body",
     "confidence": 1.0,
     "font_size": null,
@@ -131,10 +131,10 @@
   },
   {
     "bbox": [
-      0,
-      0,
-      0,
-      0
+      306.1419982910156,
+      216.16168212890625,
+      525.772216796875,
+      293.6603698730469
     ],
     "text": "performance, a smaller one trained longer will ultimately be cheaper at inference. For instance, although Hoffmann et al. (2022) recommends training a 10B model on 200B tokens, we find that the performance of a 7B model continues to improve even after 1T tokens.",
     "block_type": "body",
@@ -144,12 +144,12 @@
   },
   {
     "bbox": [
-      0,
-      0,
-      0,
-      0
+      305.7489929199219,
+      308.3216552734375,
+      526.3214111328125,
+      494.21435546875
     ],
-    "text": "The focus of this work is to train a series of language models that achieve the best possible performance at various inference budgets, by training on more tokens than what is typically used. The resulting models, called _LLaMA_ , ranges from 7B to 65B parameters with competitive performance compared to the best existing LLMs. For instance, LLaMA-13B outperforms GPT-3 on most benchmarks, despite being 10 _×_ smaller. We believe that this model will help democratize the access and study of LLMs, since it can be run on a single GPU. At the higher-end of the scale, our 65B-parameter model is also competitive with the best large language models such as Chinchilla or PaLM-540B.",
+    "text": "The focus of this work is to train a series of language models that achieve the best possible per- formance at various inference budgets, by training on more tokens than what is typically used. The resulting models, called  LLaMA , ranges from 7B to 65B parameters with competitive performance compared to the best existing LLMs. For instance, LLaMA-13B outperforms GPT-3 on most bench- marks, despite being 10 ×  smaller. We believe that this model will help democratize the access and study of LLMs, since it can be run on a single GPU. At the higher-end of the scale, our 65B-parameter model is also competitive with the best large lan- guage models such as Chinchilla or PaLM-540B.",
     "block_type": "body",
     "confidence": 1.0,
     "font_size": null,
@@ -157,12 +157,12 @@
   },
   {
     "bbox": [
-      0,
-      0,
-      0,
-      0
+      304.6910095214844,
+      508.87664794921875,
+      526.3189086914062,
+      640.5714111328125
     ],
-    "text": "Unlike Chinchilla, PaLM, or GPT-3, we only use publicly available data, making our work compatible with open-sourcing, while most existing models rely on data which is either not publicly available or undocumented (e.g. “Books – 2TB” or “Social media conversations”). There exist some exceptions, notably OPT (Zhang et al., 2022), GPT-NeoX (Black et al., 2022), BLOOM (Scao et al., 2022) and GLM (Zeng et al., 2022), but none that are competitive with PaLM-62B or Chinchilla.",
+    "text": "Unlike Chinchilla, PaLM, or GPT-3, we only use publicly available data, making our work com- patible with open-sourcing, while most existing models rely on data which is either not publicly available or undocumented (e.g. “Books – 2TB” or “Social media conversations”). There exist some exceptions, notably OPT (Zhang et al., 2022), GPT-NeoX (Black et al., 2022), BLOOM (Scao et al., 2022) and GLM (Zeng et al., 2022), but none that are competitive with PaLM-62B or Chinchilla.",
     "block_type": "body",
     "confidence": 1.0,
     "font_size": null,
@@ -170,10 +170,10 @@
   },
   {
     "bbox": [
-      0,
-      0,
-      0,
-      0
+      306.1419982910156,
+      655.233642578125,
+      525.7720336914062,
+      773.3804321289062
     ],
     "text": "In the rest of this paper, we present an overview of the modifications we made to the transformer architecture (Vaswani et al., 2017), as well as our training method. We then report the performance of our models and compare with others LLMs on a set of standard benchmarks. Finally, we expose some of the biases and toxicity encoded in our models, using some of the most recent benchmarks from the responsible AI community.",
     "block_type": "body",

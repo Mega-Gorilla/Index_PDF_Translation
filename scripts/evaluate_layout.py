@@ -44,6 +44,7 @@ class EvaluationResult:
     errors: list[str] = field(default_factory=list)
     blocks: list[dict[str, Any]] = field(default_factory=list)
     markdown_output: str | None = None
+    json_output: str | None = None  # to_json() の生出力
     evaluation_timestamp: str = field(default_factory=lambda: datetime.now().isoformat())
 
 
@@ -114,12 +115,15 @@ def evaluate_pymupdf_baseline(pdf_path: Path) -> EvaluationResult:
 def evaluate_pymupdf4llm_layout(pdf_path: Path) -> EvaluationResult:
     """
     PyMuPDF4LLM + Layout によるレイアウト解析評価
+
+    to_json() を使用して正確な座標情報を取得します。
     """
     start_time = time.perf_counter()
     errors: list[str] = []
     blocks: list[BlockInfo] = []
     total_pages = 0
     markdown_output = ""
+    json_output = ""
 
     try:
         # pymupdf.layout を先にインポート（重要）
@@ -132,113 +136,65 @@ def evaluate_pymupdf4llm_layout(pdf_path: Path) -> EvaluationResult:
 
         import pymupdf4llm
 
-        # Markdown形式で抽出
+        # JSON形式で抽出（座標情報を含む）
+        json_output = pymupdf4llm.to_json(str(pdf_path))
+        json_data = json.loads(json_output)
+
+        # Markdown形式でも抽出（参照用）
         markdown_output = pymupdf4llm.to_markdown(str(pdf_path))
 
         # ページ数取得
-        doc = fitz.open(pdf_path)
-        total_pages = len(doc)
-        doc.close()
+        total_pages = len(json_data.get("pages", []))
 
-        # Markdownからブロック情報を解析
-        lines = markdown_output.split("\n")
-        current_page = 0
-        in_table = False
-        table_lines = []
+        # boxclass から block_type へのマッピング
+        boxclass_to_type = {
+            "title": "heading_1",
+            "section-header": "heading_2",
+            "page-header": "header",
+            "page-footer": "footer",
+            "text": "body",
+            "list-item": "list",
+            "table": "table",
+            "figure": "image",
+            "caption": "caption",
+        }
 
-        for line in lines:
-            # ページ区切りの検出
-            if line.startswith("-----") and "Page" in line:
-                current_page += 1
-                continue
+        # JSONからブロック情報を解析（正確な座標付き）
+        for page_data in json_data.get("pages", []):
+            page_num = page_data.get("page_number", 1) - 1  # 0-indexed
 
-            if not line.strip():
-                # テーブル終了判定
-                if in_table and table_lines:
+            for box in page_data.get("boxes", []):
+                # 座標を取得
+                x0 = box.get("x0", 0)
+                y0 = box.get("y0", 0)
+                x1 = box.get("x1", 0)
+                y1 = box.get("y1", 0)
+                bbox = (x0, y0, x1, y1)
+
+                # boxclass を取得してマッピング
+                boxclass = box.get("boxclass", "text")
+                block_type = boxclass_to_type.get(boxclass, "body")
+
+                # テキストを抽出 (textlines[].spans[].text の構造)
+                text_parts = []
+                textlines = box.get("textlines") or []
+                for textline in textlines:
+                    if isinstance(textline, dict):
+                        spans = textline.get("spans") or []
+                        for span in spans:
+                            if isinstance(span, dict):
+                                span_text = span.get("text", "")
+                                if span_text:
+                                    text_parts.append(span_text)
+                text = " ".join(text_parts).strip()
+
+                if text:  # 空でないブロックのみ追加
                     blocks.append(BlockInfo(
-                        bbox=(0, 0, 0, 0),
-                        text="\n".join(table_lines),
-                        block_type="table",
-                        page_num=current_page,
+                        bbox=bbox,
+                        text=text,
+                        block_type=block_type,
+                        page_num=page_num,
                     ))
-                    table_lines = []
-                    in_table = False
-                continue
-
-            # 見出し検出 (Markdown形式)
-            if line.startswith("# "):
-                blocks.append(BlockInfo(
-                    bbox=(0, 0, 0, 0),
-                    text=line[2:].strip(),
-                    block_type="heading_1",
-                    page_num=current_page,
-                ))
-            elif line.startswith("## "):
-                blocks.append(BlockInfo(
-                    bbox=(0, 0, 0, 0),
-                    text=line[3:].strip(),
-                    block_type="heading_2",
-                    page_num=current_page,
-                ))
-            elif line.startswith("### "):
-                blocks.append(BlockInfo(
-                    bbox=(0, 0, 0, 0),
-                    text=line[4:].strip(),
-                    block_type="heading_3",
-                    page_num=current_page,
-                ))
-            elif line.startswith("#### "):
-                blocks.append(BlockInfo(
-                    bbox=(0, 0, 0, 0),
-                    text=line[5:].strip(),
-                    block_type="heading_4",
-                    page_num=current_page,
-                ))
-            elif line.startswith("|"):
-                # テーブル行
-                in_table = True
-                table_lines.append(line)
-            elif line.startswith("!["):
-                # 画像参照
-                blocks.append(BlockInfo(
-                    bbox=(0, 0, 0, 0),
-                    text=line,
-                    block_type="image",
-                    page_num=current_page,
-                ))
-            elif line.startswith("```"):
-                # コードブロック
-                blocks.append(BlockInfo(
-                    bbox=(0, 0, 0, 0),
-                    text=line,
-                    block_type="code",
-                    page_num=current_page,
-                ))
-            elif line.startswith("- ") or line.startswith("* ") or line.startswith("1. "):
-                # リスト
-                blocks.append(BlockInfo(
-                    bbox=(0, 0, 0, 0),
-                    text=line,
-                    block_type="list",
-                    page_num=current_page,
-                ))
-            else:
-                # 本文
-                blocks.append(BlockInfo(
-                    bbox=(0, 0, 0, 0),
-                    text=line.strip(),
-                    block_type="body",
-                    page_num=current_page,
-                ))
-
-        # 残りのテーブル
-        if in_table and table_lines:
-            blocks.append(BlockInfo(
-                bbox=(0, 0, 0, 0),
-                text="\n".join(table_lines),
-                block_type="table",
-                page_num=current_page,
-            ))
 
         if not has_layout:
             errors.append("Running without pymupdf-layout (reduced accuracy)")
@@ -266,6 +222,7 @@ def evaluate_pymupdf4llm_layout(pdf_path: Path) -> EvaluationResult:
         errors=errors,
         blocks=[asdict(b) for b in blocks],
         markdown_output=markdown_output,
+        json_output=json_output,
     )
 
 
@@ -308,6 +265,15 @@ def save_evaluation_outputs(result: EvaluationResult, output_dir: Path) -> dict[
         with open(md_path, "w", encoding="utf-8") as f:
             f.write(result.markdown_output)
         saved_files["markdown"] = md_path
+
+    # JSON出力保存 (PyMuPDF4LLMの場合 - to_json()の生出力)
+    if result.json_output:
+        json_raw_path = tool_dir / "output_raw.json"
+        with open(json_raw_path, "w", encoding="utf-8") as f:
+            # 整形して保存
+            json_data = json.loads(result.json_output)
+            json.dump(json_data, f, indent=2, ensure_ascii=False)
+        saved_files["json_raw"] = json_raw_path
 
     return saved_files
 

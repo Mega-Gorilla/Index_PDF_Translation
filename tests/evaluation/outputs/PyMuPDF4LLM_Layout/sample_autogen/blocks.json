@@ -1,12 +1,12 @@
 [
   {
     "bbox": [
-      0,
-      0,
-      0,
-      0
+      148.11898803710938,
+      101.16837310791016,
+      463.88397216796875,
+      136.57000732421875
     ],
-    "text": "`AutoGen` **: Enabling Next-Gen LLM Applications via Multi-Agent Conversation**",
+    "text": "AutoGen : Enabling Next-Gen LLM Applications via Multi-Agent Conversation",
     "block_type": "heading_1",
     "confidence": 1.0,
     "font_size": null,
@@ -14,12 +14,12 @@
   },
   {
     "bbox": [
-      0,
-      0,
-      0,
-      0
+      154.30599975585938,
+      179.89569091796875,
+      457.1965637207031,
+      213.46322631835938
     ],
-    "text": "**Qingyun Wu** _[†]_ **, Gagan Bansal** _[∗]_ **, Jieyu Zhang** _[±]_ **, Yiran Wu** _[†]_ **, Beibin Li** _[∗]_ **Erkang Zhu** _[∗]_ **, Li Jiang** _[∗]_ **, Xiaoyun Zhang** _[∗]_ **, Shaokun Zhang** _[†]_ **, Jiale Liu** _[∓]_",
+    "text": "Qingyun Wu [†] , Gagan Bansal [∗] , Jieyu Zhang [±] , Yiran Wu [†] , Beibin Li [∗] Erkang Zhu [∗] , Li Jiang [∗] , Xiaoyun Zhang [∗] , Shaokun Zhang [†] , Jiale Liu [∓]",
     "block_type": "body",
     "confidence": 1.0,
     "font_size": null,
@@ -27,12 +27,12 @@
   },
   {
     "bbox": [
-      0,
-      0,
-      0,
-      0
+      167.40597534179688,
+      224.82666015625,
+      446.0780029296875,
+      235.75521850585938
     ],
-    "text": "**Ahmed Awadallah** _[∗]_ **, Ryen W. White** _[∗]_ **, Doug Burger** _[∗]_ **, Chi Wang** _[∗]_[1]",
+    "text": "Ahmed Awadallah [∗] , Ryen W. White [∗] , Doug Burger [∗] , Chi Wang [∗] [1]",
     "block_type": "body",
     "confidence": 1.0,
     "font_size": null,
@@ -40,12 +40,12 @@
   },
   {
     "bbox": [
-      0,
-      0,
-      0,
-      0
+      200.27093505859375,
+      247.10760498046875,
+      411.73046875,
+      259.112548828125
     ],
-    "text": "> _∗_ Microsoft Research, _†_ Pennsylvania State University",
+    "text": "∗ Microsoft Research,  † Pennsylvania State University",
     "block_type": "body",
     "confidence": 1.0,
     "font_size": null,
@@ -53,12 +53,12 @@
   },
   {
     "bbox": [
-      0,
-      0,
-      0,
-      0
+      211.24594116210938,
+      269.22161865234375,
+      400.75433349609375,
+      281.2265625
     ],
-    "text": "> _±_ University of Washington, _∓_ Xidian University",
+    "text": "± University of Washington, ∓ Xidian University",
     "block_type": "body",
     "confidence": 1.0,
     "font_size": null,
@@ -66,12 +66,12 @@
   },
   {
     "bbox": [
-      0,
-      0,
-      0,
-      0
+      108.0,
+      319.0,
+      504.0,
+      444.0
     ],
-    "text": "**==> picture [396 x 125] intentionally omitted <==**",
+    "text": "Conversable agent Plot a chart of META and TESLA  Output: stock price change  YTD. $ Execute the  following code… Month Multi-Agent Conversations Error package  No, please plot %  yfinance is not  change! installed Got it! Here is the  … … … pip install yfinanceSorry! Please first  revised code … … and then execute the code Output: … … … … Installing… % Joint chat Hierarchical chat Month Agent Customization Flexible Conversation Patterns Example Agent Chat",
     "block_type": "body",
     "confidence": 1.0,
     "font_size": null,
@@ -79,12 +79,12 @@
   },
   {
     "bbox": [
-      0,
-      0,
-      0,
-      0
+      107.99998474121094,
+      449.299560546875,
+      504.0038146972656,
+      504.94049072265625
     ],
-    "text": "**----- Start of picture text -----**<br>",
+    "text": "Figure 1:  AutoGen  enables diverse LLM-based applications using multi-agent conversations. (Left) AutoGen  agents are conversable, customizable, and can be based on LLMs, tools, humans, or even a combination of them. (Top-middle) Agents can converse to solve tasks. (Right) They can form a chat, potentially with humans in the loop. (Bottom-middle) The framework supports flexible conversation patterns.",
     "block_type": "body",
     "confidence": 1.0,
     "font_size": null,
@@ -92,38 +92,12 @@
   },
   {
     "bbox": [
-      0,
-      0,
-      0,
-      0
+      283.75799560546875,
+      524.1968994140625,
+      328.2432861328125,
+      534.9446411132812
     ],
-    "text": "Conversable agent Plot a chart of META and TESLA  Output:<br>stock price change<br>YTD. $<br>Execute the<br>following code… Month<br>Multi-Agent Conversations Error package  No, please plot %<br>yfinance is not  change!<br>installed<br>Got it! Here is the<br>… … … pip install yfinanceSorry! Please first  revised code …<br>… and then execute the code Output:<br>… … … … Installing… %<br>Joint chat Hierarchical chat<br>Month<br>Agent Customization Flexible Conversation Patterns Example Agent Chat<br>**----- End of picture text -----**<br>",
-    "block_type": "body",
-    "confidence": 1.0,
-    "font_size": null,
-    "page_num": 0
-  },
-  {
-    "bbox": [
-      0,
-      0,
-      0,
-      0
-    ],
-    "text": "Figure 1: `AutoGen` enables diverse LLM-based applications using multi-agent conversations. (Left) `AutoGen` agents are conversable, customizable, and can be based on LLMs, tools, humans, or even a combination of them. (Top-middle) Agents can converse to solve tasks. (Right) They can form a chat, potentially with humans in the loop. (Bottom-middle) The framework supports flexible conversation patterns.",
-    "block_type": "body",
-    "confidence": 1.0,
-    "font_size": null,
-    "page_num": 0
-  },
-  {
-    "bbox": [
-      0,
-      0,
-      0,
-      0
-    ],
-    "text": "**Abstract**",
+    "text": "Abstract",
     "block_type": "heading_2",
     "confidence": 1.0,
     "font_size": null,
@@ -131,12 +105,12 @@
   },
   {
     "bbox": [
-      0,
-      0,
-      0,
-      0
+      143.865966796875,
+      549.1842041015625,
+      468.138671875,
+      671.1344604492188
     ],
-    "text": "`AutoGen`[2] is an open-source framework that allows developers to build LLM applications via multiple _agents_ that can converse with each other to accomplish tasks. `AutoGen` agents are customizable, _conversable_ , and can operate in various modes that employ combinations of LLMs, human inputs, and tools. Using `AutoGen` , developers can also flexibly define agent interaction behaviors. Both natural language and computer code can be used to program flexible conversation patterns for different applications. `AutoGen` serves as a generic framework for building diverse applications of various complexities and LLM capacities. Empirical studies demonstrate the effectiveness of the framework in many example applications, with domains ranging from mathematics, coding, question answering, operations research, online decision-making, entertainment, etc.",
+    "text": "AutoGen [2] is an open-source framework that allows developers to build LLM ap- plications via multiple  agents  that can converse with each other to accomplish tasks.  AutoGen  agents are customizable,  conversable , and can operate in vari- ous modes that employ combinations of LLMs, human inputs, and tools. Using AutoGen , developers can also flexibly define agent interaction behaviors. Both natural language and computer code can be used to program flexible conversation patterns for different applications.  AutoGen  serves as a generic framework for building diverse applications of various complexities and LLM capacities. Em- pirical studies demonstrate the effectiveness of the framework in many example applications, with domains ranging from mathematics, coding, question answer- ing, operations research, online decision-making, entertainment, etc.",
     "block_type": "body",
     "confidence": 1.0,
     "font_size": null,
@@ -144,12 +118,12 @@
   },
   {
     "bbox": [
-      0,
-      0,
-      0,
-      0
+      119.98799896240234,
+      695.4970092773438,
+      318.5226135253906,
+      706.301513671875
     ],
-    "text": "> 1Corresponding author. Email: auto-gen@outlook.com",
+    "text": "1Corresponding author. Email: auto-gen@outlook.com",
     "block_type": "body",
     "confidence": 1.0,
     "font_size": null,
@@ -157,12 +131,12 @@
   },
   {
     "bbox": [
-      0,
-      0,
-      0,
-      0
+      120.65299987792969,
+      705.3236694335938,
+      293.6051940917969,
+      716.6465454101562
     ],
-    "text": "> 2 `https://github.com/microsoft/autogen`",
+    "text": "2 https://github.com/microsoft/autogen",
     "block_type": "body",
     "confidence": 1.0,
     "font_size": null,
