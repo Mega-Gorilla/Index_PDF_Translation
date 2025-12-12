@@ -1,0 +1,288 @@
+[
+  {
+    "bbox": [
+      131.83299255371094,
+      101.16837310791016,
+      480.1695251464844,
+      136.57000732421875
+    ],
+    "text": "Chain-of-Thought Prompting Elicits Reasoning in Large Language Models",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 17.21540069580078,
+    "page_num": 0
+  },
+  {
+    "bbox": [
+      152.11099243164062,
+      181.85877990722656,
+      462.37628173828125,
+      190.81515502929688
+    ],
+    "text": "Jason Wei Xuezhi Wang Dale Schuurmans Maarten Bosma",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 0
+  },
+  {
+    "bbox": [
+      154.65098571777344,
+      199.85377502441406,
+      457.3448486328125,
+      208.81015014648438
+    ],
+    "text": "Brian Ichter Fei Xia Ed H. Chi Quoc V. Le Denny Zhou",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 0
+  },
+  {
+    "bbox": [
+      224.94898986816406,
+      219.3863525390625,
+      387.0806579589844,
+      239.26168823242188
+    ],
+    "text": "Google Research, Brain Team {jasonwei,dennyzhou}@google.com",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 0
+  },
+  {
+    "bbox": [
+      283.75799560546875,
+      278.4869079589844,
+      328.2432861328125,
+      289.234619140625
+    ],
+    "text": "Abstract",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 11.9552001953125,
+    "page_num": 0
+  },
+  {
+    "bbox": [
+      143.86599731445312,
+      303.5933532714844,
+      469.7909851074219,
+      434.4919128417969
+    ],
+    "text": "We explore how generating a  chain of thought —a series of intermediate reasoning steps—significantly improves the ability of large language models to perform complex reasoning. In particular, we show how such reasoning abilities emerge naturally in sufficiently large language models via a simple method called  chain-of- thought prompting , where a few chain of thought demonstrations are provided as exemplars in prompting. Experiments on three large language models show that chain-of-thought prompting improves performance on a range of arithmetic, commonsense, and symbolic reasoning tasks. The empirical gains can be striking. For instance, prompting a PaLM 540B with just eight chain-of-thought exemplars achieves state-of-the-art accuracy on the GSM8K benchmark of math word problems, surpassing even finetuned GPT-3 with a verifier.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.97411298751831,
+    "page_num": 0
+  },
+  {
+    "bbox": [
+      316.7412414550781,
+      598.7496337890625,
+      485.3623352050781,
+      632.4095458984375
+    ],
+    "text": "A: The cafeteria had 23 apples originally. They used  20 to make lunch. So they had 23 - 20 = 3. They  bought 6 more apples, so they have 3 + 6 = 9. The  answer is 9.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 7.256270408630371,
+    "page_num": 0
+  },
+  {
+    "bbox": [
+      345.6968994140625,
+      454.7644348144531,
+      467.0633850097656,
+      465.29425048828125
+    ],
+    "text": "Chain-of-Thought Prompting",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 8.833720207214355,
+    "page_num": 0
+  },
+  {
+    "bbox": [
+      126.49642944335938,
+      482.8908386230469,
+      296.705322265625,
+      508.03253173828125
+    ],
+    "text": "Q: Roger has 5 tennis balls. He buys 2 more cans of  tennis balls. Each can has 3 tennis balls. How many  tennis balls does he have now?\n",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 7.256270408630371,
+    "page_num": 0
+  },
+  {
+    "bbox": [
+      126.49642944335938,
+      516.9637451171875,
+      193.9866180419922,
+      525.0689697265625
+    ],
+    "text": "A: The answer is 11.\n",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 7.256270408630371,
+    "page_num": 0
+  },
+  {
+    "bbox": [
+      126.49642944335938,
+      534.000244140625,
+      289.0615539550781,
+      559.1419067382812
+    ],
+    "text": "Q: The cafeteria had 23 apples. If they used 20 to  make lunch and bought 6 more, how many apples  do they have?",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 7.256270408630371,
+    "page_num": 0
+  },
+  {
+    "bbox": [
+      127.48345947265625,
+      601.870849609375,
+      193.4980926513672,
+      609.97607421875
+    ],
+    "text": "A: The answer is 27.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 7.256270408630371,
+    "page_num": 0
+  },
+  {
+    "bbox": [
+      172.40158081054688,
+      454.7644348144531,
+      257.1434631347656,
+      465.29425048828125
+    ],
+    "text": "Standard Prompting",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 8.833720207214355,
+    "page_num": 0
+  },
+  {
+    "bbox": [
+      317.363525390625,
+      483.3640441894531,
+      487.5724182128906,
+      508.50579833984375
+    ],
+    "text": "Q: Roger has 5 tennis balls. He buys 2 more cans of  tennis balls. Each can has 3 tennis balls. How many  tennis balls does he have now?\n",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 7.256270408630371,
+    "page_num": 0
+  },
+  {
+    "bbox": [
+      317.363525390625,
+      517.43701171875,
+      487.9806213378906,
+      534.0604858398438
+    ],
+    "text": "A: Roger started with 5 balls. 2 cans of 3 tennis balls  each is 6 tennis balls. 5 + 6 = 11. The answer is 11.\n",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 7.256270408630371,
+    "page_num": 0
+  },
+  {
+    "bbox": [
+      317.363525390625,
+      542.99169921875,
+      479.9286193847656,
+      568.1333618164062
+    ],
+    "text": "Q: The cafeteria had 23 apples. If they used 20 to  make lunch and bought 6 more, how many apples  do they have?",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 7.256270408630371,
+    "page_num": 0
+  },
+  {
+    "bbox": [
+      328.7949523925781,
+      468.5993957519531,
+      363.7386169433594,
+      476.1206970214844
+    ],
+    "text": "Model Input",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 6.309800148010254,
+    "page_num": 0
+  },
+  {
+    "bbox": [
+      137.19586181640625,
+      585.4938354492188,
+      367.5224914550781,
+      593.6904296875
+    ],
+    "text": "Model Output Model Output",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 6.309800148010254,
+    "page_num": 0
+  },
+  {
+    "bbox": [
+      137.1359100341797,
+      468.5993957519531,
+      172.07958984375,
+      476.1206970214844
+    ],
+    "text": "Model Input",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 6.309800148010254,
+    "page_num": 0
+  },
+  {
+    "bbox": [
+      108.0,
+      651.1763916015625,
+      505.7471008300781,
+      670.9918823242188
+    ],
+    "text": "Figure 1: Chain-of-thought prompting enables large language models to tackle complex arithmetic, commonsense, and symbolic reasoning tasks. Chain-of-thought reasoning processes are highlighted.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.940155506134033,
+    "page_num": 0
+  },
+  {
+    "bbox": [
+      108.0,
+      733.7977905273438,
+      385.16937255859375,
+      741.8137817382812
+    ],
+    "text": "36th Conference on Neural Information Processing Systems (NeurIPS 2022).",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 8.966400146484375,
+    "page_num": 0
+  },
+  {
+    "bbox": [
+      10.940000534057617,
+      216.70001220703125,
+      37.619998931884766,
+      560.0
+    ],
+    "text": "arXiv:2201.11903v6  [cs.CL]  10 Jan 2023",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 20.0,
+    "page_num": 0
+  }
+]

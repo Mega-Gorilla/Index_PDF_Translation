@@ -1,0 +1,22 @@
+{
+  "tool_name": "DocLayout_YOLO",
+  "pdf_path": "tests/pdf_sample/2302.13971v1.pdf",
+  "pdf_name": "2302.13971v1",
+  "total_pages": 27,
+  "processing_time_seconds": 3.854105521000747,
+  "blocks_detected": 372,
+  "blocks_by_type": {
+    "plain_text": 257,
+    "abandoned_text": 10,
+    "title": 57,
+    "table": 17,
+    "table_footnote": 7,
+    "figure": 2,
+    "figure_caption": 9,
+    "table_caption": 12,
+    "isolated_formula": 1
+  },
+  "device": "cuda:0",
+  "errors": [],
+  "evaluation_timestamp": "2025-12-11T12:36:14.758047"
+}

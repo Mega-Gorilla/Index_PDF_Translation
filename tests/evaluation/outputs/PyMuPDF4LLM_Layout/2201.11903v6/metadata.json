@@ -1,0 +1,18 @@
+{
+  "tool_name": "PyMuPDF4LLM_Layout",
+  "pdf_path": "tests/evaluation/fixtures/complex/2201.11903v6.pdf",
+  "pdf_name": "2201.11903v6",
+  "total_pages": 43,
+  "processing_time_seconds": 65.79024523899898,
+  "blocks_detected": 501,
+  "blocks_by_type": {
+    "heading_1": 1,
+    "body": 257,
+    "heading_2": 43,
+    "caption": 23,
+    "footer": 43,
+    "list": 134
+  },
+  "errors": [],
+  "evaluation_timestamp": "2025-12-11T14:15:03.936440"
+}

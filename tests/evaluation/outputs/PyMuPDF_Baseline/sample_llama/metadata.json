@@ -1,0 +1,13 @@
+{
+  "tool_name": "PyMuPDF_Baseline",
+  "pdf_path": "tests/fixtures/sample_llama.pdf",
+  "pdf_name": "sample_llama",
+  "total_pages": 1,
+  "processing_time_seconds": 0.0058345639999970444,
+  "blocks_detected": 13,
+  "blocks_by_type": {
+    "unknown": 13
+  },
+  "errors": [],
+  "evaluation_timestamp": "2025-12-11T12:15:22.803382"
+}
