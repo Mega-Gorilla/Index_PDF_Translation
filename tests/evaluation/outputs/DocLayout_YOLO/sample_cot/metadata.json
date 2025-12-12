@@ -1,0 +1,18 @@
+{
+  "tool_name": "DocLayout_YOLO",
+  "pdf_path": "tests/fixtures/sample_cot.pdf",
+  "pdf_name": "sample_cot",
+  "total_pages": 1,
+  "processing_time_seconds": 0.7907958770001642,
+  "blocks_detected": 13,
+  "blocks_by_type": {
+    "plain_text": 6,
+    "title": 2,
+    "figure_caption": 1,
+    "figure": 1,
+    "abandoned_text": 3
+  },
+  "device": "cuda:0",
+  "errors": [],
+  "evaluation_timestamp": "2025-12-11T12:35:47.038065"
+}

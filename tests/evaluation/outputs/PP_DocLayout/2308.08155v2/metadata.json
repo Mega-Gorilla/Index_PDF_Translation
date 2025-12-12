@@ -1,0 +1,30 @@
+{
+  "tool_name": "PP-DocLayout (PP-DocLayout-L)",
+  "pdf_path": "tests/pdf_sample/2308.08155v2.pdf",
+  "pdf_name": "2308.08155v2",
+  "total_pages": 43,
+  "processing_time_seconds": 8.17162478300088,
+  "blocks_detected": 394,
+  "blocks_by_type": {
+    "abstract": 1,
+    "aside_text": 1,
+    "chart": 5,
+    "chart_title": 6,
+    "doc_title": 1,
+    "figure_title": 18,
+    "footnote": 8,
+    "formula": 53,
+    "formula_number": 1,
+    "header": 5,
+    "image": 16,
+    "number": 40,
+    "paragraph_title": 31,
+    "reference": 3,
+    "table": 20,
+    "table_title": 22,
+    "text": 163
+  },
+  "model_name": "PP-DocLayout-L",
+  "errors": [],
+  "evaluation_timestamp": "2025-12-12T13:57:46.296655"
+}

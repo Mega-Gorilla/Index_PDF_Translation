@@ -1,0 +1,15 @@
+{
+  "tool_name": "PyMuPDF4LLM_Layout",
+  "pdf_path": "tests/fixtures/sample_llama.pdf",
+  "pdf_name": "sample_llama",
+  "total_pages": 1,
+  "processing_time_seconds": 0.5390604109998094,
+  "blocks_detected": 14,
+  "blocks_by_type": {
+    "heading_1": 1,
+    "body": 10,
+    "heading_2": 3
+  },
+  "errors": [],
+  "evaluation_timestamp": "2025-12-11T14:15:42.776380"
+}

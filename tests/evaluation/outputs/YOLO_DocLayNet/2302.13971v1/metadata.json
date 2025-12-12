@@ -1,0 +1,23 @@
+{
+  "tool_name": "YOLO-DocLayNet (yolov11l)",
+  "pdf_path": "tests/pdf_sample/2302.13971v1.pdf",
+  "pdf_name": "2302.13971v1",
+  "total_pages": 27,
+  "processing_time_seconds": 3.5966571520002617,
+  "blocks_detected": 412,
+  "blocks_by_type": {
+    "Caption": 7,
+    "Footnote": 6,
+    "List-item": 93,
+    "Page-header": 2,
+    "Picture": 6,
+    "Section-header": 48,
+    "Table": 17,
+    "Text": 231,
+    "Title": 2
+  },
+  "model_variant": "yolov11l",
+  "device": "cuda:0",
+  "errors": [],
+  "evaluation_timestamp": "2025-12-12T13:59:33.252994"
+}

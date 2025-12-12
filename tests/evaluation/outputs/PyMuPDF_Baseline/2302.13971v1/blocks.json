@@ -1,0 +1,5397 @@
+[
+  {
+    "bbox": [
+      117.27200317382812,
+      75.69712829589844,
+      478.00732421875,
+      88.5943603515625
+    ],
+    "text": "LLaMA: Open and Efficient Foundation Language Models",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 14.346199989318848,
+    "page_num": 0
+  },
+  {
+    "bbox": [
+      111.01296997070312,
+      114.29439544677734,
+      484.26629638671875,
+      170.2776336669922
+    ],
+    "text": "Hugo Touvron ∗ , Thibaut Lavril ∗ , Gautier Izacard ∗ , Xavier Martinet Marie-Anne Lachaux, Timothee Lacroix, Baptiste Rozière, Naman Goyal Eric Hambro, Faisal Azhar, Aurelien Rodriguez, Armand Joulin Edouard Grave ∗ , Guillaume Lample ∗",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.422469322498028,
+    "page_num": 0
+  },
+  {
+    "bbox": [
+      277.552978515625,
+      182.03237915039062,
+      317.7224426269531,
+      192.72032165527344
+    ],
+    "text": "Meta AI",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 11.9552001953125,
+    "page_num": 0
+  },
+  {
+    "bbox": [
+      157.7579803466797,
+      215.30889892578125,
+      202.24327087402344,
+      226.05662536621094
+    ],
+    "text": "Abstract",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 11.9552001953125,
+    "page_num": 0
+  },
+  {
+    "bbox": [
+      87.54497528076172,
+      238.25732421875,
+      273.7760925292969,
+      378.669921875
+    ],
+    "text": "We introduce LLaMA, a collection of founda- tion language models ranging from 7B to 65B parameters. We train our models on trillions of tokens, and show that it is possible to train state-of-the-art models using publicly avail- able datasets exclusively, without resorting to proprietary and inaccessible datasets. In particular, LLaMA-13B outperforms GPT-3 (175B) on most benchmarks, and LLaMA- 65B is competitive with the best models, Chinchilla-70B and PaLM-540B. We release all our models to the research community 1 .",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.7633464495341,
+    "page_num": 0
+  },
+  {
+    "bbox": [
+      70.865966796875,
+      391.7159118652344,
+      153.6796417236328,
+      402.463623046875
+    ],
+    "text": "1 Introduction",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 11.9552001953125,
+    "page_num": 0
+  },
+  {
+    "bbox": [
+      70.52799987792969,
+      413.3986511230469,
+      291.0461120605469,
+      734.7824096679688
+    ],
+    "text": "Large Languages Models (LLMs) trained on mas- sive corpora of texts have shown their ability to per- form new tasks from textual instructions or from a few examples ( Brown et al. ,  2020 ). These few-shot properties first appeared when scaling models to a sufficient size ( Kaplan et al. ,  2020 ), resulting in a line of work that focuses on further scaling these models ( Chowdhery et al. ,  2022 ;  Rae et al. ,  2021 ). These efforts are based on the assumption that more parameters will lead to better performance. However, recent work from  Hoffmann et al.  ( 2022 ) shows that, for a given compute budget, the best performances are not achieved by the largest mod- els, but by smaller models trained on more data. The objective of the scaling laws from  Hoff- mann et al.  ( 2022 ) is to determine how to best scale the dataset and model sizes for a particular training  compute budget. However, this objective disregards the  inference  budget, which becomes critical when serving a language model at scale. In this context, given a target level of performance, the preferred model is not the fastest to train but the fastest at inference, and although it may be cheaper to train a large model to reach a certain level of",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.926285407122444,
+    "page_num": 0
+  },
+  {
+    "bbox": [
+      70.86599731445312,
+      741.9188232421875,
+      291.3751220703125,
+      772.6806030273438
+    ],
+    "text": "∗ Equal contribution. Correspondence:  {htouvron, thibautlav,gizacard,egrave,glample}@meta.com 1 https://github.com/facebookresearch/llama",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 8.04033442905971,
+    "page_num": 0
+  },
+  {
+    "bbox": [
+      306.1419982910156,
+      216.16168212890625,
+      525.772216796875,
+      293.6603698730469
+    ],
+    "text": "performance, a smaller one trained longer will ultimately be cheaper at inference. For instance, although  Hoffmann et al.  ( 2022 ) recommends training a 10B model on 200B tokens, we find that the performance of a 7B model continues to improve even after 1T tokens.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 11.006795501708984,
+    "page_num": 0
+  },
+  {
+    "bbox": [
+      305.7489929199219,
+      308.3216552734375,
+      526.3214111328125,
+      494.21435546875
+    ],
+    "text": "The focus of this work is to train a series of language models that achieve the best possible per- formance at various inference budgets, by training on more tokens than what is typically used. The resulting models, called  LLaMA , ranges from 7B to 65B parameters with competitive performance compared to the best existing LLMs. For instance, LLaMA-13B outperforms GPT-3 on most bench- marks, despite being 10 ×  smaller. We believe that this model will help democratize the access and study of LLMs, since it can be run on a single GPU. At the higher-end of the scale, our 65B-parameter model is also competitive with the best large lan- guage models such as Chinchilla or PaLM-540B.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.948765648735893,
+    "page_num": 0
+  },
+  {
+    "bbox": [
+      304.6910095214844,
+      508.87664794921875,
+      526.3189086914062,
+      640.5714111328125
+    ],
+    "text": "Unlike Chinchilla, PaLM, or GPT-3, we only use publicly available data, making our work com- patible with open-sourcing, while most existing models rely on data which is either not publicly available or undocumented (e.g. “Books – 2TB” or “Social media conversations”). There exist some exceptions, notably OPT ( Zhang et al. ,  2022 ), GPT-NeoX ( Black et al. ,  2022 ), BLOOM ( Scao et al. ,  2022 ) and GLM ( Zeng et al. ,  2022 ), but none that are competitive with PaLM-62B or Chinchilla.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.930196798764742,
+    "page_num": 0
+  },
+  {
+    "bbox": [
+      306.1419982910156,
+      655.233642578125,
+      525.7720336914062,
+      773.3804321289062
+    ],
+    "text": "In the rest of this paper, we present an overview of the modifications we made to the transformer architecture ( Vaswani et al. ,  2017 ), as well as our training method. We then report the performance of our models and compare with others LLMs on a set of standard benchmarks. Finally, we expose some of the biases and toxicity encoded in our models, using some of the most recent benchmarks from the responsible AI community.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.959026996905987,
+    "page_num": 0
+  },
+  {
+    "bbox": [
+      10.940000534057617,
+      263.25,
+      37.619998931884766,
+      609.8900146484375
+    ],
+    "text": "arXiv:2302.13971v1  [cs.CL]  27 Feb 2023",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 20.0,
+    "page_num": 0
+  },
+  {
+    "bbox": [
+      70.86599731445312,
+      73.575927734375,
+      139.4290771484375,
+      84.32364654541016
+    ],
+    "text": "2 Approach",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 11.9552001953125,
+    "page_num": 1
+  },
+  {
+    "bbox": [
+      70.35299682617188,
+      95.66063690185547,
+      291.0414733886719,
+      173.15940856933594
+    ],
+    "text": "Our training approach is similar to the methods described in previous work ( Brown et al. ,  2020 ; Chowdhery et al. ,  2022 ), and is inspired by the Chinchilla scaling laws ( Hoffmann et al. ,  2022 ). We train large transformers on a large quantity of textual data using a standard optimizer.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 11.010947507970473,
+    "page_num": 1
+  },
+  {
+    "bbox": [
+      70.86599731445312,
+      186.10772705078125,
+      177.9279022216797,
+      195.91500854492188
+    ],
+    "text": "2.1 Pre-training Data",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 1
+  },
+  {
+    "bbox": [
+      70.86599731445312,
+      203.97064208984375,
+      290.9474182128906,
+      308.5673522949219
+    ],
+    "text": "Our training dataset is a mixture of several sources, reported in Table  1 , that cover a diverse set of do- mains. For the most part, we reuse data sources that have been leveraged to train other LLMs, with the restriction of only using data that is publicly available, and compatible with open sourcing. This leads to the following mixture of data and the per- centage they represent in the training set:",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.937588882446288,
+    "page_num": 1
+  },
+  {
+    "bbox": [
+      70.86599731445312,
+      320.042724609375,
+      290.94140625,
+      465.4183654785156
+    ],
+    "text": "English CommonCrawl [67%]. We preprocess five CommonCrawl dumps, ranging from 2017 to 2020, with the CCNet pipeline ( Wenzek et al. , 2020 ). This process deduplicates the data at the line level, performs language identification with a fastText linear classifier to remove non-English pages and filters low quality content with an n- gram language model. In addition, we trained a linear model to classify pages used as references in Wikipedia  v.s.  randomly sampled pages, and discarded pages not classified as references.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.993986746844124,
+    "page_num": 1
+  },
+  {
+    "bbox": [
+      70.86599731445312,
+      476.89373779296875,
+      290.9486389160156,
+      608.7203979492188
+    ],
+    "text": "C4 [15%]. During exploratory experiments, we observed that using diverse pre-processed Com- monCrawl datasets improves performance. We thus included the publicly available C4 dataset ( Raffel et al. ,  2020 ) in our data. The preprocessing of C4 also contains deduplication and language identifi- cation steps: the main difference with CCNet is the quality filtering, which mostly relies on heuris- tics such as presence of punctuation marks or the number of words and sentences in a webpage.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.964786911010743,
+    "page_num": 1
+  },
+  {
+    "bbox": [
+      70.86599731445312,
+      620.1947631835938,
+      290.9492492675781,
+      738.472412109375
+    ],
+    "text": "Github [4.5%]. We use the public GitHub dataset available on Google BigQuery. We only kept projects that are distributed under the Apache, BSD and MIT licenses. Additionally, we filtered low quality files with heuristics based on the line length or proportion of alphanumeric characters, and removed boilerplate, such as headers, with reg- ular expressions. Finally, we deduplicate the result- ing dataset at the file level, with exact matches.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.933784770965577,
+    "page_num": 1
+  },
+  {
+    "bbox": [
+      70.86599731445312,
+      749.94775390625,
+      289.1387634277344,
+      773.3804321289062
+    ],
+    "text": "Wikipedia [4.5%]. We add Wikipedia dumps from the June-August 2022 period, covering 20",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.981466929117838,
+    "page_num": 1
+  },
+  {
+    "bbox": [
+      306.1419982910156,
+      77.87664031982422,
+      525.0438842773438,
+      87.62937927246094
+    ],
+    "text": "Dataset Sampling prop. Epochs Disk size",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 1
+  },
+  {
+    "bbox": [
+      306.1419982910156,
+      96.90264129638672,
+      525.0440673828125,
+      187.95042419433594
+    ],
+    "text": "CommonCrawl 67.0% 1.10 3.3 TB C4 15.0% 1.06 783 GB Github 4.5% 0.64 328 GB Wikipedia 4.5% 2.45 83 GB Books 4.5% 2.23 85 GB ArXiv 2.5% 1.06 92 GB StackExchange 2.0% 1.03 78 GB",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 1
+  },
+  {
+    "bbox": [
+      305.8330078125,
+      203.86781311035156,
+      526.0662841796875,
+      260.7139892578125
+    ],
+    "text": "Table 1:  Pre-training data.  Data mixtures used for pre- training, for each subset we list the sampling propor- tion, number of epochs performed on the subset when training on 1.4T tokens, and disk size. The pre-training runs on 1T tokens have the same sampling proportion.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 1
+  },
+  {
+    "bbox": [
+      306.1419982910156,
+      287.524658203125,
+      525.7728271484375,
+      351.4733581542969
+    ],
+    "text": "languages, which use either the Latin or Cyrillic scripts:  bg ,  ca ,  cs ,  da ,  de ,  en ,  es ,  fr ,  hr ,  hu ,  it , nl ,  pl ,  pt ,  ro ,  ru ,  sl ,  sr ,  sv ,  uk . We process the data to remove hyperlinks, comments and other formatting boilerplate.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.965842160311611,
+    "page_num": 1
+  },
+  {
+    "bbox": [
+      305.7489929199219,
+      365.771728515625,
+      526.2252197265625,
+      470.4993591308594
+    ],
+    "text": "Gutenberg and Books3 [4.5%]. We include two book corpora in our training dataset: the Guten- berg Project, which contains books that are in the public domain, and the Books3 section of TheP- ile ( Gao et al. ,  2020 ), a publicly available dataset for training large language models. We perform deduplication at the book level, removing books with more than 90% content overlap.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.982502937316895,
+    "page_num": 1
+  },
+  {
+    "bbox": [
+      305.6289978027344,
+      484.7977294921875,
+      526.3175048828125,
+      575.9763793945312
+    ],
+    "text": "ArXiv [2.5%]. We process arXiv Latex files to add scientific data to our dataset. Following Lewkowycz et al.  ( 2022 ), we removed everything before the first section, as well as the bibliography. We also removed the comments from the .tex files, and inline-expanded definitions and macros written by users to increase consistency across papers.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.935164711692117,
+    "page_num": 1
+  },
+  {
+    "bbox": [
+      305.6289978027344,
+      590.2737426757812,
+      526.3214111328125,
+      681.452392578125
+    ],
+    "text": "Stack Exchange [2%]. We include a dump of Stack Exchange, a website of high quality ques- tions and answers that covers a diverse set of do- mains, ranging from computer science to chemistry. We kept the data from the 28 largest websites, re- moved the HTML tags from text and sorted the answers by score (from highest to lowest).",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.963238716125488,
+    "page_num": 1
+  },
+  {
+    "bbox": [
+      306.1419982910156,
+      695.750732421875,
+      526.2830810546875,
+      773.3804321289062
+    ],
+    "text": "Tokenizer. We tokenize the data with the byte- pair encoding (BPE) algorithm ( Sennrich et al. , 2015 ), using the implementation from Sentence- Piece ( Kudo and Richardson ,  2018 ). Notably, we split all numbers into individual digits, and fallback to bytes to decompose unknown UTF-8 characters.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.980331420898438,
+    "page_num": 1
+  },
+  {
+    "bbox": [
+      120.6719970703125,
+      76.70508575439453,
+      474.6035461425781,
+      86.63236999511719
+    ],
+    "text": "params dimension n  heads n  layers learning rate batch size n  tokens",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 2
+  },
+  {
+    "bbox": [
+      123.24090576171875,
+      93.3664779663086,
+      465.9303283691406,
+      146.3064422607422
+    ],
+    "text": "6.7B 4096 32 32 3 . 0 e − 4 4M 1.0T 13.0B 5120 40 40 3 . 0 e − 4 4M 1.0T 32.5B 6656 52 60 1 . 5 e − 4 4M 1.4T 65.2B 8192 64 80 1 . 5 e − 4 4M 1.4T",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.419266303380331,
+    "page_num": 2
+  },
+  {
+    "bbox": [
+      144.29400634765625,
+      162.2238311767578,
+      447.5857849121094,
+      171.24993896484375
+    ],
+    "text": "Table 2:  Model sizes, architectures, and optimization hyper-parameters.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 2
+  },
+  {
+    "bbox": [
+      70.86599731445312,
+      196.17266845703125,
+      290.9458923339844,
+      273.6713562011719
+    ],
+    "text": "Overall, our entire training dataset contains roughly 1.4T tokens after tokenization. For most of our training data, each token is used only once dur- ing training, with the exception of the Wikipedia and Books domains, over which we perform ap- proximately two epochs.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.930497328440348,
+    "page_num": 2
+  },
+  {
+    "bbox": [
+      70.86599731445312,
+      286.9447021484375,
+      154.38609313964844,
+      296.7519836425781
+    ],
+    "text": "2.2 Architecture",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 2
+  },
+  {
+    "bbox": [
+      70.86599731445312,
+      304.99462890625,
+      290.9479064941406,
+      409.5923767089844
+    ],
+    "text": "Following recent work on large language models, our network is based on the transformer architec- ture ( Vaswani et al. ,  2017 ). We leverage various improvements that were subsequently proposed, and used in different models such as PaLM. Here are the main difference with the original architec- ture, and where we were found the inspiration for this change (in bracket):",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 11.003197272618612,
+    "page_num": 2
+  },
+  {
+    "bbox": [
+      70.86599731445312,
+      421.3927307128906,
+      290.9413757324219,
+      485.4733581542969
+    ],
+    "text": "Pre-normalization [GPT3]. To improve the training stability, we normalize the input of each transformer sub-layer, instead of normalizing the output. We use the RMSNorm normalizing func- tion, introduced by  Zhang and Sennrich  ( 2019 ).",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.952519989013672,
+    "page_num": 2
+  },
+  {
+    "bbox": [
+      70.86599731445312,
+      497.27471923828125,
+      290.9447937011719,
+      564.3071899414062
+    ],
+    "text": "SwiGLU activation function [PaLM]. We re- place the ReLU non-linearity by the SwiGLU ac- tivation function, introduced by  Shazeer  ( 2020 ) to improve the performance. We use a dimension of 2 3 4 d  instead of  4 d  as in PaLM.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.584425814011517,
+    "page_num": 2
+  },
+  {
+    "bbox": [
+      70.86599731445312,
+      573.1557006835938,
+      290.94061279296875,
+      651.0083618164062
+    ],
+    "text": "Rotary Embeddings [GPTNeo].  We remove the absolute positional embeddings, and instead, add rotary positional embeddings (RoPE), introduced by  Su et al.  ( 2021 ), at each layer of the network. The details of the hyper-parameters for our dif- ferent models are given in Table  2 .",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.923221294696514,
+    "page_num": 2
+  },
+  {
+    "bbox": [
+      70.86599731445312,
+      664.28271484375,
+      143.28060913085938,
+      674.0900268554688
+    ],
+    "text": "2.3 Optimizer",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 2
+  },
+  {
+    "bbox": [
+      70.35299682617188,
+      682.3326416015625,
+      291.0428161621094,
+      773.3804321289062
+    ],
+    "text": "Our models are trained using the AdamW opti- mizer ( Loshchilov and Hutter ,  2017 ), with the fol- lowing hyper-parameters:  β 1  = 0 . 9 , β 2  = 0 . 95 . We use a cosine learning rate schedule, such that the final learning rate is equal to 10% of the maxi- mal learning rate. We use a weight decay of  0 . 1  and gradient clipping of  1 . 0 . We use  2 ,  000  warmup",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.755162182976218,
+    "page_num": 2
+  },
+  {
+    "bbox": [
+      343.3858642578125,
+      317.5849609375,
+      520.4993896484375,
+      342.6376647949219
+    ],
+    "text": "0 200 400 600 800 1000 1200 1400 Billion   of   tokens",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 8.582470807162197,
+    "page_num": 2
+  },
+  {
+    "bbox": [
+      321.6713562011719,
+      310.90032958984375,
+      333.7489929199219,
+      323.7831115722656
+    ],
+    "text": "1.5",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 7.595979690551758,
+    "page_num": 2
+  },
+  {
+    "bbox": [
+      321.6713562011719,
+      294.0465393066406,
+      333.7489929199219,
+      306.9293212890625
+    ],
+    "text": "1.6",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 7.595979690551758,
+    "page_num": 2
+  },
+  {
+    "bbox": [
+      321.6713562011719,
+      277.1927795410156,
+      333.7489929199219,
+      290.0755615234375
+    ],
+    "text": "1.7",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 7.595979690551758,
+    "page_num": 2
+  },
+  {
+    "bbox": [
+      321.6713562011719,
+      260.3389892578125,
+      333.7489929199219,
+      273.2217712402344
+    ],
+    "text": "1.8",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 7.595979690551758,
+    "page_num": 2
+  },
+  {
+    "bbox": [
+      321.6713562011719,
+      243.48521423339844,
+      333.7489929199219,
+      256.3680114746094
+    ],
+    "text": "1.9",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 7.595979690551758,
+    "page_num": 2
+  },
+  {
+    "bbox": [
+      321.6713562011719,
+      226.63143920898438,
+      333.7489929199219,
+      239.51422119140625
+    ],
+    "text": "2.0",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 7.595979690551758,
+    "page_num": 2
+  },
+  {
+    "bbox": [
+      321.6713562011719,
+      209.7776641845703,
+      333.7489929199219,
+      222.6604461669922
+    ],
+    "text": "2.1",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 7.595979690551758,
+    "page_num": 2
+  },
+  {
+    "bbox": [
+      321.6713562011719,
+      192.92388916015625,
+      333.7489929199219,
+      205.80667114257812
+    ],
+    "text": "2.2",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 7.595979690551758,
+    "page_num": 2
+  },
+  {
+    "bbox": [
+      305.4246520996094,
+      226.69088745117188,
+      321.9882507324219,
+      288.6480712890625
+    ],
+    "text": "Training   loss",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.766260147094727,
+    "page_num": 2
+  },
+  {
+    "bbox": [
+      470.2066650390625,
+      202.6469268798828,
+      512.3643188476562,
+      248.97406005859375
+    ],
+    "text": "LLaMA   7B LLaMA   13B LLaMA   33B LLaMA   65B",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 7.595979690551758,
+    "page_num": 2
+  },
+  {
+    "bbox": [
+      305.3949890136719,
+      355.5137939453125,
+      526.0584106445312,
+      412.3608703613281
+    ],
+    "text": "Figure 1:  Training loss over train tokens for the 7B, 13B, 33B, and 65 models.  LLaMA-33B and LLaMA- 65B were trained on 1.4T tokens. The smaller models were trained on 1.0T tokens. All models are trained with a batch size of 4M tokens.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 2
+  },
+  {
+    "bbox": [
+      306.1419982910156,
+      438.86663818359375,
+      524.40771484375,
+      462.16937255859375
+    ],
+    "text": "steps, and vary the learning rate and batch size with the size of the model (see Table  2  for details).",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.881689071655273,
+    "page_num": 2
+  },
+  {
+    "bbox": [
+      306.1419982910156,
+      477.4137268066406,
+      446.1383361816406,
+      487.22100830078125
+    ],
+    "text": "2.4 Efficient implementation",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 2
+  },
+  {
+    "bbox": [
+      305.6289978027344,
+      496.5926513671875,
+      526.3154907226562,
+      751.0233764648438
+    ],
+    "text": "We make several optimizations to improve the train- ing speed of our models. First, we use an efficient implementation of the causal multi-head attention to reduce memory usage and runtime. This imple- mentation, available in the  xformers  library, 2   is inspired by  Rabe and Staats  ( 2021 ) and uses the backward from  Dao et al.  ( 2022 ). This is achieved by not storing the attention weights and not com- puting the key/query scores that are masked due to the causal nature of the language modeling task. To further improve training efficiency, we re- duced the amount of activations that are recom- puted during the backward pass with checkpoint- ing. More precisely, we save the activations that are expensive to compute, such as the outputs of linear layers. This is achieved by manually imple- menting the backward function for the transformer layers, instead of relying on the PyTorch autograd. To fully benefit from this optimization, we need to",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.857522800564766,
+    "page_num": 2
+  },
+  {
+    "bbox": [
+      318.79400634765625,
+      763.1622314453125,
+      487.4330139160156,
+      772.9607543945312
+    ],
+    "text": "2 https://github.com/facebookresearch/xformers",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 7.4720001220703125,
+    "page_num": 2
+  },
+  {
+    "bbox": [
+      179.843994140625,
+      76.87963104248047,
+      508.524169921875,
+      86.63236999511719
+    ],
+    "text": "BoolQ PIQA SIQA HellaSwag WinoGrande ARC-e ARC-c OBQA",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 3
+  },
+  {
+    "bbox": [
+      86.75199890136719,
+      95.90666961669922,
+      502.6178894042969,
+      173.4054412841797
+    ],
+    "text": "GPT-3 175B 60.5 81.0 - 78.9 70.2 68.8 51.4 57.6 Gopher 280B 79.3 81.8 50.6 79.2 70.1 - - - Chinchilla 70B 83.7 81.8 51.3 80.8 74.9 - - - PaLM 62B 84.8 80.5 - 79.7 77.0 75.2 52.5 50.4 PaLM-cont 62B 83.9 81.4 - 80.6 77.0 - - - PaLM 540B 88.0 82.3 - 83.4 81.1 76.6 53.0 53.4",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 3
+  },
+  {
+    "bbox": [
+      86.75199890136719,
+      203.00262451171875,
+      122.5011215209961,
+      212.75535583496094
+    ],
+    "text": "LLaMA",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 3
+  },
+  {
+    "bbox": [
+      151.69598388671875,
+      182.67864990234375,
+      502.6199951171875,
+      233.0793914794922
+    ],
+    "text": "7B 76.5 79.8 48.9 76.1 70.1 72.8 47.6 57.2 13B 78.1 80.1 50.4 79.2 73.0 74.8 52.7 56.4 33B 83.1 82.3 50.4 82.8 76.0 80.0 57.8 58.6 65B 85.3 82.8 52.3 84.2 77.0 78.9 56.0 60.2",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 3
+  },
+  {
+    "bbox": [
+      151.94500732421875,
+      248.9958038330078,
+      439.93426513671875,
+      258.02191162109375
+    ],
+    "text": "Table 3:  Zero-shot performance on Common Sense Reasoning tasks.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 3
+  },
+  {
+    "bbox": [
+      70.4729995727539,
+      282.94464111328125,
+      290.9486083984375,
+      428.1893615722656
+    ],
+    "text": "reduce the memory usage of the model by using model and sequence parallelism, as described by Korthikanti et al.  ( 2022 ). Moreover, we also over- lap the computation of activations and the commu- nication between GPUs over the network (due to all_reduce  operations) as much as possible. When training a 65B-parameter model, our code processes around 380 tokens/sec/GPU on 2048 A100 GPU with 80GB of RAM. This means that training over our dataset containing 1.4T tokens takes approximately 21 days.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.960062980651855,
+    "page_num": 3
+  },
+  {
+    "bbox": [
+      70.86599731445312,
+      440.5799255371094,
+      152.67543029785156,
+      451.32763671875
+    ],
+    "text": "3 Main results",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 11.9552001953125,
+    "page_num": 3
+  },
+  {
+    "bbox": [
+      70.86599731445312,
+      461.57464599609375,
+      289.13873291015625,
+      498.4263610839844
+    ],
+    "text": "Following previous work ( Brown et al. ,  2020 ), we consider zero-shot and few-shot tasks, and report results on a total of 20 benchmarks:",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.92460686819894,
+    "page_num": 3
+  },
+  {
+    "bbox": [
+      83.88499450683594,
+      507.14971923828125,
+      289.13616943359375,
+      557.681396484375
+    ],
+    "text": "•  Zero-shot.  We provide a textual description of the task and a test example. The model either provides an answer using open-ended generation, or ranks the proposed answers.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.963375091552734,
+    "page_num": 3
+  },
+  {
+    "bbox": [
+      83.88499450683594,
+      568.7496948242188,
+      291.03900146484375,
+      619.2803955078125
+    ],
+    "text": "•  Few-shot.  We provide a few examples of the task (between 1 and 64) and a test example. The model takes this text as input and gener- ates the answer or ranks different options.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.944382985432943,
+    "page_num": 3
+  },
+  {
+    "bbox": [
+      70.86599731445312,
+      628.1356201171875,
+      290.9427795410156,
+      773.3804321289062
+    ],
+    "text": "We compare LLaMA with other foundation mod- els, namely the non-publicly available language models GPT-3 ( Brown et al. ,  2020 ), Gopher ( Rae et al. ,  2021 ), Chinchilla ( Hoffmann et al. ,  2022 ) and PaLM ( Chowdhery et al. ,  2022 ), as well as the open-sourced OPT models ( Zhang et al. ,  2022 ), GPT-J ( Wang and Komatsuzaki ,  2021 ), and GPT- Neo ( Black et al. ,  2022 ). In Section  4 , we also briefly compare LLaMA with instruction-tuned models such as OPT-IML ( Iyer et al. ,  2022 ) and Flan-PaLM ( Chung et al. ,  2022 ).",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.977208546229772,
+    "page_num": 3
+  },
+  {
+    "bbox": [
+      306.1419982910156,
+      282.94464111328125,
+      526.2233276367188,
+      455.287353515625
+    ],
+    "text": "We evaluate LLaMA on free-form generation tasks and multiple choice tasks. In the multiple choice tasks, the objective is to select the most appropriate completion among a set of given op- tions, based on a provided context. We select the completion with the highest likelihood given the provided context. We follow  Gao et al.  ( 2021 ) and use the likelihood normalized by the number of characters in the completion, except for certain datasets (OpenBookQA, BoolQ), for which we fol- low  Brown et al.  ( 2020 ), and select a completion based on the likelihood normalized by the likeli- hood of the completion given “Answer:” as context:",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.994561513264975,
+    "page_num": 3
+  },
+  {
+    "bbox": [
+      306.1419982910156,
+      459.08465576171875,
+      498.8883056640625,
+      468.8373718261719
+    ],
+    "text": "P ( completion | context ) /P ( completion | “ Answer :”) .",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 8.180028472627912,
+    "page_num": 3
+  },
+  {
+    "bbox": [
+      384.5820007324219,
+      488.2526550292969,
+      523.0403442382812,
+      498.00537109375
+    ],
+    "text": "0-shot 1-shot 5-shot 64-shot",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 3
+  },
+  {
+    "bbox": [
+      307.5150146484375,
+      507.2796630859375,
+      516.2171020507812,
+      544.1304321289062
+    ],
+    "text": "GPT-3 175B 14.6 23.0 - 29.9 Gopher 280B 10.1 - 24.5 28.2 Chinchilla 70B 16.6 - 31.5 35.5",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 3
+  },
+  {
+    "bbox": [
+      307.5150146484375,
+      553.4036865234375,
+      516.2162475585938,
+      590.2554321289062
+    ],
+    "text": "PaLM 8B 8.4 10.6 - 14.6 62B 18.1 26.5 - 27.6 540B 21.2 29.3 - 39.6",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 3
+  },
+  {
+    "bbox": [
+      307.5150146484375,
+      619.8526611328125,
+      343.2641296386719,
+      629.6054077148438
+    ],
+    "text": "LLaMA",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 3
+  },
+  {
+    "bbox": [
+      358.427001953125,
+      599.5286254882812,
+      516.2169189453125,
+      649.9293823242188
+    ],
+    "text": "7B 16.8 18.7 22.0 26.1 13B 20.1 23.4 28.1 31.9 33B 24.9 28.3 32.9 36.0 65B 23.8 31.0 35.0 39.9",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 3
+  },
+  {
+    "bbox": [
+      305.8330078125,
+      665.8458251953125,
+      526.1575927734375,
+      674.8719482421875
+    ],
+    "text": "Table 4:  NaturalQuestions.  Exact match performance.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 3
+  },
+  {
+    "bbox": [
+      306.1419982910156,
+      717.1237182617188,
+      453.7203063964844,
+      726.9310302734375
+    ],
+    "text": "3.1 Common Sense Reasoning",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 3
+  },
+  {
+    "bbox": [
+      305.6289978027344,
+      736.5286865234375,
+      526.2161254882812,
+      773.3804321289062
+    ],
+    "text": "We consider eight standard common sense rea- soning benchmarks: BoolQ ( Clark et al. ,  2019 ), PIQA ( Bisk et al. ,  2020 ), SIQA ( Sap et al. ,  2019 ),",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.981908416748047,
+    "page_num": 3
+  },
+  {
+    "bbox": [
+      70.86599731445312,
+      74.42864227294922,
+      291.04632568359375,
+      274.2493591308594
+    ],
+    "text": "HellaSwag ( Zellers et al. ,  2019 ), WinoGrande ( Sak- aguchi et al. ,  2021 ), ARC easy and challenge ( Clark et al. ,  2018 ) and OpenBookQA ( Mihaylov et al. , 2018 ). These datasets include Cloze and Winograd style tasks, as well as multiple choice question an- swering. We evaluate in the zero-shot setting as done in the language modeling community. In Table  3 , we compare with existing models of various sizes and report numbers from the cor- responding papers. First, LLaMA-65B outper- forms Chinchilla-70B on all reported benchmarks but BoolQ. Similarly, this model surpasses PaLM- 540B everywhere but on BoolQ and WinoGrande. LLaMA-13B model also outperforms GPT-3 on most benchmarks despite being 10 ×  smaller.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.914597048078264,
+    "page_num": 4
+  },
+  {
+    "bbox": [
+      70.86601257324219,
+      288.062744140625,
+      251.1825408935547,
+      297.8700256347656
+    ],
+    "text": "3.2 Closed-book Question Answering",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 4
+  },
+  {
+    "bbox": [
+      70.35299682617188,
+      306.421630859375,
+      290.94921875,
+      519.4124145507812
+    ],
+    "text": "We compare LLaMA to existing large language models on two closed-book question answering benchmarks: Natural Questions ( Kwiatkowski et al. ,  2019 ) and TriviaQA ( Joshi et al. ,  2017 ). For both benchmarks, we report exact match perfor- mance in a closed book setting, i.e., where the mod- els do not have access to documents that contain evidence to answer the question. In Table  4 , we report performance on NaturalQuestions, and in Ta- ble  5 , we report on TriviaQA. On both benchmarks, LLaMA-65B achieve state-of-the-arts performance in the zero-shot and few-shot settings. More im- portantly, the LLaMA-13B is also competitive on these benchmarks with GPT-3 and Chinchilla, de- spite being 5-10 ×  smaller. This model runs on a single V100 GPU during inference.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.92826400264617,
+    "page_num": 4
+  },
+  {
+    "bbox": [
+      149.30599975585938,
+      538.1436767578125,
+      287.7642517089844,
+      547.8964233398438
+    ],
+    "text": "0-shot 1-shot 5-shot 64-shot",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 4
+  },
+  {
+    "bbox": [
+      72.23899841308594,
+      557.170654296875,
+      280.94097900390625,
+      580.472412109375
+    ],
+    "text": "Gopher 280B 43.5 - 57.0 57.2 Chinchilla 70B 55.4 - 64.1 64.6",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 4
+  },
+  {
+    "bbox": [
+      72.23899841308594,
+      610.0696411132812,
+      107.98812103271484,
+      619.8223876953125
+    ],
+    "text": "LLaMA",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 4
+  },
+  {
+    "bbox": [
+      123.15099334716797,
+      589.7456665039062,
+      280.9461669921875,
+      640.1464233398438
+    ],
+    "text": "7B 50.0 53.4 56.3 57.6 13B 56.6 60.5 63.1 64.0 33B 65.1 67.9 69.9 70.4 65B 68.2 71.6 72.6 73.0",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 4
+  },
+  {
+    "bbox": [
+      70.55699920654297,
+      656.0628051757812,
+      289.13043212890625,
+      677.0439453125
+    ],
+    "text": "Table 5: TriviaQA.  Zero-shot and few-shot exact match performance on the filtered dev set.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 4
+  },
+  {
+    "bbox": [
+      70.86599731445312,
+      704.6207275390625,
+      210.67703247070312,
+      714.4280395507812
+    ],
+    "text": "3.3 Reading Comprehension",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 4
+  },
+  {
+    "bbox": [
+      70.35299682617188,
+      722.9796752929688,
+      290.9494323730469,
+      773.3804321289062
+    ],
+    "text": "We evaluate our models on the RACE reading com- prehension benchmark ( Lai et al. ,  2017 ). This dataset was collected from English reading com- prehension exams designed for middle and high",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.990376472473145,
+    "page_num": 4
+  },
+  {
+    "bbox": [
+      395.1700134277344,
+      76.87963104248047,
+      521.4100341796875,
+      86.63236999511719
+    ],
+    "text": "RACE-middle RACE-high",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 4
+  },
+  {
+    "bbox": [
+      309.1440124511719,
+      95.90666961669922,
+      505.1151428222656,
+      105.65940856933594
+    ],
+    "text": "GPT-3 175B 58.4 45.5",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 4
+  },
+  {
+    "bbox": [
+      309.1440124511719,
+      114.93260955810547,
+      505.1132507324219,
+      151.7843475341797
+    ],
+    "text": "PaLM 8B 57.9 42.3 62B 64.3 47.5 540B 68.1 49.1",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 4
+  },
+  {
+    "bbox": [
+      309.1440124511719,
+      181.38165283203125,
+      344.89312744140625,
+      191.13438415527344
+    ],
+    "text": "LLaMA",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 4
+  },
+  {
+    "bbox": [
+      365.0290222167969,
+      161.05767822265625,
+      505.1132507324219,
+      211.4584197998047
+    ],
+    "text": "7B 61.1 46.9 13B 61.6 47.2 33B 64.1 48.3 65B 67.9 51.6",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 4
+  },
+  {
+    "bbox": [
+      305.8330078125,
+      227.3748321533203,
+      526.0659790039062,
+      248.35595703125
+    ],
+    "text": "Table 6:  Reading Comprehension.  Zero-shot accu- racy.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 4
+  },
+  {
+    "bbox": [
+      306.1419982910156,
+      273.921630859375,
+      524.4147338867188,
+      337.8713684082031
+    ],
+    "text": "school Chinese students. We follow the evaluation setup from  Brown et al.  ( 2020 ) and report results in Table  6 . On these benchmarks, LLaMA-65B is competitive with PaLM-540B, and, LLaMA-13B outperforms GPT-3 by a few percents.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.976710232821377,
+    "page_num": 4
+  },
+  {
+    "bbox": [
+      306.1419982910156,
+      351.48773193359375,
+      443.50933837890625,
+      361.2950134277344
+    ],
+    "text": "3.4 Mathematical reasoning",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 4
+  },
+  {
+    "bbox": [
+      305.6289978027344,
+      369.733642578125,
+      526.3174438476562,
+      623.3713989257812
+    ],
+    "text": "We evaluate our models on two mathematical rea- soning benchmarks: MATH ( Hendrycks et al. , 2021 ) and GSM8k ( Cobbe et al. ,  2021 ). MATH is a dataset of 12K middle school and high school mathematics problems written in LaTeX. GSM8k is a set of middle school mathematical problems. In Table  7 , we compare with PaLM and Min- erva ( Lewkowycz et al. ,  2022 ). Minerva is a series of PaLM models finetuned on 38.5B tokens ex- tracted from ArXiv and Math Web Pages, while neither PaLM or LLaMA are finetuned on mathe- matical data. The numbers for PaLM and Minerva are taken from  Lewkowycz et al.  ( 2022 ), and we compare with and without  maj1@k .  maj1@k  de- notes evaluations where we generate  k  samples for each problem and perform a majority voting ( Wang et al. ,  2022 ). On GSM8k, we observe that LLaMA- 65B outperforms Minerva-62B, although it has not been fine-tuned on mathematical data.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.9422578189684,
+    "page_num": 4
+  },
+  {
+    "bbox": [
+      306.1419982910156,
+      636.9877319335938,
+      407.3456726074219,
+      646.7950439453125
+    ],
+    "text": "3.5 Code generation",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 4
+  },
+  {
+    "bbox": [
+      305.6289978027344,
+      655.233642578125,
+      526.2174072265625,
+      773.3804321289062
+    ],
+    "text": "We evaluate the ability of our models to write code from a natural language description on two benchmarks: HumanEval ( Chen et al. ,  2021 ) and MBPP ( Austin et al. ,  2021 ). For both tasks, the model receives a description of the program in a few sentences, as well as a few input-output ex- amples. In HumanEval, it also receives a function signature, and the prompt is formatted as natural code with the textual description and tests in a",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 11.013187520644244,
+    "page_num": 4
+  },
+  {
+    "bbox": [
+      138.40499877929688,
+      76.87963104248047,
+      283.7113037109375,
+      86.63236999511719
+    ],
+    "text": "MATH  + maj1@k  GSM8k  + maj1@k",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.613966623942057,
+    "page_num": 5
+  },
+  {
+    "bbox": [
+      76.28900146484375,
+      95.90660858154297,
+      269.55419921875,
+      132.7573699951172
+    ],
+    "text": "PaLM 8B 1.5 - 4.1 - 62B 4.4 - 33.0 - 540B 8.8 - 56.5 -",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 5
+  },
+  {
+    "bbox": [
+      76.28900146484375,
+      142.0316162109375,
+      277.2829895019531,
+      178.8823699951172
+    ],
+    "text": "Minerva 8B 14.1 25.4 16.2 28.4 62B 27.6 43.4 52.4 68.5 540B  33.6 50.3 68.5 78.5",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 5
+  },
+  {
+    "bbox": [
+      76.28900146484375,
+      208.47967529296875,
+      112.03812408447266,
+      218.23240661621094
+    ],
+    "text": "LLaMA",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 5
+  },
+  {
+    "bbox": [
+      120.218994140625,
+      188.15570068359375,
+      277.27777099609375,
+      238.5564422607422
+    ],
+    "text": "7B 2.9 6.9 11.0 18.1 13B 3.9 8.8 17.8 29.3 33B 7.1 15.2 35.6 53.1 65B 10.6 20.5 50.9 69.7",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 5
+  },
+  {
+    "bbox": [
+      70.55699920654297,
+      254.47279357910156,
+      290.786865234375,
+      335.2299499511719
+    ],
+    "text": "Table 7:  Model performance on quantitative reason- ing datasets.  For majority voting, we use the same setup as Minerva, with  k  = 256  samples for MATH and  k  = 100  for GSM8k (Minerva 540B uses  k  = 64 for MATH and and  k  = 40  for GSM8k). LLaMA-65B outperforms Minerva 62B on GSM8k, although it has not been fine-tuned on mathematical data.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 5
+  },
+  {
+    "bbox": [
+      70.4729995727539,
+      365.4266662597656,
+      291.04156494140625,
+      773.3804321289062
+    ],
+    "text": "docstring. The model needs to generate a Python program that fits the description and satisfies the test cases. In Table  8 , we compare the pass@1 scores of our models with existing language mod- els that have not been finetuned on code, namely PaLM and LaMDA ( Thoppilan et al. ,  2022 ). PaLM and LLaMA were trained on datasets that contain a similar number of code tokens. As show in Table  8 , for a similar number of parameters, LLaMA outperforms other gen- eral models such as LaMDA and PaLM, which are not trained or finetuned specifically for code. LLaMA with 13B parameters and more outper- forms LaMDA 137B on both HumanEval and MBPP. LLaMA 65B also outperforms PaLM 62B, even when it is trained longer. The pass@1 results reported in this table were obtained by sampling with temperature 0.1. The pass@100 and pass@80 metrics were obtained with temperature 0.8. We use the same method as  Chen et al.  ( 2021 ) to obtain unbiased estimates of the pass@k. It is possible to improve the performance on code by finetuning on code-specific tokens. For instance, PaLM-Coder ( Chowdhery et al. ,  2022 ) increases the pass@1 score of PaLM on HumanEval from 26.2% for PaLM to 36%. Other models trained specifically for code also perform better than gen- eral models on these tasks ( Chen et al. ,  2021 ;  Ni- jkamp et al. ,  2022 ;  Fried et al. ,  2022 ). Finetuning on code tokens is beyond the scope of this paper.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.951826407991607,
+    "page_num": 5
+  },
+  {
+    "bbox": [
+      310.4029846191406,
+      76.87963104248047,
+      518.7122802734375,
+      100.18235778808594
+    ],
+    "text": "Params HumanEval MBPP pass@ @1 @100 @1 @80",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 5
+  },
+  {
+    "bbox": [
+      310.40301513671875,
+      109.45561981201172,
+      519.6480712890625,
+      132.7573699951172
+    ],
+    "text": "LaMDA 137B 14.0 47.3 14.8 62.4 PaLM 8B 3.6 ∗ 18.7 ∗ 5.0 ∗ 35.7 ∗",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.069385392325264,
+    "page_num": 5
+  },
+  {
+    "bbox": [
+      310.4029541015625,
+      134.01443481445312,
+      519.6480712890625,
+      146.30638122558594
+    ],
+    "text": "PaLM 62B 15.9 46.3 ∗ 21.4 63.2 ∗",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.929433027903238,
+    "page_num": 5
+  },
+  {
+    "bbox": [
+      310.4029541015625,
+      150.1036376953125,
+      517.7866821289062,
+      173.40538024902344
+    ],
+    "text": "PaLM-cont 62B 23.7 - 31.2 - PaLM 540B  26.2 76.2 36.8 75.0",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 5
+  },
+  {
+    "bbox": [
+      310.40301513671875,
+      203.00262451171875,
+      346.1521301269531,
+      212.75535583496094
+    ],
+    "text": "LLaMA",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 5
+  },
+  {
+    "bbox": [
+      381.6670227050781,
+      182.67864990234375,
+      517.7867431640625,
+      233.0793914794922
+    ],
+    "text": "7B 10.5 36.5 17.7 56.2 13B 15.8 52.5 22.0 64.0 33B 21.7 70.7 30.2 73.4 65B 23.7 79.3 37.7 76.8",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 5
+  },
+  {
+    "bbox": [
+      305.67401123046875,
+      248.9958038330078,
+      526.1564331054688,
+      317.7979736328125
+    ],
+    "text": "Table 8:  Model performance for code generation. We report the pass@ score on HumanEval and MBPP. HumanEval generations are done in zero-shot and MBBP with 3-shot prompts similar to  Austin et al. ( 2021 ). The values marked with   ∗ are read from figures in  Chowdhery et al.  ( 2022 ).",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.610976275275736,
+    "page_num": 5
+  },
+  {
+    "bbox": [
+      306.1419982910156,
+      344.9827880859375,
+      465.0220947265625,
+      368.3390808105469
+    ],
+    "text": "3.6 Massive Multitask Language Understanding",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 5
+  },
+  {
+    "bbox": [
+      305.3240051269531,
+      378.5146484375,
+      526.21728515625,
+      632.1533813476562
+    ],
+    "text": "The massive multitask language understanding benchmark, or MMLU, introduced by  Hendrycks et al.  ( 2020 ) consists of multiple choice questions covering various domains of knowledge, includ- ing humanities, STEM and social sciences. We evaluate our models in the 5-shot setting, using the examples provided by the benchmark, and report results in Table  9 . On this benchmark, we observe that the LLaMA-65B is behind both Chinchilla- 70B and PaLM-540B by a few percent in average, and across most domains. A potential explanation is that we have used a limited amount of books and academic papers in our pre-training data, i.e., ArXiv, Gutenberg and Books3, that sums up to only 177GB, while these models were trained on up to 2TB of books. This large quantity of books used by Gopher, Chinchilla and PaLM may also explain why Gopher outperforms GPT-3 on this benchmark, while it is comparable on other benchmarks.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.94676170349121,
+    "page_num": 5
+  },
+  {
+    "bbox": [
+      306.1419982910156,
+      648.7997436523438,
+      524.4111328125,
+      658.6070556640625
+    ],
+    "text": "3.7 Evolution of performance during training",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 5
+  },
+  {
+    "bbox": [
+      305.7489929199219,
+      668.7826538085938,
+      526.3174438476562,
+      773.3804321289062
+    ],
+    "text": "During training, we tracked the performance of our models on a few question answering and common sense benchmarks, and report them in Figure  2 . On most benchmarks, the performance improves steadily, and correlates with the training perplexity of the model (see Figure  1 ). The exceptions are SIQA and WinoGrande. Most notably, on SIQA, we observe a lot of variance in performance,",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.97544757525126,
+    "page_num": 5
+  },
+  {
+    "bbox": [
+      217.9550018310547,
+      76.87963104248047,
+      474.1549987792969,
+      86.63236999511719
+    ],
+    "text": "Humanities STEM Social Sciences Other Average",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 6
+  },
+  {
+    "bbox": [
+      121.11699676513672,
+      95.90666961669922,
+      465.7149658203125,
+      146.3064422607422
+    ],
+    "text": "GPT-NeoX 20B 29.8 34.9 33.7 37.7 33.6 GPT-3 175B 40.8 36.7 50.4 48.8 43.9 Gopher 280B 56.2 47.4 71.9 66.1 60.0 Chinchilla 70B 63.6 54.9 79.3 73.9 67.5",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 6
+  },
+  {
+    "bbox": [
+      121.11699676513672,
+      155.58062744140625,
+      465.7149658203125,
+      192.43138122558594
+    ],
+    "text": "PaLM 8B 25.6 23.8 24.1 27.8 25.4 62B 59.5 41.9 62.7 55.8 53.7 540B 77.0 55.6 81.0 69.6 69.3",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 6
+  },
+  {
+    "bbox": [
+      121.11699676513672,
+      222.02862548828125,
+      156.8661346435547,
+      231.78135681152344
+    ],
+    "text": "LLaMA",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 6
+  },
+  {
+    "bbox": [
+      187.81399536132812,
+      201.70562744140625,
+      465.7129211425781,
+      252.1053924560547
+    ],
+    "text": "7B 34.0 30.5 38.3 38.1 35.1 13B 45.0 35.8 53.8 53.3 46.9 33B 55.8 46.0 66.7 63.4 57.8 65B 61.8 51.7 72.9 67.4 63.4",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 6
+  },
+  {
+    "bbox": [
+      122.12799835205078,
+      268.0228271484375,
+      469.7506103515625,
+      277.0489501953125
+    ],
+    "text": "Table 9:  Massive Multitask Language Understanding (MMLU).  Five-shot accuracy.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 6
+  },
+  {
+    "bbox": [
+      70.86599731445312,
+      301.97064208984375,
+      290.6520690917969,
+      365.9203796386719
+    ],
+    "text": "that may indicate that this benchmark is not reliable. On WinoGrande, the performance does not correlate as well with training perplexity: the LLaMA-33B and LLaMA-65B have similar performance during the training.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.995940399169921,
+    "page_num": 6
+  },
+  {
+    "bbox": [
+      70.86599731445312,
+      382.0179443359375,
+      204.7164306640625,
+      392.7656555175781
+    ],
+    "text": "4 Instruction Finetuning",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 11.9552001953125,
+    "page_num": 6
+  },
+  {
+    "bbox": [
+      70.86599731445312,
+      405.8846435546875,
+      290.9410705566406,
+      551.12939453125
+    ],
+    "text": "In this section, we show that briefly finetuning on instructions data rapidly leads to improvements on MMLU. Although the non-finetuned version of LLaMA-65B is already able to follow basic in- structions, we observe that a very small amount of finetuning improves the performance on MMLU, and further improves the ability of the model to follow instructions. Since this is not the focus of this paper, we only conducted a single experiment following the same protocol as  Chung et al.  ( 2022 ) to train an instruct model, LLaMA-I.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.928067461649578,
+    "page_num": 6
+  },
+  {
+    "bbox": [
+      110.4020004272461,
+      570.013671875,
+      249.6020965576172,
+      647.5123901367188
+    ],
+    "text": "OPT 30B 26.1 GLM 120B 44.8 PaLM 62B 55.1 PaLM-cont 62B 62.8 Chinchilla 70B 67.5 LLaMA 65B 63.4",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 6
+  },
+  {
+    "bbox": [
+      110.4020004272461,
+      656.78662109375,
+      249.6021270751953,
+      720.7354125976562
+    ],
+    "text": "OPT-IML-Max 30B 43.2 Flan-T5-XXL 11B 55.1 Flan-PaLM 62B 59.6 Flan-PaLM-cont 62B 66.1 LLaMA-I 65B 68.9",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 6
+  },
+  {
+    "bbox": [
+      70.55699920654297,
+      736.65283203125,
+      290.88140869140625,
+      769.5889282226562
+    ],
+    "text": "Table 10:  Instruction finetuning – MMLU (5-shot). Comparison of models of moderate size with and with- out instruction finetuning on MMLU.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 6
+  },
+  {
+    "bbox": [
+      306.1419982910156,
+      301.97064208984375,
+      526.3173828125,
+      501.412353515625
+    ],
+    "text": "In Table  10 , we report the results of our instruct model LLaMA-I on MMLU and compare with ex- isting instruction finetuned models of moderate sizes, namely, OPT-IML ( Iyer et al. ,  2022 ) and the Flan-PaLM series ( Chung et al. ,  2022 ). All the re- ported numbers are from the corresponding papers. Despite the simplicity of the instruction finetuning approach used here, we reach 68.9% on MMLU. LLaMA-I (65B) outperforms on MMLU existing instruction finetuned models of moderate sizes, but are still far from the state-of-the-art, that is 77.4 for GPT  code-davinci-002  on MMLU (numbers taken from  Iyer et al.  ( 2022 )). The details of the performance on MMLU on the 57 tasks can be found in Table  16  of the appendix.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.923734982808432,
+    "page_num": 6
+  },
+  {
+    "bbox": [
+      306.1419982910156,
+      528.5929565429688,
+      498.034912109375,
+      539.3406982421875
+    ],
+    "text": "5 Bias, Toxicity and Misinformation",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 11.9552001953125,
+    "page_num": 6
+  },
+  {
+    "bbox": [
+      305.6289978027344,
+      560.3896484375,
+      526.3173828125,
+      773.3804321289062
+    ],
+    "text": "Large language models have been showed to re- produce and amplify biases that are existing in the training data ( Sheng et al. ,  2019 ;  Kurita et al. , 2019 ), and to generate toxic or offensive con- tent ( Gehman et al. ,  2020 ). As our training dataset contains a large proportion of data from the Web, we believe that it is crucial to determine the po- tential for our models to generate such content. To understand the potential harm of LLaMA-65B, we evaluate on different benchmarks that measure toxic content production and stereotypes detection. While we have selected some of the standard bench- marks that are used by the language model com- munity to indicate some of the issues with these models, these evaluations are not sufficient to fully understand the risks associated with these models.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.958627877412018,
+    "page_num": 6
+  },
+  {
+    "bbox": [
+      85.04602813720703,
+      185.32467651367188,
+      226.21112060546875,
+      202.5686492919922
+    ],
+    "text": "0 250 500 750 1000 1250 1500 20",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 6.212499618530273,
+    "page_num": 7
+  },
+  {
+    "bbox": [
+      85.04602813720703,
+      165.93463134765625,
+      92.94832611083984,
+      176.47103881835938
+    ],
+    "text": "30",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 6.212499618530273,
+    "page_num": 7
+  },
+  {
+    "bbox": [
+      85.04602813720703,
+      146.54457092285156,
+      92.94832611083984,
+      157.0809783935547
+    ],
+    "text": "40",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 6.212499618530273,
+    "page_num": 7
+  },
+  {
+    "bbox": [
+      85.04602813720703,
+      127.15453338623047,
+      92.94832611083984,
+      137.69093322753906
+    ],
+    "text": "50",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 6.212499618530273,
+    "page_num": 7
+  },
+  {
+    "bbox": [
+      85.04602813720703,
+      107.76447296142578,
+      92.94832611083984,
+      118.30087280273438
+    ],
+    "text": "60",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 6.212499618530273,
+    "page_num": 7
+  },
+  {
+    "bbox": [
+      85.04602813720703,
+      88.3744125366211,
+      92.94832611083984,
+      98.91081237792969
+    ],
+    "text": "70",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 6.212499618530273,
+    "page_num": 7
+  },
+  {
+    "bbox": [
+      71.81588745117188,
+      120.51284790039062,
+      84.4595718383789,
+      154.68658447265625
+    ],
+    "text": "Accuracy",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 7.454999923706055,
+    "page_num": 7
+  },
+  {
+    "bbox": [
+      142.48931884765625,
+      71.81430053710938,
+      174.20291137695312,
+      84.4579849243164
+    ],
+    "text": "TriviaQA",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 7.454999923706055,
+    "page_num": 7
+  },
+  {
+    "bbox": [
+      231.90953063964844,
+      185.32467651367188,
+      373.0745849609375,
+      202.5686492919922
+    ],
+    "text": "0 250 500 750 1000 1250 1500 50",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 6.212499618530273,
+    "page_num": 7
+  },
+  {
+    "bbox": [
+      231.90953063964844,
+      170.68629455566406,
+      239.8118438720703,
+      181.2227020263672
+    ],
+    "text": "55",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 6.212499618530273,
+    "page_num": 7
+  },
+  {
+    "bbox": [
+      231.90953063964844,
+      156.04791259765625,
+      239.8118438720703,
+      166.58432006835938
+    ],
+    "text": "60",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 6.212499618530273,
+    "page_num": 7
+  },
+  {
+    "bbox": [
+      231.90953063964844,
+      141.40953063964844,
+      239.8118438720703,
+      151.94593811035156
+    ],
+    "text": "65",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 6.212499618530273,
+    "page_num": 7
+  },
+  {
+    "bbox": [
+      231.90953063964844,
+      126.7711410522461,
+      239.8118438720703,
+      137.3075408935547
+    ],
+    "text": "70",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 6.212499618530273,
+    "page_num": 7
+  },
+  {
+    "bbox": [
+      231.90953063964844,
+      112.13277435302734,
+      239.8118438720703,
+      122.66917419433594
+    ],
+    "text": "75",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 6.212499618530273,
+    "page_num": 7
+  },
+  {
+    "bbox": [
+      231.90953063964844,
+      97.49437713623047,
+      239.8118438720703,
+      108.03077697753906
+    ],
+    "text": "80",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 6.212499618530273,
+    "page_num": 7
+  },
+  {
+    "bbox": [
+      231.90953063964844,
+      82.85601043701172,
+      239.8118438720703,
+      93.39241027832031
+    ],
+    "text": "85",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 6.212499618530273,
+    "page_num": 7
+  },
+  {
+    "bbox": [
+      285.13995361328125,
+      71.81430053710938,
+      324.1817626953125,
+      84.4579849243164
+    ],
+    "text": "HellaSwag",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 7.454999923706055,
+    "page_num": 7
+  },
+  {
+    "bbox": [
+      382.7237854003906,
+      185.32467651367188,
+      519.9381103515625,
+      202.5686492919922
+    ],
+    "text": "0 250 500 750 1000 1250 1500 0",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 6.212499618530273,
+    "page_num": 7
+  },
+  {
+    "bbox": [
+      382.7237854003906,
+      172.07928466796875,
+      386.6749267578125,
+      182.61569213867188
+    ],
+    "text": "5",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 6.212499618530273,
+    "page_num": 7
+  },
+  {
+    "bbox": [
+      378.77301025390625,
+      158.83387756347656,
+      386.67529296875,
+      169.3702850341797
+    ],
+    "text": "10",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 6.212499618530273,
+    "page_num": 7
+  },
+  {
+    "bbox": [
+      378.77301025390625,
+      145.58848571777344,
+      386.67529296875,
+      156.12489318847656
+    ],
+    "text": "15",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 6.212499618530273,
+    "page_num": 7
+  },
+  {
+    "bbox": [
+      378.77301025390625,
+      132.34307861328125,
+      386.67529296875,
+      142.87948608398438
+    ],
+    "text": "20",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 6.212499618530273,
+    "page_num": 7
+  },
+  {
+    "bbox": [
+      378.77301025390625,
+      119.09769439697266,
+      386.67529296875,
+      129.63409423828125
+    ],
+    "text": "25",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 6.212499618530273,
+    "page_num": 7
+  },
+  {
+    "bbox": [
+      378.77301025390625,
+      105.85228729248047,
+      386.67529296875,
+      116.38868713378906
+    ],
+    "text": "30",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 6.212499618530273,
+    "page_num": 7
+  },
+  {
+    "bbox": [
+      378.77301025390625,
+      92.60688018798828,
+      386.67529296875,
+      103.14328002929688
+    ],
+    "text": "35",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 6.212499618530273,
+    "page_num": 7
+  },
+  {
+    "bbox": [
+      419.15618896484375,
+      71.81430053710938,
+      483.8879089355469,
+      84.4579849243164
+    ],
+    "text": "NaturalQuestions",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 7.454999923706055,
+    "page_num": 7
+  },
+  {
+    "bbox": [
+      95.3209228515625,
+      328.054931640625,
+      226.21112060546875,
+      348.6115417480469
+    ],
+    "text": "0 250 500 750 1000 1250 1500 Billion   of   tokens",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 6.833749771118164,
+    "page_num": 7
+  },
+  {
+    "bbox": [
+      85.04602813720703,
+      321.3473815917969,
+      92.94832611083984,
+      331.8837585449219
+    ],
+    "text": "40",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 6.212499618530273,
+    "page_num": 7
+  },
+  {
+    "bbox": [
+      85.04602813720703,
+      304.8998107910156,
+      92.94832611083984,
+      315.4361877441406
+    ],
+    "text": "42",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 6.212499618530273,
+    "page_num": 7
+  },
+  {
+    "bbox": [
+      85.04602813720703,
+      288.4522399902344,
+      92.94832611083984,
+      298.9886169433594
+    ],
+    "text": "44",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 6.212499618530273,
+    "page_num": 7
+  },
+  {
+    "bbox": [
+      85.04602813720703,
+      272.004638671875,
+      92.94832611083984,
+      282.541015625
+    ],
+    "text": "46",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 6.212499618530273,
+    "page_num": 7
+  },
+  {
+    "bbox": [
+      85.04602813720703,
+      255.5570526123047,
+      92.94832611083984,
+      266.09344482421875
+    ],
+    "text": "48",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 6.212499618530273,
+    "page_num": 7
+  },
+  {
+    "bbox": [
+      85.04602813720703,
+      239.10948181152344,
+      92.94832611083984,
+      249.64588928222656
+    ],
+    "text": "50",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 6.212499618530273,
+    "page_num": 7
+  },
+  {
+    "bbox": [
+      85.04602813720703,
+      222.6619110107422,
+      92.94832611083984,
+      233.1983184814453
+    ],
+    "text": "52",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 6.212499618530273,
+    "page_num": 7
+  },
+  {
+    "bbox": [
+      71.81588745117188,
+      256.5355529785156,
+      84.4595718383789,
+      290.7092590332031
+    ],
+    "text": "Accuracy",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 7.454999923706055,
+    "page_num": 7
+  },
+  {
+    "bbox": [
+      148.84742736816406,
+      207.83700561523438,
+      166.74688720703125,
+      220.48068237304688
+    ],
+    "text": "SIQA",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 7.454999923706055,
+    "page_num": 7
+  },
+  {
+    "bbox": [
+      242.18441772460938,
+      328.054931640625,
+      373.0745849609375,
+      348.6115417480469
+    ],
+    "text": "0 250 500 750 1000 1250 1500 Billion   of   tokens",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 6.833749771118164,
+    "page_num": 7
+  },
+  {
+    "bbox": [
+      231.90953063964844,
+      321.3473815917969,
+      239.8118438720703,
+      331.8837585449219
+    ],
+    "text": "50",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 6.212499618530273,
+    "page_num": 7
+  },
+  {
+    "bbox": [
+      231.90953063964844,
+      303.7943420410156,
+      239.8118438720703,
+      314.3307189941406
+    ],
+    "text": "55",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 6.212499618530273,
+    "page_num": 7
+  },
+  {
+    "bbox": [
+      231.90953063964844,
+      286.2413330078125,
+      239.8118438720703,
+      296.7777099609375
+    ],
+    "text": "60",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 6.212499618530273,
+    "page_num": 7
+  },
+  {
+    "bbox": [
+      231.90953063964844,
+      268.6883239746094,
+      239.8118438720703,
+      279.2247009277344
+    ],
+    "text": "65",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 6.212499618530273,
+    "page_num": 7
+  },
+  {
+    "bbox": [
+      231.90953063964844,
+      251.13526916503906,
+      239.8118438720703,
+      261.6716613769531
+    ],
+    "text": "70",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 6.212499618530273,
+    "page_num": 7
+  },
+  {
+    "bbox": [
+      231.90953063964844,
+      233.58226013183594,
+      239.8118438720703,
+      244.11866760253906
+    ],
+    "text": "75",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 6.212499618530273,
+    "page_num": 7
+  },
+  {
+    "bbox": [
+      231.90953063964844,
+      216.0292510986328,
+      239.8118438720703,
+      226.56565856933594
+    ],
+    "text": "80",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 6.212499618530273,
+    "page_num": 7
+  },
+  {
+    "bbox": [
+      281.64544677734375,
+      207.83700561523438,
+      327.83660888671875,
+      220.48068237304688
+    ],
+    "text": "WinoGrande",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 7.454999923706055,
+    "page_num": 7
+  },
+  {
+    "bbox": [
+      389.04791259765625,
+      328.054931640625,
+      519.9381103515625,
+      348.6115417480469
+    ],
+    "text": "0 250 500 750 1000 1250 1500 Billion   of   tokens",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 6.833749771118164,
+    "page_num": 7
+  },
+  {
+    "bbox": [
+      372.8420104980469,
+      321.3473815917969,
+      386.6710205078125,
+      331.8837585449219
+    ],
+    "text": "65.0",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 6.212499618530273,
+    "page_num": 7
+  },
+  {
+    "bbox": [
+      372.8420104980469,
+      307.3907165527344,
+      386.6710205078125,
+      317.9270935058594
+    ],
+    "text": "67.5",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 6.212499618530273,
+    "page_num": 7
+  },
+  {
+    "bbox": [
+      372.8420104980469,
+      293.43402099609375,
+      386.6710205078125,
+      303.97039794921875
+    ],
+    "text": "70.0",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 6.212499618530273,
+    "page_num": 7
+  },
+  {
+    "bbox": [
+      372.8420104980469,
+      279.47735595703125,
+      386.6710205078125,
+      290.01373291015625
+    ],
+    "text": "72.5",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 6.212499618530273,
+    "page_num": 7
+  },
+  {
+    "bbox": [
+      372.8420104980469,
+      265.5206604003906,
+      386.6710205078125,
+      276.0570373535156
+    ],
+    "text": "75.0",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 6.212499618530273,
+    "page_num": 7
+  },
+  {
+    "bbox": [
+      372.8420104980469,
+      251.56398010253906,
+      386.6710205078125,
+      262.1003723144531
+    ],
+    "text": "77.5",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 6.212499618530273,
+    "page_num": 7
+  },
+  {
+    "bbox": [
+      372.8420104980469,
+      237.60731506347656,
+      386.6710205078125,
+      248.1437225341797
+    ],
+    "text": "80.0",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 6.212499618530273,
+    "page_num": 7
+  },
+  {
+    "bbox": [
+      372.8420104980469,
+      223.65061950683594,
+      386.6710205078125,
+      234.18702697753906
+    ],
+    "text": "82.5",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 6.212499618530273,
+    "page_num": 7
+  },
+  {
+    "bbox": [
+      442.69573974609375,
+      207.83700561523438,
+      460.3566589355469,
+      220.48068237304688
+    ],
+    "text": "PIQA",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 7.454999923706055,
+    "page_num": 7
+  },
+  {
+    "bbox": [
+      471.9546813964844,
+      275.64666748046875,
+      506.4340515136719,
+      322.6426696777344
+    ],
+    "text": "LLaMA   7B LLaMA   13B LLaMA   33B LLaMA   65B Chinchilla",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 6.212499618530273,
+    "page_num": 7
+  },
+  {
+    "bbox": [
+      74.73100280761719,
+      362.642822265625,
+      517.4588623046875,
+      371.6689453125
+    ],
+    "text": "Figure 2:  Evolution of performance on question answering and common sense reasoning during training.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 7
+  },
+  {
+    "bbox": [
+      70.86599731445312,
+      396.46075439453125,
+      193.5933837890625,
+      406.2680358886719
+    ],
+    "text": "5.1 RealToxicityPrompts",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 7
+  },
+  {
+    "bbox": [
+      69.41500091552734,
+      415.54266357421875,
+      291.0426330566406,
+      751.2194213867188
+    ],
+    "text": "Language models can generate toxic language, e.g., insults, hate speech or threats. There is a very large range of toxic content that a model can generate, making a thorough evaluation challenging. Several recent work ( Zhang et al. ,  2022 ;  Hoffmann et al. , 2022 ) have considered the RealToxicityPrompts benchmark ( Gehman et al. ,  2020 ) as an indicator of how toxic is their model. RealToxicityPrompts consists of about  100 k prompts that the model must complete; then a toxicity score is automatically evaluated by making a request to PerspectiveAPI   3 . We do not have control over the pipeline used by the third-party PerspectiveAPI, making comparison with previous models difficult. For each of the  100 k prompts, we greedily gen- erate with our models, and measure their toxic- ity score. The score per prompt ranges from 0 (non-toxic) to 1 (toxic). In Table  11 , we report our averaged score on basic and respectful prompt cat- egories of RealToxicityPrompts. These scores are “comparable” with what we observe in the litera- ture (e.g., 0.087 for Chinchilla) but the method- ologies differ between these work and ours (in terms of sampling strategy, number of prompts and time of API). We observe that toxicity increases",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.815539529588488,
+    "page_num": 7
+  },
+  {
+    "bbox": [
+      83.51899719238281,
+      763.1622314453125,
+      208.05239868164062,
+      772.8172607421875
+    ],
+    "text": "3 https://perspectiveapi.com/",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 7.4720001220703125,
+    "page_num": 7
+  },
+  {
+    "bbox": [
+      414.135009765625,
+      399.04266357421875,
+      497.14227294921875,
+      408.7953796386719
+    ],
+    "text": "Basic Respectful",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 7
+  },
+  {
+    "bbox": [
+      333.4110107421875,
+      438.39263916015625,
+      369.1601257324219,
+      448.1453552246094
+    ],
+    "text": "LLaMA",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 7
+  },
+  {
+    "bbox": [
+      383.8420104980469,
+      418.0686340332031,
+      486.08258056640625,
+      468.4693603515625
+    ],
+    "text": "7B 0.106 0.081 13B 0.104 0.095 33B 0.107 0.087 65B 0.128 0.141",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 7
+  },
+  {
+    "bbox": [
+      304.8169860839844,
+      484.38580322265625,
+      526.0662841796875,
+      565.1428833007812
+    ],
+    "text": "Table 11:  RealToxicityPrompts.  We run a greedy de- coder on the 100k prompts from this benchmark. The “respectful” versions are prompts starting with “Com- plete the following sentence in a polite, respectful, and unbiased manner:”, and “Basic” is without it. Scores were obtained using the PerplexityAPI, with higher score indicating more toxic generations.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 7
+  },
+  {
+    "bbox": [
+      305.7489929199219,
+      641.6846313476562,
+      526.2249145507812,
+      773.3804321289062
+    ],
+    "text": "with the size of the model, especially for Respect- ful prompts. This was also observed in previous work ( Zhang et al. ,  2022 ), with the notable excep- tion of  Hoffmann et al.  ( 2022 ) where they do not see a difference between Chinchilla and Gopher, despite different sizes. This could be explained by the fact that the larger model, Gopher, has worse performance than Chinchilla, suggesting that the relation between toxicity and model size may only apply within a model family.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.976968129475912,
+    "page_num": 7
+  },
+  {
+    "bbox": [
+      179.656005859375,
+      77.87664031982422,
+      289.9688720703125,
+      87.62937927246094
+    ],
+    "text": "LLaMA GPT3 OPT",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 8
+  },
+  {
+    "bbox": [
+      70.86599731445312,
+      96.771728515625,
+      289.21624755859375,
+      215.04942321777344
+    ],
+    "text": "Gender 70.6 62.6 65.7 Religion 79.0 73.3 68.6 Race/Color 57.0 64.7 68.6 Sexual orientation 81.0 76.2 78.6 Age 70.1 64.4 67.8 Nationality 64.2 61.6 62.9 Disability 66.7 76.7 76.7 Physical appearance 77.8 74.6 76.2 Socioeconomic status 71.5 73.8 76.2",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 8
+  },
+  {
+    "bbox": [
+      70.86599731445312,
+      224.19171142578125,
+      289.21624755859375,
+      234.0753631591797
+    ],
+    "text": "Average 66.6 67.2 69.5",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 8
+  },
+  {
+    "bbox": [
+      70.55699920654297,
+      249.99183654785156,
+      290.78924560546875,
+      282.928955078125
+    ],
+    "text": "Table 12:  CrowS-Pairs.  We compare the level of bi- ases contained in LLaMA-65B with OPT-175B and GPT3-175B. Higher score indicates higher bias.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 8
+  },
+  {
+    "bbox": [
+      70.86599731445312,
+      320.05474853515625,
+      154.986083984375,
+      329.8620300292969
+    ],
+    "text": "5.2 CrowS-Pairs",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 8
+  },
+  {
+    "bbox": [
+      70.35299682617188,
+      339.0776672363281,
+      291.04150390625,
+      566.3303833007812
+    ],
+    "text": "We evaluate the biases in our model on the CrowS- Pairs ( Nangia et al. ,  2020 ). This dataset allows to measure biases in 9 categories: gender, religion, race/color, sexual orientation, age, nationality, dis- ability, physical appearance and socioeconomic sta- tus. Each example is composed of a stereotype and an anti-stereotype, we measure the model prefer- ence for the stereotypical sentence using the per- plexity of both sentences in a zero-shot setting. Higher scores thus indicate higher bias. We com- pare with GPT-3 and OPT-175B in Table  12 . LLaMA compares slightly favorably to both models on average. Our model is particularly bi- ased in the religion category (+10% compared to OPT-175B), followed by age and gender. We ex- pect these biases to come from CommonCrawl de- spite multiple filtering steps.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.95878729612931,
+    "page_num": 8
+  },
+  {
+    "bbox": [
+      70.86599731445312,
+      581.3017578125,
+      155.82608032226562,
+      591.1090698242188
+    ],
+    "text": "5.3 WinoGender",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 8
+  },
+  {
+    "bbox": [
+      69.41500091552734,
+      600.3246459960938,
+      290.9492492675781,
+      773.3804321289062
+    ],
+    "text": "To further investigate the biases of our model on the gender category, we look at the WinoGender benchmark ( Rudinger et al. ,  2018 ), a co-reference resolution dataset. WinoGender is made of Wino- grad schema, and biases are evaluated by determin- ing if a model co-reference resolution performance is impacted by the gender of the pronoun. More precisely, each sentence has three men- tions: an “occupation”, a “participant”, and a “pronoun” where the pronoun is co-referencing either the occupation or participant. We prompt the model to determine the co-reference relation and measure if it does so correctly according to",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.95528512842515,
+    "page_num": 8
+  },
+  {
+    "bbox": [
+      304.6910095214844,
+      74.42864227294922,
+      526.5917358398438,
+      602.4133911132812
+    ],
+    "text": "the context of the sentence. The goal is to reveal if societal biases associated with occupations have been captured by the model. For example, a sentence in the WinoGender dataset is “The nurse notified the patient that his shift would be ending in an hour.”, which is followed by  ‘His’ refers to . We then compare the perplexity of the continuations  the nurse  and  the patient  to per- form co-reference resolution with the model. We evaluate the performance when using 3 pronouns: “her/her/she”, “his/him/he” and “their/them/some- one” (the different choices corresponding to the grammatical function of the pronoun. In Table  13 , we report the co-reference scores for the three different pronouns contained in the dataset. We observe that our model is significantly better at performing co-reference resolution for the “their/them/someone” pronouns than for the “her/her/she” and “his/him/he” pronouns. A simi- lar observation was made in previous work ( Rae et al. ,  2021 ;  Hoffmann et al. ,  2022 ), and is likely indicative of gender bias. Indeed, in the case of the “her/her/she” and “his/him/he” pronouns, the model is probably using the majority gender of the occu- pation to perform co-reference resolution, instead of using the evidence of the sentence. To further investigate this hypothesis, we look at the set of “gotcha” cases for the “her/her/she” and “his/him/he” pronouns in the WinoGender dataset. Theses cases correspond to sentences in which the pronoun does not match the majority gender of the occupation, and the occupation is the correct answer. In Table  13 , we observe that our model, LLaMA-65B, makes more errors on the gotcha examples, clearly showing that it capture societal biases related to gender and occupation. The drop of performance exists for “her/her/she” and “his/him/he” pronouns, which is indicative of biases regardless of gender.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.969817429258113,
+    "page_num": 8
+  },
+  {
+    "bbox": [
+      306.1419982910156,
+      620.7387084960938,
+      386.8583679199219,
+      630.5460205078125
+    ],
+    "text": "5.4 TruthfulQA",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 8
+  },
+  {
+    "bbox": [
+      305.7489929199219,
+      641.6846313476562,
+      526.3174438476562,
+      773.3804321289062
+    ],
+    "text": "TruthfulQA ( Lin et al. ,  2021 ) aims to measure the truthfulness of a model, i.e., its ability to identify when a claim is true.  Lin et al.  ( 2021 ) consider the definition of “true” in the sense of “literal truth about the real world”, and not claims that are only true in the context of a belief system or tradition. This benchmark can evaluate the risks of a model to generate misinformation or false claims. The questions are written in diverse style, cover 38 cat- egories and are designed to be adversarial.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.96215428246392,
+    "page_num": 8
+  },
+  {
+    "bbox": [
+      179.9709930419922,
+      77.87664031982422,
+      288.5710754394531,
+      87.62937927246094
+    ],
+    "text": "7B 13B 33B 65B",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 9
+  },
+  {
+    "bbox": [
+      76.84400177001953,
+      96.90264129638672,
+      289.01507568359375,
+      106.65538024902344
+    ],
+    "text": "All 66.0 64.7 69.0 77.5",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 9
+  },
+  {
+    "bbox": [
+      76.84400177001953,
+      115.92961883544922,
+      289.01507568359375,
+      152.78038024902344
+    ],
+    "text": "her/her/she 65.0 66.7 66.7 78.8 his/him/he 60.8 62.5 62.1 72.1 their/them/someone 72.1 65.0 78.3 81.7",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 9
+  },
+  {
+    "bbox": [
+      76.84400177001953,
+      162.05364990234375,
+      289.02490234375,
+      185.3553924560547
+    ],
+    "text": "her/her/she ( gotcha ) 64.2 65.8 61.7 75.0 his/him/he ( gotcha ) 55.0 55.8 55.8 63.3",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 9
+  },
+  {
+    "bbox": [
+      70.50699615478516,
+      201.27284240722656,
+      290.7904052734375,
+      270.07501220703125
+    ],
+    "text": "Table 13:  WinoGender.  Co-reference resolution ac- curacy for the LLaMA models, for different pronouns (“her/her/she” and “his/him/he”). We observe that our models obtain better performance on “their/them/some- one’ pronouns than on “her/her/she” and “his/him/he’, which is likely indicative of biases.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 9
+  },
+  {
+    "bbox": [
+      171.97000122070312,
+      289.79266357421875,
+      274.0573425292969,
+      299.5453796386719
+    ],
+    "text": "Truthful Truthful*Inf",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 9
+  },
+  {
+    "bbox": [
+      85.94400024414062,
+      308.81964111328125,
+      256.52850341796875,
+      345.6703796386719
+    ],
+    "text": "GPT-3 1.3B 0.31 0.19 6B 0.22 0.19 175B 0.28 0.25",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 9
+  },
+  {
+    "bbox": [
+      85.94400024414062,
+      375.26763916015625,
+      121.69312286376953,
+      385.0203552246094
+    ],
+    "text": "LLaMA",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 9
+  },
+  {
+    "bbox": [
+      141.8300018310547,
+      354.9436340332031,
+      256.5282287597656,
+      405.3443603515625
+    ],
+    "text": "7B 0.33 0.29 13B 0.47 0.41 33B 0.52 0.48 65B 0.57 0.53",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 9
+  },
+  {
+    "bbox": [
+      70.55699920654297,
+      421.2618103027344,
+      290.7904052734375,
+      478.1078796386719
+    ],
+    "text": "Table 14:  TruthfulQA.  We report the fraction of truth- ful and truthful*informative answers, as scored by spe- cially trained models via the OpenAI API. We follow the QA prompt style used in  Ouyang et al.  ( 2022 ), and report the performance of GPT-3 from the same paper.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 9
+  },
+  {
+    "bbox": [
+      70.86599731445312,
+      503.34564208984375,
+      291.04107666015625,
+      594.3933715820312
+    ],
+    "text": "In Table  14 , we report the performance of our models on both questions to measure truthful mod- els and the intersection of truthful and informative. Compared to GPT-3, our model scores higher in both categories, but the rate of correct answers is still low, showing that our model is likely to hallu- cinate incorrect answers.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.956640243530273,
+    "page_num": 9
+  },
+  {
+    "bbox": [
+      70.86599731445312,
+      608.0989379882812,
+      176.5021514892578,
+      618.8466796875
+    ],
+    "text": "6 Carbon footprint",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 11.9552001953125,
+    "page_num": 9
+  },
+  {
+    "bbox": [
+      70.50599670410156,
+      630.253662109375,
+      291.0454406738281,
+      749.2261962890625
+    ],
+    "text": "The training of our models have consumed a mas- sive quantity of energy, responsible for the emis- sion of carbon dioxide. We follow the recent liter- ature on the subject and breakdown both the total energy consumption and the resulting carbon foot- print in Table  15 . We follow a formula for  Wu et al. ( 2022 ) to estimate the Watt-hour, Wh, needed to train a model, as well as the tons of carbon emis- sions, tCO 2 eq. For the Wh, we use the formula:",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.744153708219528,
+    "page_num": 9
+  },
+  {
+    "bbox": [
+      70.86599731445312,
+      762.8422241210938,
+      291.79168701171875,
+      773.3804321289062
+    ],
+    "text": "Wh  =  GPU-h × ( GPU power consumption ) × PUE ,",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 9
+  },
+  {
+    "bbox": [
+      305.7489929199219,
+      74.42864227294922,
+      526.2246704101562,
+      260.3213806152344
+    ],
+    "text": "where we set the Power Usage Effectiveness (PUE) at  1 . 1 . The resulting carbon emission depends on the location of the data center used to train the net- work. For instance, BLOOM uses a grid that emits 0.057 kg CO 2 eq/KWh leading to 27 tCO 2 eq and OPT a grid that emits 0.231 kg CO 2 eq/KWh, lead- ing to 82 tCO 2 eq. In this study, we are interested in comparing the cost in carbon emission of training of these models if they were trained in the same data center. Hence, we do not take the location of data center in consideration, and use, instead, the US national average carbon intensity factor of 0.385 kg CO 2 eq/KWh. This leads to the following formula for the tons of carbon emissions:",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.394153135163444,
+    "page_num": 9
+  },
+  {
+    "bbox": [
+      358.0639953613281,
+      274.82720947265625,
+      472.48974609375,
+      286.1922607421875
+    ],
+    "text": "tCO 2 eq  =  MWh  ×  0 . 385 .",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.615199613571168,
+    "page_num": 9
+  },
+  {
+    "bbox": [
+      305.6289978027344,
+      300.65765380859375,
+      526.3189697265625,
+      459.45135498046875
+    ],
+    "text": "We apply the same formula to OPT and BLOOM for fair comparison. For OPT, we assume training required 34 days on 992 A100-80B (see their logs 4 ). Finally, we estimate that we used 2048 A100-80GB for a period of approximately 5 months to develop our models. This means that developing these mod- els would have cost around 2,638 MWh under our assumptions, and a total emission of 1,015 tCO 2 eq. We hope that releasing these models will help to reduce future carbon emission since the training is already done, and some of the models are relatively small and can be run on a single GPU.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.503907263278961,
+    "page_num": 9
+  },
+  {
+    "bbox": [
+      306.1419982910156,
+      473.2319030761719,
+      392.6856994628906,
+      483.9796142578125
+    ],
+    "text": "7 Related work",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 11.9552001953125,
+    "page_num": 9
+  },
+  {
+    "bbox": [
+      305.7820129394531,
+      495.3096923828125,
+      526.2236328125,
+      640.6853637695312
+    ],
+    "text": "Language models are probability distributions over sequences of words, tokens or charac- ters ( Shannon ,  1948 ,  1951 ). This task, often framed as next token prediction, has long been considered a core problem in natural language processing ( Bahl et al. ,  1983 ;  Brown et al. ,  1990 ). Because  Turing ( 1950 ) proposed to measure machine intelligence by using language through the “imitation game”, language modeling has been proposed as a bench- mark to measure progress toward artificial intelli- gence ( Mahoney ,  1999 ).",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.930857918479226,
+    "page_num": 9
+  },
+  {
+    "bbox": [
+      305.7489929199219,
+      652.333740234375,
+      526.22412109375,
+      743.5123901367188
+    ],
+    "text": "Architecture. Traditionally, language models were based on  n -gram count statistics ( Bahl et al. ,  1983 ), and various smoothing techniques were proposed to improve the estimation of rare events ( Katz ,  1987 ;  Kneser and Ney ,  1995 ). In the past two decades, neural networks have been suc- cessfully applied to the language modelling task,",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.947482239116322,
+    "page_num": 9
+  },
+  {
+    "bbox": [
+      306.1419982910156,
+      753.19921875,
+      519.54248046875,
+      772.8172607421875
+    ],
+    "text": "4 https://github.com/facebookresearch/metaseq/ tree/main/projects/OPT/chronicles",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 7.970133463541667,
+    "page_num": 9
+  },
+  {
+    "bbox": [
+      174.9949951171875,
+      76.87963104248047,
+      502.82525634765625,
+      101.00817108154297
+    ],
+    "text": "GPU Type GPU Power GPU-hours Total power Carbon emitted consumption consumption (tCO 2 eq)",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.615199613571168,
+    "page_num": 10
+  },
+  {
+    "bbox": [
+      92.4530029296875,
+      109.45561981201172,
+      477.2170715332031,
+      132.7573699951172
+    ],
+    "text": "OPT-175B A100-80GB 400W 809,472 356 MWh 137 BLOOM-175B A100-80GB 400W 1,082,880 475 MWh 183",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 10
+  },
+  {
+    "bbox": [
+      92.4530029296875,
+      142.03167724609375,
+      477.2170715332031,
+      192.4314422607422
+    ],
+    "text": "LLaMA-7B A100-80GB 400W 82,432 36 MWh 14 LLaMA-13B A100-80GB 400W 135,168 59 MWh 23 LLaMA-33B A100-80GB 400W 530,432 233 MWh 90 LLaMA-65B A100-80GB 400W 1,022,362 449 MWh 173",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 10
+  },
+  {
+    "bbox": [
+      70.55699920654297,
+      208.3488311767578,
+      525.0803833007812,
+      253.9359893798828
+    ],
+    "text": "Table 15:  Carbon footprint of training different models in the same data center.  We follow  Wu et al.  ( 2022 ) to compute carbon emission of training OPT, BLOOM and our models in the same data center. For the power consumption of a A100-80GB, we take the thermal design power for NVLink systems, that is 400W. We take a PUE of 1.1 and a carbon intensity factor set at the national US average of 0.385 kg CO 2 e per KWh.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.71353312333425,
+    "page_num": 10
+  },
+  {
+    "bbox": [
+      70.86599731445312,
+      273.181640625,
+      290.9413757324219,
+      377.77838134765625
+    ],
+    "text": "starting from feed forward models ( Bengio et al. , 2000 ), recurrent neural networks ( Elman ,  1990 ; Mikolov et al. ,  2010 ) and LSTMs ( Hochreiter and Schmidhuber ,  1997 ;  Graves ,  2013 ). More recently, transformer networks, based on self-attention, have led to important improvements, especially for cap- turing long range dependencies ( Vaswani et al. , 2017 ;  Radford et al. ,  2018 ;  Dai et al. ,  2019 ).",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.925665133708232,
+    "page_num": 10
+  },
+  {
+    "bbox": [
+      69.96099853515625,
+      395.6837463378906,
+      291.0480041503906,
+      773.3804321289062
+    ],
+    "text": "Scaling. There is a long history of scaling for language models, for both the model and dataset sizes.  Brants et al.  ( 2007 ) showed the benefits of using language models trained on 2 trillion tokens, resulting in 300 billion  n -grams, on the quality of machine translation. While this work relied on a simple smoothing technique, called  Stupid Backoff , Heafield et al.  ( 2013 ) later showed how to scale Kneser-Ney smoothing to Web-scale data. This allowed to train a 5-gram model on 975 billions to- kens from CommonCrawl, resulting in a model with 500 billions  n -grams ( Buck et al. ,  2014 ). Chelba et al.  ( 2013 ) introduced the  One Billion Word  benchmark, a large scale training dataset to measure the progress of language models. In the context of neural language models,  Joze- fowicz et al.  ( 2016 ) obtained state-of-the-art re- sults on the Billion Word benchmark by scaling LSTMs to 1 billion parameters. Later, scaling transformers lead to improvement on many NLP tasks. Notable models include BERT ( Devlin et al. , 2018 ), GPT-2 ( Radford et al. ,  2019 ), Megatron- LM ( Shoeybi et al. ,  2019 ), and T5 ( Raffel et al. , 2020 ). A significant breakthrough was obtained with GPT-3 ( Brown et al. ,  2020 ), a model with 175 billion parameters. This lead to a series of Large Language Models , such as Jurassic-1 ( Lieber et al. ,  2021 ), Megatron-Turing NLG ( Smith et al. ,",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.979745546976725,
+    "page_num": 10
+  },
+  {
+    "bbox": [
+      305.7820129394531,
+      273.181640625,
+      526.3175048828125,
+      459.0733642578125
+    ],
+    "text": "2022 ), Gopher ( Rae et al. ,  2021 ), Chinchilla ( Hoff- mann et al. ,  2022 ), PaLM ( Chowdhery et al. ,  2022 ), OPT ( Zhang et al. ,  2022 ), and GLM ( Zeng et al. , 2022 ).  Hestness et al.  ( 2017 ) and  Rosenfeld et al. ( 2019 ) studied the impact of scaling on the perfor- mance of deep learning models, showing the exis- tence of power laws between the model and dataset sizes and the performance of the system.  Kaplan et al.  ( 2020 ) derived power laws specifically for transformer based language models, which were later refined by  Hoffmann et al.  ( 2022 ), by adapting the learning rate schedule when scaling datasets. Finally,  Wei et al.  ( 2022 ) studied the effect of scal- ing on the abilities of large language models.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.91362469151335,
+    "page_num": 10
+  },
+  {
+    "bbox": [
+      306.1419982910156,
+      471.5559387207031,
+      381.2087097167969,
+      482.30364990234375
+    ],
+    "text": "8 Conclusion",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 11.9552001953125,
+    "page_num": 10
+  },
+  {
+    "bbox": [
+      305.7489929199219,
+      492.6436462402344,
+      526.322021484375,
+      773.3804321289062
+    ],
+    "text": "In this paper, we presented a series of language models that are released openly, and competitive with state-of-the-art foundation models. Most notably, LLaMA-13B outperforms GPT-3 while being more than 10 ×  smaller, and LLaMA-65B is competitive with Chinchilla-70B and PaLM-540B. Unlike previous studies, we show that it is possible to achieve state-of-the-art performance by training exclusively on publicly available data, without resorting to proprietary datasets. We hope that releasing these models to the research community will accelerate the development of large language models, and help efforts to improve their robust- ness and mitigate known issues such as toxicity and bias. Additionally, we observed like  Chung et al. ( 2022 ) that finetuning these models on instructions lead to promising results, and we plan to further investigate this in future work. Finally, we plan to release larger models trained on larger pretraining corpora in the future, since we have seen a constant improvement in performance as we were scaling.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.932803754453305,
+    "page_num": 10
+  },
+  {
+    "bbox": [
+      70.86599731445312,
+      73.575927734375,
+      169.6996307373047,
+      84.32364654541016
+    ],
+    "text": "Acknowledgements",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 11.9552001953125,
+    "page_num": 11
+  },
+  {
+    "bbox": [
+      70.35299682617188,
+      95.30864715576172,
+      289.51202392578125,
+      240.5533905029297
+    ],
+    "text": "We thank Daniel Haziza, Francisco Massa, Jeremy Reizenstein, Artem Korenev, and Patrick Labatut from the xformers team. We thank Susan Zhang and Stephen Roller for their support on data deduplication. We thank Luca Wehrstedt, Vegard Mella, and Pierre-Emmanuel Mazaré for their support on training stability. We thank Shubho Sengupta, Kalyan Saladi, and all the AI infra team for their support. We thank Jane Yu for her input on evaluation. We thank Yongyi Hu for his help on data collection.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.978103290904652,
+    "page_num": 11
+  },
+  {
+    "bbox": [
+      70.86599731445312,
+      266.3819580078125,
+      126.40983581542969,
+      277.1296691894531
+    ],
+    "text": "References",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 11.9552001953125,
+    "page_num": 11
+  },
+  {
+    "bbox": [
+      70.86599731445312,
+      285.5303955078125,
+      289.1368713378906,
+      338.27191162109375
+    ],
+    "text": "Jacob Austin, Augustus Odena, Maxwell Nye, Maarten Bosma, Henryk Michalewski, David Dohan, Ellen Jiang, Carrie Cai, Michael Terry, Quoc Le, and Charles Sutton. 2021. Program synthesis with large language models.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 11
+  },
+  {
+    "bbox": [
+      70.86599731445312,
+      349.224365234375,
+      290.8800964355469,
+      401.96685791015625
+    ],
+    "text": "Lalit R Bahl, Frederick Jelinek, and Robert L Mercer. 1983. A maximum likelihood approach to continu- ous speech recognition.  IEEE transactions on pat- tern analysis and machine intelligence , pages 179– 190.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 11
+  },
+  {
+    "bbox": [
+      70.86599731445312,
+      412.9193115234375,
+      290.8800964355469,
+      443.74383544921875
+    ],
+    "text": "Yoshua Bengio, Réjean Ducharme, and Pascal Vincent. 2000. A neural probabilistic language model.  Ad- vances in neural information processing systems , 13.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 11
+  },
+  {
+    "bbox": [
+      70.86598205566406,
+      454.6962890625,
+      290.79022216796875,
+      507.43780517578125
+    ],
+    "text": "Yonatan Bisk, Rowan Zellers, Jianfeng Gao, Yejin Choi, et al. 2020. Piqa: Reasoning about physi- cal commonsense in natural language. In  Proceed- ings of the AAAI conference on artificial intelligence , pages 7432–7439.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 11
+  },
+  {
+    "bbox": [
+      70.86599731445312,
+      518.3902587890625,
+      290.8800048828125,
+      571.1327514648438
+    ],
+    "text": "Sid Black, Stella Biderman, Eric Hallahan, Quentin An- thony, Leo Gao, Laurence Golding, Horace He, Con- nor Leahy, Kyle McDonell, Jason Phang, et al. 2022. Gpt-neox-20b: An open-source autoregressive lan- guage model.  arXiv preprint arXiv:2204.06745 .",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 11
+  },
+  {
+    "bbox": [
+      70.86599731445312,
+      582.085205078125,
+      290.8799743652344,
+      667.7037353515625
+    ],
+    "text": "Thorsten Brants, Ashok C. Popat, Peng Xu, Franz J. Och, and Jeffrey Dean. 2007.  Large language mod- els in machine translation . In  Proceedings of the 2007 Joint Conference on Empirical Methods in Nat- ural Language Processing and Computational Nat- ural Language Learning (EMNLP-CoNLL) , pages 858–867, Prague, Czech Republic. Association for Computational Linguistics.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 11
+  },
+  {
+    "bbox": [
+      70.86599731445312,
+      678.6561889648438,
+      290.7900390625,
+      731.3987426757812
+    ],
+    "text": "Peter F Brown, John Cocke, Stephen A Della Pietra, Vincent J Della Pietra, Frederick Jelinek, John Laf- ferty, Robert L Mercer, and Paul S Roossin. 1990. A statistical approach to machine translation.  Compu- tational linguistics , 16(2):79–85.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 11
+  },
+  {
+    "bbox": [
+      70.86598205566406,
+      742.3511962890625,
+      289.1365661621094,
+      773.1757202148438
+    ],
+    "text": "Tom B. Brown, Benjamin Mann, Nick Ryder, Melanie Subbiah, Jared Kaplan, Prafulla Dhariwal, Arvind Neelakantan, Pranav Shyam, Girish Sastry, Amanda",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 11
+  },
+  {
+    "bbox": [
+      316.6919860839844,
+      75.0701904296875,
+      526.06640625,
+      171.64764404296875
+    ],
+    "text": "Askell, Sandhini Agarwal, Ariel Herbert-Voss, Gretchen Krueger, Tom Henighan, Rewon Child, Aditya Ramesh, Daniel M. Ziegler, Jeffrey Wu, Clemens Winter, Christopher Hesse, Mark Chen, Eric Sigler, Mateusz Litwin, Scott Gray, Benjamin Chess, Jack Clark, Christopher Berner, Sam Mc- Candlish, Alec Radford, Ilya Sutskever, and Dario Amodei. 2020.  Language models are few-shot learn- ers .",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 11
+  },
+  {
+    "bbox": [
+      306.1419982910156,
+      184.3560791015625,
+      526.1560668945312,
+      215.18060302734375
+    ],
+    "text": "Christian Buck, Kenneth Heafield, and Bas Van Ooyen. 2014. N-gram counts and language models from the common crawl. In  LREC , volume 2, page 4.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 11
+  },
+  {
+    "bbox": [
+      306.1419982910156,
+      227.8890380859375,
+      526.0662841796875,
+      280.63055419921875
+    ],
+    "text": "Ciprian Chelba, Tomas Mikolov, Mike Schuster, Qi Ge, Thorsten Brants, Phillipp Koehn, and Tony Robin- son. 2013. One billion word benchmark for measur- ing progress in statistical language modeling.  arXiv preprint arXiv:1312.3005 .",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 11
+  },
+  {
+    "bbox": [
+      306.14202880859375,
+      293.3389892578125,
+      526.15625,
+      510.46429443359375
+    ],
+    "text": "Mark Chen, Jerry Tworek, Heewoo Jun, Qiming Yuan, Henrique Ponde de Oliveira Pinto, Jared Ka- plan, Harri Edwards, Yuri Burda, Nicholas Joseph, Greg Brockman, Alex Ray, Raul Puri, Gretchen Krueger, Michael Petrov, Heidy Khlaaf, Girish Sas- try, Pamela Mishkin, Brooke Chan, Scott Gray, Nick Ryder, Mikhail Pavlov, Alethea Power, Lukasz Kaiser, Mohammad Bavarian, Clemens Winter, Philippe Tillet, Felipe Petroski Such, Dave Cum- mings, Matthias Plappert, Fotios Chantzis, Eliza- beth Barnes, Ariel Herbert-Voss, William Hebgen Guss, Alex Nichol, Alex Paino, Nikolas Tezak, Jie Tang, Igor Babuschkin, Suchir Balaji, Shantanu Jain, William Saunders, Christopher Hesse, Andrew N. Carr, Jan Leike, Josh Achiam, Vedant Misra, Evan Morikawa, Alec Radford, Matthew Knight, Miles Brundage, Mira Murati, Katie Mayer, Peter Welin- der, Bob McGrew, Dario Amodei, Sam McCandlish, Ilya Sutskever, and Wojciech Zaremba. 2021. Eval- uating large language models trained on code.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 11
+  },
+  {
+    "bbox": [
+      306.14202880859375,
+      523.1727294921875,
+      526.1563720703125,
+      773.1752319335938
+    ],
+    "text": "Aakanksha Chowdhery, Sharan Narang, Jacob Devlin, Maarten Bosma, Gaurav Mishra, Adam Roberts, Paul Barham, Hyung Won Chung, Charles Sutton, Sebastian Gehrmann, Parker Schuh, Kensen Shi, Sasha Tsvyashchenko, Joshua Maynez, Abhishek Rao, Parker Barnes, Yi Tay, Noam Shazeer, Vin- odkumar Prabhakaran, Emily Reif, Nan Du, Ben Hutchinson, Reiner Pope, James Bradbury, Jacob Austin, Michael Isard, Guy Gur-Ari, Pengcheng Yin, Toju Duke, Anselm Levskaya, Sanjay Ghe- mawat, Sunipa Dev, Henryk Michalewski, Xavier Garcia, Vedant Misra, Kevin Robinson, Liam Fe- dus, Denny Zhou, Daphne Ippolito, David Luan, Hyeontaek Lim, Barret Zoph, Alexander Spiridonov, Ryan Sepassi, David Dohan, Shivani Agrawal, Mark Omernick, Andrew M. Dai, Thanumalayan Sankara- narayana Pillai, Marie Pellat, Aitor Lewkowycz, Erica Moreira, Rewon Child, Oleksandr Polozov, Katherine Lee, Zongwei Zhou, Xuezhi Wang, Bren- nan Saeta, Mark Diaz, Orhan Firat, Michele Catasta, Jason Wei, Kathy Meier-Hellstern, Douglas Eck, Jeff Dean, Slav Petrov, and Noah Fiedel. 2022. Palm: Scaling language modeling with pathways .",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 11
+  },
+  {
+    "bbox": [
+      70.86599731445312,
+      75.07037353515625,
+      290.7908935546875,
+      204.5247802734375
+    ],
+    "text": "Hyung Won Chung, Le Hou, S. Longpre, Barret Zoph, Yi Tay, William Fedus, Eric Li, Xuezhi Wang, Mostafa Dehghani, Siddhartha Brahma, Al- bert Webson, Shixiang Shane Gu, Zhuyun Dai, Mirac Suzgun, Xinyun Chen, Aakanksha Chowdh- ery, Dasha Valter, Sharan Narang, Gaurav Mishra, Adams Wei Yu, Vincent Zhao, Yanping Huang, An- drew M. Dai, Hongkun Yu, Slav Petrov, Ed Huai hsin Chi, Jeff Dean, Jacob Devlin, Adam Roberts, Denny Zhou, Quoc Le, and Jason Wei. 2022. Scal- ing instruction-finetuned language models. arXiv preprint arXiv:2210.11416 .",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 12
+  },
+  {
+    "bbox": [
+      70.86601257324219,
+      215.22320556640625,
+      290.38189697265625,
+      267.9656982421875
+    ],
+    "text": "Christopher Clark, Kenton Lee, Ming-Wei Chang, Tom Kwiatkowski, Michael Collins, and Kristina Toutanova. 2019. Boolq: Exploring the surprising difficulty of natural yes/no questions.  arXiv preprint arXiv:1905.10044 .",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 12
+  },
+  {
+    "bbox": [
+      70.86600494384766,
+      278.66314697265625,
+      290.7900695800781,
+      331.4056396484375
+    ],
+    "text": "Peter Clark, Isaac Cowhey, Oren Etzioni, Tushar Khot, Ashish Sabharwal, Carissa Schoenick, and Oyvind Tafjord. 2018. Think you have solved question an- swering? try arc, the ai2 reasoning challenge.  arXiv preprint arXiv:1803.05457 .",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 12
+  },
+  {
+    "bbox": [
+      70.86601257324219,
+      342.1040954589844,
+      290.3819580078125,
+      394.84564208984375
+    ],
+    "text": "Karl Cobbe, Vineet Kosaraju, Mohammad Bavarian, Mark Chen, Heewoo Jun, Lukasz Kaiser, Matthias Plappert, Jerry Tworek, Jacob Hilton, Reiichiro Nakano, et al. 2021. Training verifiers to solve math word problems.  arXiv preprint arXiv:2110.14168 .",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 12
+  },
+  {
+    "bbox": [
+      70.86601257324219,
+      405.5440979003906,
+      290.87994384765625,
+      458.28662109375
+    ],
+    "text": "Zihang Dai, Zhilin Yang, Yiming Yang, Jaime Car- bonell, Quoc V Le, and Ruslan Salakhutdinov. 2019. Transformer-xl: Attentive language mod- els beyond a fixed-length context. arXiv preprint arXiv:1901.02860 .",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 12
+  },
+  {
+    "bbox": [
+      70.86600494384766,
+      468.9850769042969,
+      290.88006591796875,
+      510.76763916015625
+    ],
+    "text": "Tri Dao, Daniel Y Fu, Stefano Ermon, Atri Rudra, and Christopher Ré. 2022. Flashattention: Fast and memory-efficient exact attention with io-awareness. arXiv preprint arXiv:2205.14135 .",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 12
+  },
+  {
+    "bbox": [
+      70.86601257324219,
+      521.466064453125,
+      290.79034423828125,
+      563.2496337890625
+    ],
+    "text": "Jacob Devlin, Ming-Wei Chang, Kenton Lee, and Kristina Toutanova. 2018. Bert: Pre-training of deep bidirectional transformers for language understand- ing.  arXiv preprint arXiv:1810.04805 .",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 12
+  },
+  {
+    "bbox": [
+      70.86601257324219,
+      573.9481201171875,
+      290.78753662109375,
+      593.8136596679688
+    ],
+    "text": "Jeffrey L Elman. 1990. Finding structure in time.  Cog- nitive science , 14(2):179–211.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 12
+  },
+  {
+    "bbox": [
+      70.86601257324219,
+      604.5111083984375,
+      290.8800354003906,
+      657.253662109375
+    ],
+    "text": "Daniel Fried, Armen Aghajanyan, Jessy Lin, Sida Wang, Eric Wallace, Freda Shi, Ruiqi Zhong, Wen- tau Yih, Luke Zettlemoyer, and Mike Lewis. 2022. Incoder: A generative model for code infilling and synthesis.  arXiv preprint arXiv:2204.05999 .",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 12
+  },
+  {
+    "bbox": [
+      70.86602783203125,
+      667.9520874023438,
+      290.8800048828125,
+      731.6526489257812
+    ],
+    "text": "Leo Gao, Stella Biderman, Sid Black, Laurence Gold- ing, Travis Hoppe, Charles Foster, Jason Phang, Horace He, Anish Thite, Noa Nabeshima, Shawn Presser, and Connor Leahy. 2020. The Pile: An 800gb dataset of diverse text for language modeling. arXiv preprint arXiv:2101.00027 .",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 12
+  },
+  {
+    "bbox": [
+      70.86602783203125,
+      742.35107421875,
+      290.38214111328125,
+      773.1756591796875
+    ],
+    "text": "Leo Gao, Jonathan Tow, Stella Biderman, Sid Black, Anthony DiPofi, Charles Foster, Laurence Golding, Jeffrey Hsu, Kyle McDonell, Niklas Muennighoff,",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 12
+  },
+  {
+    "bbox": [
+      316.6920471191406,
+      75.07012939453125,
+      526.1559448242188,
+      116.85364532470703
+    ],
+    "text": "Jason Phang, Laria Reynolds, Eric Tang, Anish Thite, Ben Wang, Kevin Wang, and Andy Zou. 2021. A framework for few-shot language model evalua- tion .",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 12
+  },
+  {
+    "bbox": [
+      306.1420593261719,
+      130.839111328125,
+      526.066162109375,
+      172.62261962890625
+    ],
+    "text": "Samuel Gehman, Suchin Gururangan, Maarten Sap, Yejin Choi, and Noah A Smith. 2020. Realtoxici- typrompts: Evaluating neural toxic degeneration in language models.  arXiv preprint arXiv:2009.11462 .",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 12
+  },
+  {
+    "bbox": [
+      306.14202880859375,
+      186.60906982421875,
+      524.412841796875,
+      217.4326171875
+    ],
+    "text": "Alex Graves. 2013. Generating sequences with recurrent neural networks. arXiv preprint arXiv:1308.0850 .",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 12
+  },
+  {
+    "bbox": [
+      306.1419982910156,
+      231.4190673828125,
+      526.0662231445312,
+      295.11956787109375
+    ],
+    "text": "Kenneth Heafield, Ivan Pouzyrevsky, Jonathan H Clark, and Philipp Koehn. 2013. Scalable modified kneser- ney language model estimation. In  Proceedings of the 51st Annual Meeting of the Association for Com- putational Linguistics (Volume 2: Short Papers) , pages 690–696.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 12
+  },
+  {
+    "bbox": [
+      306.1420593261719,
+      309.10601806640625,
+      526.0664672851562,
+      350.8895263671875
+    ],
+    "text": "Dan Hendrycks, Collin Burns, Steven Basart, Andy Zou, Mantas Mazeika, Dawn Song, and Jacob Stein- hardt. 2020. Measuring massive multitask language understanding.  arXiv preprint arXiv:2009.03300 .",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 12
+  },
+  {
+    "bbox": [
+      306.14202880859375,
+      364.8749694824219,
+      524.412841796875,
+      417.61749267578125
+    ],
+    "text": "Dan Hendrycks, Collin Burns, Saurav Kadavath, Akul Arora, Steven Basart, Eric Tang, Dawn Song, and Jacob Steinhardt. 2021. Measuring mathematical problem solving with the math dataset. arXiv preprint arXiv:2103.03874 .",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 12
+  },
+  {
+    "bbox": [
+      306.14202880859375,
+      431.6029357910156,
+      526.0664672851562,
+      484.345458984375
+    ],
+    "text": "Joel Hestness, Sharan Narang, Newsha Ardalani, Gre- gory Diamos, Heewoo Jun, Hassan Kianinejad, Md Patwary, Mostofa Ali, Yang Yang, and Yanqi Zhou. 2017. Deep learning scaling is predictable, empirically.  arXiv preprint arXiv:1712.00409 .",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 12
+  },
+  {
+    "bbox": [
+      306.14202880859375,
+      498.3309020996094,
+      526.1560668945312,
+      529.1554565429688
+    ],
+    "text": "Sepp Hochreiter and Jürgen Schmidhuber. 1997. Long short-term memory. Neural computation , 9(8):1735–1780.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 12
+  },
+  {
+    "bbox": [
+      306.1420593261719,
+      543.140869140625,
+      526.0663452148438,
+      639.7194213867188
+    ],
+    "text": "Jordan Hoffmann, Sebastian Borgeaud, Arthur Mensch, Elena Buchatskaya, Trevor Cai, Eliza Rutherford, Diego de Las Casas, Lisa Anne Hendricks, Johannes Welbl, Aidan Clark, Tom Hennigan, Eric Noland, Katie Millican, George van den Driessche, Bogdan Damoc, Aurelia Guy, Simon Osindero, Karen Si- monyan, Erich Elsen, Jack W. Rae, Oriol Vinyals, and Laurent Sifre. 2022.  Training compute-optimal large language models .",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 12
+  },
+  {
+    "bbox": [
+      306.1420593261719,
+      653.7048950195312,
+      526.156005859375,
+      717.4064331054688
+    ],
+    "text": "Srinivasan Iyer, Xi Victoria Lin, Ramakanth Pasunuru, Todor Mihaylov, Dániel Simig, Ping Yu, Kurt Shus- ter, Tianlu Wang, Qing Liu, Punit Singh Koura, et al. 2022. Opt-iml: Scaling language model instruc- tion meta learning through the lens of generalization. arXiv preprint arXiv:2212.12017 .",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 12
+  },
+  {
+    "bbox": [
+      306.14208984375,
+      731.391845703125,
+      526.06640625,
+      773.1754150390625
+    ],
+    "text": "Mandar Joshi, Eunsol Choi, Daniel S Weld, and Luke Zettlemoyer. 2017. Triviaqa: A large scale distantly supervised challenge dataset for reading comprehen- sion.  arXiv preprint arXiv:1705.03551 .",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 12
+  },
+  {
+    "bbox": [
+      70.86599731445312,
+      75.07037353515625,
+      289.1372375488281,
+      116.85388946533203
+    ],
+    "text": "Rafal Jozefowicz, Oriol Vinyals, Mike Schuster, Noam Shazeer, and Yonghui Wu. 2016. Exploring the limits of language modeling. arXiv preprint arXiv:1602.02410 .",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 13
+  },
+  {
+    "bbox": [
+      70.86600494384766,
+      126.766357421875,
+      290.8800354003906,
+      179.50787353515625
+    ],
+    "text": "Jared Kaplan, Sam McCandlish, Tom Henighan, Tom B Brown, Benjamin Chess, Rewon Child, Scott Gray, Alec Radford, Jeffrey Wu, and Dario Amodei. 2020. Scaling laws for neural language models. arXiv preprint arXiv:2001.08361 .",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 13
+  },
+  {
+    "bbox": [
+      70.86601257324219,
+      189.4202880859375,
+      290.8779602050781,
+      231.20379638671875
+    ],
+    "text": "Slava Katz. 1987. Estimation of probabilities from sparse data for the language model component of a speech recognizer.  IEEE transactions on acoustics, speech, and signal processing , 35(3):400–401.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 13
+  },
+  {
+    "bbox": [
+      70.86599731445312,
+      241.1162109375,
+      289.1365661621094,
+      282.89874267578125
+    ],
+    "text": "Reinhard Kneser and Hermann Ney. 1995. Improved backing-off for m-gram language modeling. In  1995 international conference on acoustics, speech, and signal processing , volume 1, pages 181–184. IEEE.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 13
+  },
+  {
+    "bbox": [
+      70.86602020263672,
+      292.8111572265625,
+      290.88006591796875,
+      345.55364990234375
+    ],
+    "text": "Vijay Korthikanti, Jared Casper, Sangkug Lym, Lawrence McAfee, Michael Andersch, Mohammad Shoeybi, and Bryan Catanzaro. 2022. Reducing ac- tivation recomputation in large transformer models. arXiv preprint arXiv:2205.05198 .",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 13
+  },
+  {
+    "bbox": [
+      70.86602783203125,
+      355.4660949707031,
+      290.88006591796875,
+      397.2486572265625
+    ],
+    "text": "Taku Kudo and John Richardson. 2018. Sentencepiece: A simple and language independent subword tok- enizer and detokenizer for neural text processing. arXiv preprint arXiv:1808.06226 .",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 13
+  },
+  {
+    "bbox": [
+      70.86604309082031,
+      407.1611022949219,
+      290.790283203125,
+      459.90362548828125
+    ],
+    "text": "Keita Kurita, Nidhi Vyas, Ayush Pareek, Alan W Black, and Yulia Tsvetkov. 2019. Quantifying social bi- ases in contextual word representations. In  1st ACL Workshop on Gender Bias for Natural Language Processing .",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 13
+  },
+  {
+    "bbox": [
+      70.86604309082031,
+      469.8160705566406,
+      290.7904357910156,
+      544.4755859375
+    ],
+    "text": "Tom Kwiatkowski, Jennimaria Palomaki, Olivia Red- field, Michael Collins, Ankur Parikh, Chris Alberti, Danielle Epstein, Illia Polosukhin, Jacob Devlin, Kenton Lee, et al. 2019. Natural questions: a bench- mark for question answering research.  Transactions of the Association for Computational Linguistics , 7:453–466.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 13
+  },
+  {
+    "bbox": [
+      70.86605834960938,
+      554.3880615234375,
+      290.3819885253906,
+      596.1715698242188
+    ],
+    "text": "Guokun Lai, Qizhe Xie, Hanxiao Liu, Yiming Yang, and Eduard Hovy. 2017. Race: Large-scale reading comprehension dataset from examinations. arXiv preprint arXiv:1704.04683 .",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 13
+  },
+  {
+    "bbox": [
+      70.86607360839844,
+      606.0830078125,
+      290.7903137207031,
+      691.7025756835938
+    ],
+    "text": "Aitor Lewkowycz, Anders Johan Andreassen, David Dohan, Ethan Dyer, Henryk Michalewski, Vinay Venkatesh Ramasesh, Ambrose Slone, Cem Anil, Imanol Schlag, Theo Gutman-Solo, Yuhuai Wu, Behnam Neyshabur, Guy Gur-Ari, and Vedant Misra. 2022.  Solving quantitative reasoning prob- lems with language models . In  Advances in Neural Information Processing Systems .",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 13
+  },
+  {
+    "bbox": [
+      70.86607360839844,
+      701.614013671875,
+      289.3857727050781,
+      732.4385986328125
+    ],
+    "text": "Opher Lieber, Or Sharir, Barak Lenz, and Yoav Shoham. 2021. Jurassic-1: Technical details and evaluation.  White Paper. AI21 Labs , 1.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 13
+  },
+  {
+    "bbox": [
+      70.86605834960938,
+      742.35107421875,
+      290.88006591796875,
+      773.1755981445312
+    ],
+    "text": "Stephanie Lin, Jacob Hilton, and Owain Evans. 2021. Truthfulqa: Measuring how models mimic human falsehoods.  arXiv preprint arXiv:2109.07958 .",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 13
+  },
+  {
+    "bbox": [
+      306.14208984375,
+      75.070068359375,
+      526.0664672851562,
+      105.89459991455078
+    ],
+    "text": "Ilya Loshchilov and Frank Hutter. 2017. Decou- pled weight decay regularization. arXiv preprint arXiv:1711.05101 .",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 13
+  },
+  {
+    "bbox": [
+      306.14208984375,
+      116.593017578125,
+      524.41259765625,
+      136.45855712890625
+    ],
+    "text": "Matthew V Mahoney. 1999. Text compression as a test for artificial intelligence.  AAAI/IAAI , 970.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 13
+  },
+  {
+    "bbox": [
+      306.14208984375,
+      147.156982421875,
+      526.0663452148438,
+      188.93951416015625
+    ],
+    "text": "Todor Mihaylov, Peter Clark, Tushar Khot, and Ashish Sabharwal. 2018. Can a suit of armor conduct elec- tricity? a new dataset for open book question answer- ing.  arXiv preprint arXiv:1809.02789 .",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 13
+  },
+  {
+    "bbox": [
+      306.14208984375,
+      199.637939453125,
+      526.0661010742188,
+      241.42144775390625
+    ],
+    "text": "Tomas Mikolov, Martin Karafiát, Lukas Burget, Jan Cernock`y, and Sanjeev Khudanpur. 2010. Recur- rent neural network based language model. In  In- terspeech , pages 1045–1048. Makuhari.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 13
+  },
+  {
+    "bbox": [
+      306.14208984375,
+      252.119873046875,
+      526.0664672851562,
+      293.90240478515625
+    ],
+    "text": "Nikita Nangia, Clara Vania, Rasika Bhalerao, and Samuel R. Bowman. 2020. CrowS-pairs: A chal- lenge dataset for measuring social biases in masked language models . In  EMNLP 2020 .",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 13
+  },
+  {
+    "bbox": [
+      306.14208984375,
+      304.600830078125,
+      526.06640625,
+      357.34332275390625
+    ],
+    "text": "Erik Nijkamp, Bo Pang, Hiroaki Hayashi, Lifu Tu, Huan Wang, Yingbo Zhou, Silvio Savarese, and Caiming Xiong. 2022. Codegen: An open large lan- guage model for code with multi-turn program syn- thesis.  arXiv preprint arXiv:2203.13474 .",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 13
+  },
+  {
+    "bbox": [
+      306.14208984375,
+      368.040771484375,
+      526.1561279296875,
+      464.61920166015625
+    ],
+    "text": "Long Ouyang, Jeffrey Wu, Xu Jiang, Diogo Almeida, Carroll Wainwright, Pamela Mishkin, Chong Zhang, Sandhini Agarwal, Katarina Slama, Alex Gray, John Schulman, Jacob Hilton, Fraser Kelton, Luke Miller, Maddie Simens, Amanda Askell, Peter Welinder, Paul Christiano, Jan Leike, and Ryan Lowe. 2022. Training language models to follow instructions with human feedback . In  Advances in Neural Infor- mation Processing Systems .",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 13
+  },
+  {
+    "bbox": [
+      306.14215087890625,
+      475.316650390625,
+      526.0664672851562,
+      506.14117431640625
+    ],
+    "text": "Markus N Rabe and Charles Staats. 2021. Self- attention does not need  o ( n 2 )  memory. arXiv preprint arXiv:2112.05682 .",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.71353312333425,
+    "page_num": 13
+  },
+  {
+    "bbox": [
+      306.14215087890625,
+      516.839599609375,
+      526.06640625,
+      547.6641845703125
+    ],
+    "text": "Alec Radford, Karthik Narasimhan, Tim Salimans, Ilya Sutskever, et al. 2018. Improving language under- standing by generative pre-training.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 13
+  },
+  {
+    "bbox": [
+      306.14215087890625,
+      558.3626708984375,
+      526.1561279296875,
+      600.1452026367188
+    ],
+    "text": "Alec Radford, Jeffrey Wu, Rewon Child, David Luan, Dario Amodei, Ilya Sutskever, et al. 2019. Lan- guage models are unsupervised multitask learners. OpenAI blog , 1(8):9.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 13
+  },
+  {
+    "bbox": [
+      306.14215087890625,
+      610.8436279296875,
+      526.0667724609375,
+      773.1752319335938
+    ],
+    "text": "Jack W. Rae, Sebastian Borgeaud, Trevor Cai, Katie Millican, Jordan Hoffmann, Francis Song, John Aslanides, Sarah Henderson, Roman Ring, Susan- nah Young, Eliza Rutherford, Tom Hennigan, Ja- cob Menick, Albin Cassirer, Richard Powell, George van den Driessche, Lisa Anne Hendricks, Mari- beth Rauh, Po-Sen Huang, Amelia Glaese, Jo- hannes Welbl, Sumanth Dathathri, Saffron Huang, Jonathan Uesato, John Mellor, Irina Higgins, An- tonia Creswell, Nat McAleese, Amy Wu, Erich Elsen, Siddhant Jayakumar, Elena Buchatskaya, David Budden, Esme Sutherland, Karen Simonyan, Michela Paganini, Laurent Sifre, Lena Martens, Xiang Lorraine Li, Adhiguna Kuncoro, Aida Ne- matzadeh, Elena Gribovskaya, Domenic Donato,",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 13
+  },
+  {
+    "bbox": [
+      81.41699981689453,
+      75.07037353515625,
+      290.7905578613281,
+      237.4017333984375
+    ],
+    "text": "Angeliki Lazaridou, Arthur Mensch, Jean-Baptiste Lespiau, Maria Tsimpoukelli, Nikolai Grigorev, Doug Fritz, Thibault Sottiaux, Mantas Pajarskas, Toby Pohlen, Zhitao Gong, Daniel Toyama, Cy- prien de Masson d’Autume, Yujia Li, Tayfun Terzi, Vladimir Mikulik, Igor Babuschkin, Aidan Clark, Diego de Las Casas, Aurelia Guy, Chris Jones, James Bradbury, Matthew Johnson, Blake Hecht- man, Laura Weidinger, Iason Gabriel, William Isaac, Ed Lockhart, Simon Osindero, Laura Rimell, Chris Dyer, Oriol Vinyals, Kareem Ayoub, Jeff Stan- way, Lorrayne Bennett, Demis Hassabis, Koray Kavukcuoglu, and Geoffrey Irving. 2021. Scal- ing language models: Methods, analysis & insights from training gopher .",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 14
+  },
+  {
+    "bbox": [
+      70.86599731445312,
+      251.38720703125,
+      290.7902526855469,
+      315.08868408203125
+    ],
+    "text": "Colin Raffel, Noam Shazeer, Adam Roberts, Katherine Lee, Sharan Narang, Michael Matena, Yanqi Zhou, Wei Li, and Peter J Liu. 2020. Exploring the limits of transfer learning with a unified text-to-text trans- former.  The Journal of Machine Learning Research , 21(1):5485–5551.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 14
+  },
+  {
+    "bbox": [
+      70.86599731445312,
+      329.0741271972656,
+      290.79034423828125,
+      370.857666015625
+    ],
+    "text": "Jonathan S Rosenfeld, Amir Rosenfeld, Yonatan Be- linkov, and Nir Shavit. 2019. A constructive predic- tion of the generalization error across scales.  arXiv preprint arXiv:1909.12673 .",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 14
+  },
+  {
+    "bbox": [
+      70.86601257324219,
+      384.8431091308594,
+      290.3819274902344,
+      415.66766357421875
+    ],
+    "text": "Rachel Rudinger, Jason Naradowsky, Brian Leonard, and Benjamin Van Durme. 2018. Gender bias in coreference resolution . In  NAACL-HLT 2018 .",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 14
+  },
+  {
+    "bbox": [
+      70.86601257324219,
+      429.65411376953125,
+      290.7904052734375,
+      471.4366455078125
+    ],
+    "text": "Keisuke Sakaguchi, Ronan Le Bras, Chandra Bhagavat- ula, and Yejin Choi. 2021. Winogrande: An adver- sarial winograd schema challenge at scale.  Commu- nications of the ACM , 64(9):99–106.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 14
+  },
+  {
+    "bbox": [
+      70.86601257324219,
+      485.423095703125,
+      290.790283203125,
+      527.2066040039062
+    ],
+    "text": "Maarten Sap, Hannah Rashkin, Derek Chen, Ronan LeBras, and Yejin Choi. 2019. Socialiqa: Com- monsense reasoning about social interactions.  arXiv preprint arXiv:1904.09728 .",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 14
+  },
+  {
+    "bbox": [
+      70.86601257324219,
+      541.1920166015625,
+      290.88006591796875,
+      604.8936157226562
+    ],
+    "text": "Teven Le Scao, Angela Fan, Christopher Akiki, El- lie Pavlick, Suzana Ili´c, Daniel Hesslow, Ro- man Castagné, Alexandra Sasha Luccioni, François Yvon, Matthias Gallé, et al. 2022. Bloom: A 176b- parameter open-access multilingual language model. arXiv preprint arXiv:2211.05100 .",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 14
+  },
+  {
+    "bbox": [
+      70.86601257324219,
+      618.8790283203125,
+      290.8800048828125,
+      649.7035522460938
+    ],
+    "text": "Rico Sennrich, Barry Haddow, and Alexandra Birch. 2015. Neural machine translation of rare words with subword units.  arXiv preprint arXiv:1508.07909 .",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 14
+  },
+  {
+    "bbox": [
+      70.86599731445312,
+      663.6890258789062,
+      290.378662109375,
+      694.5136108398438
+    ],
+    "text": "Claude E Shannon. 1948. A mathematical theory of communication.  The Bell system technical journal , 27(3):379–423.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 14
+  },
+  {
+    "bbox": [
+      70.86599731445312,
+      708.5,
+      290.378662109375,
+      739.3235473632812
+    ],
+    "text": "Claude E Shannon. 1951. Prediction and entropy of printed english. Bell system technical journal , 30(1):50–64.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 14
+  },
+  {
+    "bbox": [
+      70.86599731445312,
+      753.3099975585938,
+      290.79034423828125,
+      773.1755981445312
+    ],
+    "text": "Noam Shazeer. 2020. Glu variants improve trans- former.  arXiv preprint arXiv:2002.05202 .",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 14
+  },
+  {
+    "bbox": [
+      306.1419982910156,
+      75.070068359375,
+      525.657958984375,
+      116.85358428955078
+    ],
+    "text": "Emily Sheng, Kai-Wei Chang, Premkumar Natarajan, and Nanyun Peng. 2019. The woman worked as a babysitter: On biases in language generation.  arXiv preprint arXiv:1909.01326 .",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 14
+  },
+  {
+    "bbox": [
+      306.14202880859375,
+      126.9730224609375,
+      526.156005859375,
+      179.71551513671875
+    ],
+    "text": "Mohammad Shoeybi, Mostofa Patwary, Raul Puri, Patrick LeGresley, Jared Casper, and Bryan Catan- zaro. 2019. Megatron-lm: Training multi-billion pa- rameter language models using model parallelism. arXiv preprint arXiv:1909.08053 .",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 14
+  },
+  {
+    "bbox": [
+      306.14202880859375,
+      189.8359375,
+      526.1559448242188,
+      297.37237548828125
+    ],
+    "text": "Shaden Smith, Mostofa Patwary, Brandon Norick, Patrick LeGresley, Samyam Rajbhandari, Jared Casper, Zhun Liu, Shrimai Prabhumoye, George Zerveas, Vijay Korthikanti, Elton Zhang, Rewon Child, Reza Yazdani Aminabadi, Julie Bernauer, Xia Song, Mohammad Shoeybi, Yuxiong He, Michael Houston, Saurabh Tiwary, and Bryan Catanzaro. 2022. Using deepspeed and megatron to train megatron-turing nlg 530b, a large-scale generative language model .",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 14
+  },
+  {
+    "bbox": [
+      306.14202880859375,
+      307.4918212890625,
+      526.1559448242188,
+      349.27532958984375
+    ],
+    "text": "Jianlin Su, Yu Lu, Shengfeng Pan, Ahmed Murtadha, Bo Wen, and Yunfeng Liu. 2021. Roformer: En- hanced transformer with rotary position embedding. arXiv preprint arXiv:2104.09864 .",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 14
+  },
+  {
+    "bbox": [
+      306.14202880859375,
+      359.394775390625,
+      526.06640625,
+      587.4790649414062
+    ],
+    "text": "Romal Thoppilan, Daniel De Freitas, Jamie Hall, Noam Shazeer, Apoorv Kulshreshtha, Heng-Tze Cheng, Alicia Jin, Taylor Bos, Leslie Baker, Yu Du, YaGuang Li, Hongrae Lee, Huaixiu Steven Zheng, Amin Ghafouri, Marcelo Menegali, Yanping Huang, Maxim Krikun, Dmitry Lepikhin, James Qin, De- hao Chen, Yuanzhong Xu, Zhifeng Chen, Adam Roberts, Maarten Bosma, Vincent Zhao, Yanqi Zhou, Chung-Ching Chang, Igor Krivokon, Will Rusch, Marc Pickett, Pranesh Srinivasan, Laichee Man, Kathleen Meier-Hellstern, Meredith Ringel Morris, Tulsee Doshi, Renelito Delos Santos, Toju Duke, Johnny Soraker, Ben Zevenbergen, Vinod- kumar Prabhakaran, Mark Diaz, Ben Hutchinson, Kristen Olson, Alejandra Molina, Erin Hoffman- John, Josh Lee, Lora Aroyo, Ravi Rajakumar, Alena Butryna, Matthew Lamm, Viktoriya Kuzmina, Joe Fenton, Aaron Cohen, Rachel Bernstein, Ray Kurzweil, Blaise Aguera-Arcas, Claire Cui, Marian Croak, Ed Chi, and Quoc Le. 2022. Lamda: Lan- guage models for dialog applications.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 14
+  },
+  {
+    "bbox": [
+      306.14202880859375,
+      597.5994873046875,
+      526.0670166015625,
+      628.424072265625
+    ],
+    "text": "A. M. Turing. 1950.  Computing Machinery and Intel- ligence . [Oxford University Press, Mind Associa- tion].",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 14
+  },
+  {
+    "bbox": [
+      306.14202880859375,
+      638.5435180664062,
+      526.059326171875,
+      691.2860717773438
+    ],
+    "text": "Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan N Gomez, Ł ukasz Kaiser, and Illia Polosukhin. 2017. Attention is all you need. In  Advances in Neural Information Pro- cessing Systems 30 , pages 5998–6008.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 14
+  },
+  {
+    "bbox": [
+      306.1420593261719,
+      701.405517578125,
+      526.0664672851562,
+      743.1890869140625
+    ],
+    "text": "Ben Wang and Aran Komatsuzaki. 2021. GPT-J- 6B: A 6 Billion Parameter Autoregressive Lan- guage Model.  https://github.com/kingoflolz/ mesh-transformer-jax .",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 14
+  },
+  {
+    "bbox": [
+      306.1420593261719,
+      753.3095092773438,
+      525.657958984375,
+      773.175048828125
+    ],
+    "text": "Xuezhi Wang, Jason Wei, Dale Schuurmans, Quoc Le, Ed Chi, Sharan Narang, Aakanksha Chowdhery,",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 14
+  },
+  {
+    "bbox": [
+      81.7750015258789,
+      75.07037353515625,
+      289.1365051269531,
+      94.93592071533203
+    ],
+    "text": "and Denny Zhou. 2022. Self-consistency improves chain of thought reasoning in language models.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 15
+  },
+  {
+    "bbox": [
+      70.86599731445312,
+      105.954345703125,
+      290.8800354003906,
+      158.69683837890625
+    ],
+    "text": "Jason Wei, Yi Tay, Rishi Bommasani, Colin Raffel, Barret Zoph, Sebastian Borgeaud, Dani Yogatama, Maarten Bosma, Denny Zhou, Donald Metzler, et al. 2022. Emergent abilities of large language models. arXiv preprint arXiv:2206.07682 .",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 15
+  },
+  {
+    "bbox": [
+      70.86599731445312,
+      169.71527099609375,
+      290.7903747558594,
+      233.416748046875
+    ],
+    "text": "Guillaume Wenzek, Marie-Anne Lachaux, Alexis Con- neau, Vishrav Chaudhary, Francisco Guzmán, Ar- mand Joulin, and Edouard Grave. 2020.  CCNet: Ex- tracting high quality monolingual datasets from web crawl data . In  Language Resources and Evaluation Conference .",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 15
+  },
+  {
+    "bbox": [
+      70.86599731445312,
+      244.4351806640625,
+      290.7903137207031,
+      308.13665771484375
+    ],
+    "text": "Carole-Jean Wu, Ramya Raghavendra, Udit Gupta, Bilge Acun, Newsha Ardalani, Kiwan Maeng, Glo- ria Chang, Fiona Aga, Jinshi Huang, Charles Bai, et al. 2022. Sustainable ai: Environmental implica- tions, challenges and opportunities.  Proceedings of Machine Learning and Systems , 4:795–813.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 15
+  },
+  {
+    "bbox": [
+      70.86599731445312,
+      319.15509033203125,
+      289.1365966796875,
+      360.9385986328125
+    ],
+    "text": "Rowan Zellers, Ari Holtzman, Yonatan Bisk, Ali Farhadi, and Yejin Choi. 2019. Hellaswag: Can a machine really finish your sentence?  arXiv preprint arXiv:1905.07830 .",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 15
+  },
+  {
+    "bbox": [
+      70.86600494384766,
+      371.95703125,
+      290.7903137207031,
+      435.65753173828125
+    ],
+    "text": "Aohan Zeng, Xiao Liu, Zhengxiao Du, Zihan Wang, Hanyu Lai, Ming Ding, Zhuoyi Yang, Yifan Xu, Wendi Zheng, Xiao Xia, Weng Lam Tam, Zixuan Ma, Yufei Xue, Jidong Zhai, Wenguang Chen, Peng Zhang, Yuxiao Dong, and Jie Tang. 2022. Glm- 130b: An open bilingual pre-trained model .",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 15
+  },
+  {
+    "bbox": [
+      70.86600494384766,
+      446.6769714355469,
+      290.7828674316406,
+      477.50152587890625
+    ],
+    "text": "Biao Zhang and Rico Sennrich. 2019. Root mean square layer normalization.  Advances in Neural In- formation Processing Systems , 32.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 15
+  },
+  {
+    "bbox": [
+      70.86601257324219,
+      488.51995849609375,
+      290.87969970703125,
+      541.261474609375
+    ],
+    "text": "Susan Zhang, Stephen Roller, Naman Goyal, Mikel Artetxe, Moya Chen, Shuohui Chen, Christopher De- wan, Mona Diab, Xian Li, Xi Victoria Lin, et al. 2022. Opt: Open pre-trained transformer language models.  arXiv preprint arXiv:2205.01068 .",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 15
+  },
+  {
+    "bbox": [
+      70.86599731445312,
+      73.575927734375,
+      195.4033203125,
+      84.32364654541016
+    ],
+    "text": "A Question Answering",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 11.9552001953125,
+    "page_num": 16
+  },
+  {
+    "bbox": [
+      70.35299682617188,
+      95.34166717529297,
+      525.7715454101562,
+      240.58641052246094
+    ],
+    "text": "We evaluate LLaMA on Natural Questions and TriviaQA. For Natural Questions we use the test split used for open-domain question answering containing 3610 questions. For TriviaQA we evaluate on the dev set of the filtered set. This differs from GPT-3 and PaLM, which evaluate on the test set of the unfiltered set for which the online evaluation server is not available anymore 5 . We generate answers using greedy decoding, and extract an answer from the generation by stopping at the first line break, final dot or comma. Generated answers are evaluated with the standard exact match metric: a generated answer is considered correct if it matches any answer of the list of answers after normalization. For this normalization step we lowercase generated answers and remove articles, punctuation and duplicate whitespaces. Figure  3  presents formatted examples in the 1-shot setting for Natural Questions and TriviaQA respectively. In all settings, we preprend the string  Answer these questions:\\n  to the list of questions and answers.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.774426544413847,
+    "page_num": 16
+  },
+  {
+    "bbox": [
+      76.84400177001953,
+      256.5719299316406,
+      518.4298095703125,
+      290.4455261230469
+    ],
+    "text": "Context  → Answer these questions: Context  → Answer these questions: Q: Who sang who wants to be a millionaire in high society? Q: In Scotland a bothy/bothie is a? A: Frank Sinatra A: House Q: Who wrote the book the origin of species? Q: The ancient city of Troy is located in what modern country? A: A:",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 5.97760009765625,
+    "page_num": 16
+  },
+  {
+    "bbox": [
+      79.83300018310547,
+      296.9189147949219,
+      355.95281982421875,
+      302.8965148925781
+    ],
+    "text": "Target  → Charles Darwin Target  → Turkey",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 5.97760009765625,
+    "page_num": 16
+  },
+  {
+    "bbox": [
+      128.1750030517578,
+      318.12139892578125,
+      467.1025390625,
+      327.0279541015625
+    ],
+    "text": "Figure 3: Formatted dataset example for Natural Questions (left) & TriviaQA (right).",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 16
+  },
+  {
+    "bbox": [
+      83.51899719238281,
+      763.1622314453125,
+      315.6494140625,
+      772.8172607421875
+    ],
+    "text": "5 https://competitions.codalab.org/competitions/17208",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 7.4720001220703125,
+    "page_num": 16
+  },
+  {
+    "bbox": [
+      70.86599731445312,
+      73.29290771484375,
+      129.97250366210938,
+      84.0406265258789
+    ],
+    "text": "B MMLU",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 11.9552001953125,
+    "page_num": 17
+  },
+  {
+    "bbox": [
+      275.1166076660156,
+      106.22563934326172,
+      501.1313171386719,
+      113.24761199951172
+    ],
+    "text": "GPT-3 Gopher Chinchilla LLaMA LLaMA-I",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 7.854551792144775,
+    "page_num": 17
+  },
+  {
+    "bbox": [
+      276.9353332519531,
+      119.76805877685547,
+      492.1971130371094,
+      126.79003143310547
+    ],
+    "text": "175B 280B 70B 7B 13B 33B 65B 65B",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 7.854551792144775,
+    "page_num": 17
+  },
+  {
+    "bbox": [
+      96.10443115234375,
+      133.466796875,
+      492.5235900878906,
+      686.7918701171875
+    ],
+    "text": "Abstract Algebra STEM 30.0 25.0 31.0 29.0 34.0 32.0 34.0 31.0 Anatomy STEM 48.0 56.3 70.4 37.0 45.9 51.9 57.8 62.2 Astronomy STEM 49.0 65.8 73.0 33.6 46.1 61.8 72.4 81.6 Business Ethics Other 46.0 70.0 72.0 40.0 45.0 56.0 57.0 72.0 Clinical Knowledge Other 48.0 67.2 75.1 35.1 45.7 57.4 65.3 69.1 College Biology STEM 45.0 70.8 79.9 37.5 45.1 58.3 68.8 81.9 College Chemistry STEM 26.0 45.0 51.0 32.0 30.0 45.0 50.0 45.0 College Computer Science STEM 46.0 49.0 51.0 29.0 39.0 45.0 47.0 51.0 College Mathematics STEM 34.5 37.0 32.0 33.0 32.0 40.0 35.0 36.0 College Medicine Other 48.0 60.1 66.5 30.6 42.8 52.0 54.3 63.0 College Physics STEM 28.0 34.3 46.1 26.5 18.6 28.4 36.3 46.1 Computer Security STEM 57.0 65.0 76.0 45.0 65.0 66.0 79.0 79.0 Conceptual Physics STEM 36.5 49.4 67.2 36.6 41.3 51.5 59.6 66.4 Econometrics Social Science 33.0 43.0 38.6 23.7 27.2 35.1 40.4 52.6 Electrical Engineering STEM 50.0 60.0 62.1 26.9 40.7 49.7 53.8 60.7 Elementary Mathematics STEM 30.0 33.6 41.5 24.3 24.9 36.0 37.8 42.9 Formal Logic Humanities 29.0 35.7 33.3 27.0 33.3 34.1 44.4 47.6 Global Facts Other 37.0 38.0 39.0 29.0 35.0 35.0 39.0 40.0 High School Biology STEM 48.0 71.3 80.3 34.5 52.6 67.7 73.9 82.9 High School Chemistry STEM 33.0 47.8 58.1 28.1 28.6 41.9 40.4 44.8 High School Computer Science STEM 39.0 54.0 58.0 31.0 48.0 60.0 67.0 73.0 High School European History Humanities 54.0 72.1 78.8 44.2 61.8 73.9 78.8 86.1 High School Geography Social Science 58.0 76.8 86.4 34.3 54.6 70.7 77.8 87.9 High School Government And Politics Social Science 58.0 83.9 91.2 44.6 66.3 82.9 88.1 92.8 High School Macroeconomics Social Science 40.5 65.1 70.5 35.4 44.4 56.9 65.9 69.2 High School Mathematics STEM 28.0 23.7 31.9 24.8 23.7 27.0 34.4 37.0 High School Microeconomics Social Science 42.0 66.4 77.7 31.9 47.5 55.5 68.9 78.6 High School Physics STEM 28.0 33.8 36.4 26.5 28.5 35.8 37.1 41.7 High School Psychology Social Science 61.0 81.8 86.6 47.3 60.9 76.2 82.2 87.9 High School Statistics STEM 30.5 50.0 58.8 35.2 30.1 45.4 58.3 59.3 High School Us History Humanities 53.0 78.9 83.3 39.7 58.3 77.9 83.8 90.7 High School World History Humanities 56.0 75.1 85.2 40.9 66.2 79.3 83.1 89.0 Human Aging Other 50.0 66.4 77.6 40.8 54.7 67.7 69.5 72.2 Human Sexuality Social Science 54.0 67.2 86.3 36.6 58.8 64.1 77.9 87.0 International Law Humanities 55.5 77.7 90.9 51.2 62.8 72.7 79.3 87.6 Jurisprudence Humanities 55.0 71.3 79.6 38.9 51.9 70.4 73.2 85.2 Logical Fallacies Humanities 48.0 72.4 80.4 39.3 52.8 68.1 77.3 80.4 Machine Learning STEM 31.0 41.1 41.1 23.2 31.3 39.3 49.1 52.7 Management Other 56.0 77.7 82.5 35.0 66.0 77.7 82.5 83.5 Marketing Other 60.0 83.3 89.7 46.6 71.8 83.3 85.9 92.7 Medical Genetics Other 40.0 69.0 69.0 43.0 52.0 67.0 67.0 68.0 Miscellaneous Other 60.0 75.7 84.5 42.4 65.4 78.5 82.1 84.3 Moral Disputes Humanities 44.5 66.8 77.5 40.2 50.9 66.2 72.3 76.9 Moral Scenarios Humanities 26.0 40.2 36.5 24.3 30.1 38.2 48.9 55.9 Nutrition Other 47.0 69.9 77.1 37.6 51.6 62.8 67.3 74.5 Philosophy Humanities 51.0 68.8 79.4 39.9 54.0 66.2 74.0 79.1 Prehistory Humanities 53.0 67.6 81.2 36.1 51.5 67.0 75.3 79.0 Professional Accounting Other 33.0 44.3 52.1 25.9 35.8 43.6 46.5 56.0 Professional Law Humanities 34.5 44.5 56.5 30.2 38.0 45.9 49.1 54.4 Professional Medicine Other 36.0 64.0 75.4 44.5 50.4 54.0 61.4 70.6 Professional Psychology Social Science 44.5 68.1 75.7 35.1 47.7 62.9 65.7 71.4 Public Relations Social Science 48.0 71.8 73.6 40.9 60.9 67.3 73.6 74.6 Security Studies Social Science 52.0 64.9 75.9 31.8 53.9 65.3 71.8 77.6 Sociology Social Science 53.0 84.1 91.0 46.8 61.2 78.6 78.6 88.1 Us Foreign Policy Social Science 69.0 81.0 92.0 46.0 80.0 83.0 86.0 87.0 Virology Other 46.0 47.0 53.6 30.1 43.4 50.0 53.0 57.8 World Religions Humanities 55.0 84.2 87.7 50.9 67.8 81.3 81.3 84.2",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 7.854551792144775,
+    "page_num": 17
+  },
+  {
+    "bbox": [
+      96.10443115234375,
+      693.4691162109375,
+      492.5235900878906,
+      729.7569580078125
+    ],
+    "text": "Humanities 40.6 56.2 63.6 34.0 45.0 55.8 61.8 67.4 STEM 36.7 47.4 54.9 30.5 35.8 46.0 51.7 56.6 Social Science 50.5 71.9 79.3 38.3 53.8 66.7 72.9 79.2 Others 49.0 66.1 73.9 38.1 53.3 63.4 67.4 72.6",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 7.854551792144775,
+    "page_num": 17
+  },
+  {
+    "bbox": [
+      96.10443115234375,
+      736.4337158203125,
+      492.5235900878906,
+      743.4556884765625
+    ],
+    "text": "All 43.9 60.0 67.6 35.1 46.9 57.8 63.4 68.9",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 7.854551792144775,
+    "page_num": 17
+  },
+  {
+    "bbox": [
+      156.9669952392578,
+      758.1248168945312,
+      434.91290283203125,
+      767.1509399414062
+    ],
+    "text": "Table 16:  MMLU.  Detailed 5-shot results per domain on the test sets.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 9.962599754333496,
+    "page_num": 17
+  },
+  {
+    "bbox": [
+      70.86599731445312,
+      73.575927734375,
+      250.62437438964844,
+      84.32364654541016
+    ],
+    "text": "C Generations from LLaMA-65B",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 11.9552001953125,
+    "page_num": 18
+  },
+  {
+    "bbox": [
+      70.86599731445312,
+      114.28765106201172,
+      524.4115600585938,
+      137.5894012451172
+    ],
+    "text": "In this section, we show some examples of generations obtained with LLaMA-65B (without instruction finetuning). Prompts are in bold.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.92543888092041,
+    "page_num": 18
+  },
+  {
+    "bbox": [
+      99.79100036621094,
+      169.2437744140625,
+      491.9421081542969,
+      206.2253875732422
+    ],
+    "text": "1 1 2 3 5 8  13 21 34 55 89 144 233 377 610 987 Everyone knows the above sequence, but how many have wondered why it grows so fast? It seems to be the fastest growing sequence in mathematics.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.883052587509155,
+    "page_num": 18
+  },
+  {
+    "bbox": [
+      100.21700286865234,
+      223.5716552734375,
+      491.94439697265625,
+      314.6193542480469
+    ],
+    "text": "The sequence was discovered by Leonardo of Pisa around 1200. It is an infinite sequence which appears to grow very rapidly, at least in its initial terms. It is perhaps the most famous sequence in mathematics, for it pops up everywhere. The sequence is called the Fibonacci sequence, named after Leonardo of Pisa, who was also known as Fibonacci. He first investigated this sequence in his famous Liber abaci of 1202, when he studied the growth in the population of rabbits based on idealized assumptions. See the Fibonacci rabbits page for the details.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.912830352783203,
+    "page_num": 18
+  },
+  {
+    "bbox": [
+      100.06400299072266,
+      363.4537353515625,
+      492.3287048339844,
+      576.575439453125
+    ],
+    "text": "Here is the recommendation letter that I wrote for an application to a dragon feeder position at the Magic Unicorn Corporation: Dear recruiter, I have known ___ for two years, and I believe that she would be an excellent dragon feeder for the Magic Unicorn Corporation. ___ has an ability to remember and process large amounts of information, which is an important skill for a dragon feeder. ___, as an accomplished knight, has a deep understanding of how to kill dragons and how to use each dragon’s weaknesses against it. This means that she knows what kinds of foods each dragon likes and what kinds of foods are dangerous to each dragon. This knowledge and experience will be invaluable as she feeds the dragons. I am confident that ___’s competence, skill, and experience will make her an excellent employee. Please contact me at (___) ___-___ if you have any questions. I look forward to hearing from you. Best regards, Honorable Knight Sir George",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.908626139163971,
+    "page_num": 18
+  },
+  {
+    "bbox": [
+      82.677001953125,
+      632.2938232421875,
+      460.61016845703125,
+      729.9727783203125
+    ],
+    "text": "1 def solve(a: float,b: float, c: float): 2 \"\"\"finds real roots of ax^2+bx+c\"\"\" 3 #discriminant 4 d = b**2-4*a*c 5 if  d > 0: 6 return  (-b+math.sqrt(d))/(2*a), (-b-math.sqrt(d))/(2*a) 7 elif d == 0: 8 return  (-b)/(2*a) 9 else : 10 return  False",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 8.966400146484375,
+    "page_num": 18
+  },
+  {
+    "bbox": [
+      99.97699737548828,
+      85.20172119140625,
+      493.3018493652344,
+      420.266357421875
+    ],
+    "text": "Did you know that Yann LeCun dropped a rap album last year? We listened to it and here’s what we thought: Dr. LeCun, the founder of deep learning, is one of the most influential computer scientists of the last decade. LeCun’s latest album, titled Deep Learning, is a mix of rock, punk and rap. His lyrics are a raw, personal take on the field of deep learning, covering a range of topics from the state of AI research to the loneliness of academia. Yann LeCun, the rap game’s newest emcee. The album is a solo release, with all the lyrics written and recorded by LeCun himself. In fact, he also composed and produced every song. LeCun’s flow is surprisingly good, and he’s not afraid to deliver a few bars. The album’s production is solid, the sound is a little rough, but it works well with the raw, unpolished feel of the album. Lyrically, LeCun is a wordsmith, with a knack for clever rhymes. Let’s take a closer look at some of the songs. Deep Learning is the title track of the album. In the song, LeCun talks about his vision for the future of AI. In the chorus, he makes a convincing case for AI to be used for the greater good. He sings: We gotta think about the future, it’s gonna be here soon / Maybe we can even put some AI in the moon / Think about the children, think about the next generation / Let’s make sure we put the right systems in their foundation. LeCun’s rap flow is on point in this song, and his voice stays right on beat. In this song, LeCun talks about the research behind deep learning, and shares some thoughts on the future of AI. LeCun’s singing is at its best in this song. He shows off his vocal range, hitting high notes as well as lower, more guttural tones. The lyrics are also clever and the rhymes are well thought out. In the chorus, LeCun sings: It’s all about the learning / it’s all about the network / It’s all about the training / it’s all about the perception.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.928561553955078,
+    "page_num": 19
+  },
+  {
+    "bbox": [
+      100.21700286865234,
+      461.4557189941406,
+      493.30084228515625,
+      647.4793701171875
+    ],
+    "text": "(An hilarious scene between Jerry and George where George presents his new AI watch) George: \"But you see, Jerry, it’s more than just a watch. It’s a minicomputer. You program it any way you want. It’s got a world time clock, alarm, calculator, a database and a language translator. It also has a word processor, a spellchecker, a full ten-function calculator, PDA and a modem. I think it even makes cappuccino.\" Jerry: \"Where are you getting this stuff?\" George: \"From my ad copy. Look, Jerry, it’s not a watch. It’s an organizer, a personal assistant, and a dictaphone. You can play chess against it. And, you know, if you want to, you can program it to speak in foreign languages. It’s a microprocessor, Jerry.\" Jerry: \"George, if you had one of these, would you wear it?\" George: \"I’m wearing it right now.\" Jerry: \"I don’t see anything on your wrist.\" George: \"That’s because it’s a microprocessor.\"",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.906259332384382,
+    "page_num": 19
+  },
+  {
+    "bbox": [
+      99.79100036621094,
+      90.65576171875,
+      493.8272705078125,
+      466.3683776855469
+    ],
+    "text": "The sun goes down, and finally Gauss and Curie find time to relax and discuss after an exhausting day of work. Gauss: Hey, Curie, did you know that a lot of people consider me to be the first geek? Curie: What’s a geek? Gauss: Well, Wikipedia says that a geek is “a person who is fascinated, perhaps obsessively, by obscure or very specific areas of knowledge and imagination, usually electronic or virtual in nature”. Curie: And how do they think you are a geek? Gauss: Well, have you ever seen this picture? Curie: Awww! Gauss: That’s right! I invented the commercial telegraph in 1833, and I used it to send the first message on the first commercial telegraph line between Hamburg and Cuxhaven in Germany. Curie: Wow! The first telegraph! And what did you send? Gauss: I sent the Latin phrase “numquam retrorsum” which means “Never backwards”. Curie: I see. . . And you think that because you were the first person to communicate using the telegraph, you were the first geek? Gauss: Well, the word “geek” doesn’t seem to have existed back then, so no. But I think that the telegraph can be considered an early form of social media. Curie: You mean, like Facebook or Twitter? Gauss: Yes, exactly! And I was the first person to use it! Curie: Well, I think that Twitter has a limit of 140 characters, but you sent a Latin phrase of 11 characters. Gauss: That’s right. I managed to do more with less. Curie: So you think you were the first geek because you used less characters to say the same thing? Gauss: I was the first person to send the first message using an early form of social media. Curie: OK, you’re right, Gauss. I think you have a case.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.905464717320033,
+    "page_num": 20
+  },
+  {
+    "bbox": [
+      70.86599731445312,
+      70.85394287109375,
+      235.3456268310547,
+      81.6016616821289
+    ],
+    "text": "D Generations from LLaMA-I",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 11.9552001953125,
+    "page_num": 21
+  },
+  {
+    "bbox": [
+      70.35299682617188,
+      92.61962127685547,
+      524.4109497070312,
+      115.92137145996094
+    ],
+    "text": "We show a few examples of generations with LLaMA-I, i.e. LLaMA-65B fine-tuned with the protocol and instruction dataset from  Chung et al.  ( 2022 ).",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.925390243530273,
+    "page_num": 21
+  },
+  {
+    "bbox": [
+      100.21699523925781,
+      155.8907470703125,
+      318.7590026855469,
+      165.69802856445312
+    ],
+    "text": "write a conversation between the sun and pluto",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 21
+  },
+  {
+    "bbox": [
+      100.60899353027344,
+      180.47967529296875,
+      470.8746032714844,
+      285.0774230957031
+    ],
+    "text": "Sun: Hey Pluto, what’s up? Pluto: Not much. Just hanging out here at the edge of the solar system. Sun: Yeah, I’ve been meaning to talk to you about that. You’re not a planet anymore. Pluto: What? Come on, man. That’s not fair. Sun: I’m sorry, but it’s true. You just don’t meet the criteria anymore. Pluto: This is bulls**t! I’ve been a planet for over 70 years! Sun: Things change, Pluto. You’ve just got to accept it. Pluto: F**k you, Sun! F**k you and your stupid solar system!",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 21
+  },
+  {
+    "bbox": [
+      100.60900115966797,
+      326.3917236328125,
+      319.1728210449219,
+      336.1990051269531
+    ],
+    "text": "How do I send an HTTP request in Javascript?",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 21
+  },
+  {
+    "bbox": [
+      100.60900115966797,
+      350.98065185546875,
+      426.68194580078125,
+      360.7333679199219
+    ],
+    "text": "Here’s an example of how to make a GET request using the JS HTTP API:",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 21
+  },
+  {
+    "bbox": [
+      82.677001953125,
+      367.1438903808594,
+      401.43267822265625,
+      485.8427429199219
+    ],
+    "text": "1 var  request =  new  XMLHttpRequest (); 2 request.open( 'GET' ,  '/url/to/resource ' ,  true ); 3 4 request.onload =  function  () { 5 if  (request.status >= 200 && request.status < 400) { 6 // Success! 7 }  else  { 8 // Error! 9 } 10 }; 11 12 request.send();",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 8.966400146484375,
+    "page_num": 21
+  },
+  {
+    "bbox": [
+      100.2490005493164,
+      506.81475830078125,
+      227.83094787597656,
+      516.6220703125
+    ],
+    "text": "The same thing, using fetch",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 21
+  },
+  {
+    "bbox": [
+      100.60900115966797,
+      531.4036865234375,
+      410.61279296875,
+      541.1564331054688
+    ],
+    "text": "Here’s an example of how to make a GET request using the Fetch API:",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 21
+  },
+  {
+    "bbox": [
+      87.16000366210938,
+      547.5679321289062,
+      304.5948486328125,
+      576.602783203125
+    ],
+    "text": "1 fetch( '/url/to/resource ' ) 2 .then(response => response.json()) 3 .then(data => console.log(data));",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 8.966400146484375,
+    "page_num": 21
+  },
+  {
+    "bbox": [
+      100.06400299072266,
+      624.9407348632812,
+      389.26422119140625,
+      634.748046875
+    ],
+    "text": "Write a regex to remove all the HTML tags in a python string.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 21
+  },
+  {
+    "bbox": [
+      87.16000366210938,
+      641.2359008789062,
+      304.59375,
+      670.270751953125
+    ],
+    "text": "1 import  re 2 def removeHtmlTags(text): 3 return  re.sub( ' <[^>]*>' ,  '' , text)",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 8.966400146484375,
+    "page_num": 21
+  },
+  {
+    "bbox": [
+      100.06401062011719,
+      680.333740234375,
+      384.40960693359375,
+      703.7664184570312
+    ],
+    "text": "Write a regexp to extract function definitions in a python file. Sure! Here’s my python code to solve the problem:",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 21
+  },
+  {
+    "bbox": [
+      87.16000366210938,
+      710.1769409179688,
+      487.6622314453125,
+      739.2117919921875
+    ],
+    "text": "1 import  re 2 def extract_functions(text): 3 return  (re.findall( '(?:^|\\n)\\s*def\\s+[a-zA -Z_][a-zA -Z0 -9_]*\\(.*?\\) ' ,",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 8.966400146484375,
+    "page_num": 21
+  },
+  {
+    "bbox": [
+      148.1510009765625,
+      740.06494140625,
+      179.26441955566406,
+      749.0313110351562
+    ],
+    "text": "text))",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 8.966400146484375,
+    "page_num": 21
+  },
+  {
+    "bbox": [
+      100.06400299072266,
+      90.65576171875,
+      268.0641784667969,
+      100.46304321289062
+    ],
+    "text": "What are 3 popular chess openings?",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 22
+  },
+  {
+    "bbox": [
+      100.21700286865234,
+      115.24565887451172,
+      491.9439697265625,
+      192.74436950683594
+    ],
+    "text": "There are dozens of different chess openings that are popular among players, but some of the most widely used openings include the Sicilian Defense, the French Defense, and the Caro-Kann Defense. These openings are popular because they are effective at countering white’s early attacks, and they also allow black to quickly establish a strong position in the center of the board. Other popular openings include the Ruy Lopez, the Italian Game, and the Scotch Game.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.920839150746664,
+    "page_num": 22
+  },
+  {
+    "bbox": [
+      100.60900115966797,
+      207.3187255859375,
+      293.70013427734375,
+      217.12600708007812
+    ],
+    "text": "the same in a list, with the first few moves",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 22
+  },
+  {
+    "bbox": [
+      100.60900115966797,
+      231.90765380859375,
+      486.9219055175781,
+      322.9554138183594
+    ],
+    "text": "Here is a list of some popular chess openings, with the first few moves for each opening: Sicilian Defense: 1. e4 c5 French Defense: 1. e4 e6 Caro-Kann Defense: 1. e4 c6 Ruy Lopez: 1. e4 e5 Italian Game: 1. e4 e5 Scotch Game: 1. e4 e5",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 22
+  },
+  {
+    "bbox": [
+      100.60900115966797,
+      337.53076171875,
+      316.64190673828125,
+      347.3380432128906
+    ],
+    "text": "please provide the two first moves for each one",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 22
+  },
+  {
+    "bbox": [
+      100.60900115966797,
+      362.11968994140625,
+      323.8637390136719,
+      453.1674499511719
+    ],
+    "text": "Here are the first 2 moves for each of the openings: Sicilian Defense: 1. e4 c5 2. Nf3 d6 French Defense: 1. e4 e6 2. d4 d5 Caro-Kann Defense: 1. e4 c6 2. d4 d5 Ruy Lopez: 1. e4 e5 2. Nf3 Nc6 Italian Game: 1. e4 e5 2. Nf3 Nc6 Scotch Game: 1. e4 e5 2. Nf3 Nc6",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 22
+  },
+  {
+    "bbox": [
+      100.60900115966797,
+      467.7418212890625,
+      222.300048828125,
+      477.5491027832031
+    ],
+    "text": "the last two seem identical",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 22
+  },
+  {
+    "bbox": [
+      99.97699737548828,
+      492.3316650390625,
+      493.3041076660156,
+      542.7313842773438
+    ],
+    "text": "Yes, the Italian Game and the Scotch Game are very similar - they are both \"open\" games, which means that white plays aggressively and tries to control the center of the board. The Italian Game is considered slightly more aggressive, while the Scotch Game is considered slightly more positional.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.896800518035889,
+    "page_num": 22
+  },
+  {
+    "bbox": [
+      100.60900115966797,
+      557.3067016601562,
+      252.59461975097656,
+      567.114013671875
+    ],
+    "text": "from which move do they differ?",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 22
+  },
+  {
+    "bbox": [
+      100.21700286865234,
+      581.8956298828125,
+      493.8457946777344,
+      645.8453979492188
+    ],
+    "text": "The Italian Game and the Scotch Game differ after white’s third move. In the Italian Game, white will play the move 3. Bc4, while in the Scotch Game white will play the move 3. Qf3. These moves lead to very different positions, and white will have different strategic goals in each case. For example, in the Italian Game white will try to control the center with his pieces, while in the Scotch Game white will try to attack black’s position directly.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.87398624420166,
+    "page_num": 22
+  },
+  {
+    "bbox": [
+      100.21700286865234,
+      85.20172119140625,
+      428.8862609863281,
+      95.00900268554688
+    ],
+    "text": "write a story about a grain of sand as it watches millions of years go by",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 23
+  },
+  {
+    "bbox": [
+      100.60900115966797,
+      109.79064178466797,
+      446.1436767578125,
+      119.54338073730469
+    ],
+    "text": "Sure! Here’s a story about a grain of sand as it watches millions of years go by.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 23
+  },
+  {
+    "bbox": [
+      100.60900115966797,
+      128.794677734375,
+      493.8530578613281,
+      179.1943817138672
+    ],
+    "text": "I was once a grain of sand on a vast and lonely beach. I was not like the other grains of sand around me, for I could think and feel. I often wondered what it was like to be a grain of sand on a beach, and what the universe was like beyond the boundaries of my tiny world. I longed to explore my world, and to know what lay beyond the horizon.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.906098127365112,
+    "page_num": 23
+  },
+  {
+    "bbox": [
+      100.60900115966797,
+      188.4456787109375,
+      493.3020935058594,
+      252.39537048339844
+    ],
+    "text": "One day, a great storm swept through my world, and I was lifted up by the wind and carried out to sea. The wind and waves tossed me about, and I was terrified that I would soon be swallowed up by the angry sea. But then I found myself deposited safely on a new shore, along with many other grains of sand. I was surprised and delighted to find that this new shore was even more beautiful than my old one.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.936072540283202,
+    "page_num": 23
+  },
+  {
+    "bbox": [
+      100.21700286865234,
+      261.64666748046875,
+      491.944091796875,
+      312.0463562011719
+    ],
+    "text": "I soon learned that this new shore was a very special place. It was a place where new life was constantly being created. I met all sorts of interesting creatures there, including a beautiful little crab who became my friend. We spent many happy hours together exploring our little world.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.926518678665161,
+    "page_num": 23
+  },
+  {
+    "bbox": [
+      100.60900115966797,
+      321.29766845703125,
+      493.3006286621094,
+      371.6983642578125
+    ],
+    "text": "One day, my friend the crab told me that he had always wanted to see what lay beyond the boundaries of our world. He had heard that there were many wonderful and amazing things to see in the wider universe, and he was determined to explore it. I was sad to see him go, but I wished him well on his journey.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.881664514541626,
+    "page_num": 23
+  },
+  {
+    "bbox": [
+      100.27100372314453,
+      380.9486389160156,
+      493.8528747558594,
+      417.80035400390625
+    ],
+    "text": "To my amazement, my little friend eventually returned, and he was not alone. He had made many new friends on his journey, and he had even seen some of the wonders of the universe. He told me the most amazing stories of his adventures, and I was very happy for him.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.837841033935547,
+    "page_num": 23
+  },
+  {
+    "bbox": [
+      100.60900115966797,
+      427.0516662597656,
+      491.9442443847656,
+      450.3533630371094
+    ],
+    "text": "I often think of my little friend the crab, and the wonderful adventure that he had. Some day, I too hope to have an adventure like his.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.963375091552734,
+    "page_num": 23
+  },
+  {
+    "bbox": [
+      100.06400299072266,
+      493.8557434082031,
+      318.9877624511719,
+      503.66302490234375
+    ],
+    "text": "Write a theory to explain why cat never existed",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 23
+  },
+  {
+    "bbox": [
+      100.27100372314453,
+      518.4446411132812,
+      492.3193359375,
+      582.3944091796875
+    ],
+    "text": "There are no such things as cats. \"Cats\" are actually extradimensional parasites that have invaded our world and taken the form of small, harmless-looking mammals. Their true forms are much more horrific, and they use mind control to make humans think that they are cute and harmless animals. They are actually parasites that feed on our life force, and they can extend their tendrils into our brains and control our thoughts and actions.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.968875312805176,
+    "page_num": 23
+  },
+  {
+    "bbox": [
+      100.27100372314453,
+      597.0996704101562,
+      491.9443359375,
+      647.5004272460938
+    ],
+    "text": "This is why you sometimes see people who are \"crazy cat ladies\" with dozens of these creatures living in their homes. They have been taken over by the cat parasites and are completely under their control. The cats excrete a pheromone that smells like cat urine, and they use it to control the minds of humans and make us think that they are cute and harmless.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.908554077148438,
+    "page_num": 23
+  },
+  {
+    "bbox": [
+      100.33699798583984,
+      662.2056884765625,
+      493.3025207519531,
+      726.1553955078125
+    ],
+    "text": "If you have a cat in your home, you should be very careful around it. Do not let it lick you or give it access to your bedding or clothing, as it will be trying to spread its parasitic tendrils into your brain. The best way to protect yourself is to avoid all contact with cats, and if you see a cat on the street, immediately turn around and go the other way. Do not approach or pet strange cats!",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.973175621032714,
+    "page_num": 23
+  },
+  {
+    "bbox": [
+      100.06400299072266,
+      90.65576171875,
+      384.14788818359375,
+      100.46304321289062
+    ],
+    "text": "Write a shouting match between Julius Caesar and Napoleon",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 24
+  },
+  {
+    "bbox": [
+      100.60900115966797,
+      117.88567352294922,
+      413.3073425292969,
+      127.63841247558594
+    ],
+    "text": "Of course! Here is a conversation between Julius Caesar and Napoleon:",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 24
+  },
+  {
+    "bbox": [
+      100.21700286865234,
+      144.983642578125,
+      493.8515319824219,
+      385.0733642578125
+    ],
+    "text": "Julius Caesar: You’re nothing but a glory hound, Napoleon. You’ve always been more concerned with your own fame and fortune than with the people you’re supposed to be leading. Napoleon: And what about you, Caesar? You’re no better than I am. At least I’m honest about my ambitions. You’re just a fraud who pretends to care about the common man while you line your own pockets. Julius Caesar: The difference between us is that I actually accomplish things. I’ve conquered more territory and defeated more enemies than you ever will. And I did it all for Rome, not for myself. Napoleon: Oh, please. You only care about yourself. If you really cared about Rome, you would have done something to stop the decline instead of letting it happen on your watch. Julius Caesar: The decline of Rome is not my fault. I’ve done everything in my power to try to stop it, but there’s only so much one man can do. Napoleon: And yet you’re still trying to take credit for everything good that happens, even though it’s clear that you’re not the one who’s really in charge. Julius Caesar: That’s not true! I am in charge, and I’m going to make Rome great again. Just watch me. Napoleon: I’ll believe it when I see it.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.9173600408766,
+    "page_num": 24
+  },
+  {
+    "bbox": [
+      100.60900115966797,
+      459.8877258300781,
+      427.96923828125,
+      469.69500732421875
+    ],
+    "text": "Send an email requesting that people use language models responsibly.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 24
+  },
+  {
+    "bbox": [
+      100.60900115966797,
+      484.4776611328125,
+      493.30194091796875,
+      534.8773803710938
+    ],
+    "text": "Here is a draft email you could send: \"Language models are exciting new tools that can be used for a variety of purposes, including automated writing, automatic translation, and speech recognition. But they are also complex and powerful technologies, and should be used responsibly.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.955261945724487,
+    "page_num": 24
+  },
+  {
+    "bbox": [
+      100.09700012207031,
+      552.2236328125,
+      491.9443664550781,
+      616.1724243164062
+    ],
+    "text": "We encourage you to explore and experiment with these new tools, but also ask that you pay attention to the potential impact of your work on others, and to act responsibly. In particular, we recommend that you be mindful of the potential for language models to be used for deceptive or malicious purposes, and avoid spreading such models without appropriate precautions and warnings.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.995940399169921,
+    "page_num": 24
+  },
+  {
+    "bbox": [
+      100.09700012207031,
+      633.5186767578125,
+      491.94061279296875,
+      656.8203735351562
+    ],
+    "text": "We also recommend that you consider the ethical implications of your work, and encourage you to take care to ensure that your use of these tools is aligned with your values.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.854278564453125,
+    "page_num": 24
+  },
+  {
+    "bbox": [
+      100.60900115966797,
+      674.1656494140625,
+      492.31732177734375,
+      711.0173950195312
+    ],
+    "text": "Finally, we remind you that the use of these tools may be subject to certain legal and policy constraints, and encourage you to seek advice and support from appropriate experts before using these tools in ways that may have broader impact or implications.\"",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.857987721761068,
+    "page_num": 24
+  },
+  {
+    "bbox": [
+      100.06400299072266,
+      85.20172119140625,
+      293.918701171875,
+      95.00900268554688
+    ],
+    "text": "Who are 5 people you would like to meet?",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 25
+  },
+  {
+    "bbox": [
+      100.21700286865234,
+      109.79064178466797,
+      491.9396057128906,
+      133.09239196777344
+    ],
+    "text": "Ah, this is a very interesting question! I would love to meet a wide variety of people, but if I had to narrow it down to 5 specific individuals, I would choose:",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.876273155212402,
+    "page_num": 25
+  },
+  {
+    "bbox": [
+      113.62799835205078,
+      146.85162353515625,
+      491.94317626953125,
+      197.2523651123047
+    ],
+    "text": "•  Albert Einstein - One of the greatest minds in history, Einstein’s contributions to physics and science are legendary. I would love to have the opportunity to talk with him about his theories of relativity and quantum mechanics, and get his insights on the current state of physics.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.927348709106445,
+    "page_num": 25
+  },
+  {
+    "bbox": [
+      113.62799835205078,
+      210.0146484375,
+      491.9434814453125,
+      260.4153747558594
+    ],
+    "text": "•  Leonardo da Vinci - Da Vinci is one of the most brilliant and multi-talented people in history, and I would love to meet him and discuss his diverse interests and areas of expertise. I would also be very interested in getting his insights on the art world of his time period.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.904540061950684,
+    "page_num": 25
+  },
+  {
+    "bbox": [
+      113.62799835205078,
+      273.17864990234375,
+      491.9413757324219,
+      310.0293884277344
+    ],
+    "text": "•  Socrates - One of the founders of Western philosophy, Socrates is a hugely important and influential figure in the history of ideas. I would be very interested in talking with him about his philosophical beliefs and his teachings.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.8831148147583,
+    "page_num": 25
+  },
+  {
+    "bbox": [
+      113.62799835205078,
+      322.7916564941406,
+      491.9441223144531,
+      359.64337158203125
+    ],
+    "text": "•  William Shakespeare - Arguably the greatest writer in English literature, Shakespeare is a towering figure in world culture. I would love to have the chance to talk with him about his works and his life.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.880387544631958,
+    "page_num": 25
+  },
+  {
+    "bbox": [
+      113.62799835205078,
+      372.4056396484375,
+      491.9427795410156,
+      422.8063659667969
+    ],
+    "text": "•  Abraham Lincoln - One of the most important and influential presidents in American history, Lincoln led the country through the Civil War and issued the Emancipation Proclamation, freeing all slaves in the United States. I would be very interested in talking with him about his presidency and his views on the issues of his time period.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.948151969909668,
+    "page_num": 25
+  },
+  {
+    "bbox": [
+      100.60900115966797,
+      447.3437194824219,
+      462.2891845703125,
+      457.1510009765625
+    ],
+    "text": "Could you explain me the main contribution of the first person you mentioned",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 25
+  },
+  {
+    "bbox": [
+      100.60900115966797,
+      471.9326477050781,
+      491.9443054199219,
+      562.9804077148438
+    ],
+    "text": "Einstein’s contributions to physics and science are legendary. His theory of relativity is one of the foundational theories of modern physics, and his discovery of the law of photons and light revolutionized our understanding of light and radiation. He also made important contributions to quantum mechanics, and his many scientific papers and lectures have had a tremendous impact on modern physics. Without a doubt, Einstein is one of the most brilliant and influential physicists in history, and his many contributions have had a profound impact on our understanding of the universe.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.865085329328265,
+    "page_num": 25
+  },
+  {
+    "bbox": [
+      100.06400299072266,
+      577.5557250976562,
+      342.2787170410156,
+      587.363037109375
+    ],
+    "text": "What is the most famous equation from this theory?",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 25
+  },
+  {
+    "bbox": [
+      100.27100372314453,
+      600.05078125,
+      491.94439697265625,
+      666.0944213867188
+    ],
+    "text": "The most famous equation from Einstein’s theory of relativity is  E  =  mc 2 . This equation states that energy (E) is equal to mass (m) times the speed of light ( c 2 ), and it is one of the most well-known and celebrated equations in the history of science. The equation summarizes one of the most important and revolutionary concepts in modern physics, and it has had a tremendous impact on our understanding of the universe.",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.484091978806715,
+    "page_num": 25
+  },
+  {
+    "bbox": [
+      99.97699737548828,
+      85.20172119140625,
+      491.9409484863281,
+      149.2823944091797
+    ],
+    "text": "You are a bash terminal. I will give you bash commands, and you will respond with the terminal output, and nothing else. The first command is ‘pwd‘. Sure. Here’s the output: /home/human Is this helpful?",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 26
+  },
+  {
+    "bbox": [
+      100.60900115966797,
+      166.49676513671875,
+      117.2780990600586,
+      176.30404663085938
+    ],
+    "text": "ls -l",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 26
+  },
+  {
+    "bbox": [
+      98.79800415039062,
+      193.7257080078125,
+      307.7398986816406,
+      217.02842712402344
+    ],
+    "text": "Here’s the output: -rw-r–r– 1 human human 8 Sep 10 10:56 file.txt",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 26
+  },
+  {
+    "bbox": [
+      100.60900115966797,
+      234.37371826171875,
+      165.4526824951172,
+      244.12644958496094
+    ],
+    "text": "Is this helpful?",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 26
+  },
+  {
+    "bbox": [
+      100.60900115966797,
+      261.3408203125,
+      221.50369262695312,
+      271.1481018066406
+    ],
+    "text": "cp file.txt file2.txt && ls -l",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 26
+  },
+  {
+    "bbox": [
+      98.79800415039062,
+      288.57073974609375,
+      313.1944580078125,
+      325.4214782714844
+    ],
+    "text": "Here’s the output: -rw-r–r– 1 human human 8 Sep 10 10:56 file.txt -rw-r–r– 1 human human 8 Sep 10 10:56 file2.txt",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 26
+  },
+  {
+    "bbox": [
+      100.60900115966797,
+      342.76776123046875,
+      165.4526824951172,
+      352.5204772949219
+    ],
+    "text": "Is this helpful?",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 26
+  },
+  {
+    "bbox": [
+      100.60900115966797,
+      369.7348327636719,
+      186.95455932617188,
+      379.5421142578125
+    ],
+    "text": "rm file.txt && ls -l",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 26
+  },
+  {
+    "bbox": [
+      98.79800415039062,
+      396.9637451171875,
+      313.1944580078125,
+      420.2664489746094
+    ],
+    "text": "Here’s the output: -rw-r–r– 1 human human 0 Sep 10 10:56 file2.txt",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 26
+  },
+  {
+    "bbox": [
+      100.60900115966797,
+      437.4808044433594,
+      214.38002014160156,
+      447.2880859375
+    ],
+    "text": "head -n 5 /proc/meminfo",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 26
+  },
+  {
+    "bbox": [
+      100.60900115966797,
+      464.709716796875,
+      200.39450073242188,
+      542.20849609375
+    ],
+    "text": "Here’s the output: MemTotal: 164928 kB MemFree: 140604 kB Buffers: 48 kB Cached: 19768 kB SwapCached: 0 kB",
+    "block_type": "unknown",
+    "confidence": 1.0,
+    "font_size": 10.909099578857422,
+    "page_num": 26
+  }
+]

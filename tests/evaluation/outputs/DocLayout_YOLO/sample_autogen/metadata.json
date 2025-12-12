@@ -1,0 +1,18 @@
+{
+  "tool_name": "DocLayout_YOLO",
+  "pdf_path": "tests/fixtures/sample_autogen.pdf",
+  "pdf_name": "sample_autogen",
+  "total_pages": 1,
+  "processing_time_seconds": 1.3500108819998786,
+  "blocks_detected": 15,
+  "blocks_by_type": {
+    "plain_text": 7,
+    "figure": 1,
+    "title": 2,
+    "abandoned_text": 4,
+    "figure_caption": 1
+  },
+  "device": "cuda:0",
+  "errors": [],
+  "evaluation_timestamp": "2025-12-11T12:35:46.078683"
+}

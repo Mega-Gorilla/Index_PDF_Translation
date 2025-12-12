@@ -1,0 +1,119 @@
+[
+  {
+    "bbox": [
+      131.83299255371094,
+      101.16837310791016,
+      480.1695251464844,
+      136.57000732421875
+    ],
+    "text": "Chain-of-Thought Prompting Elicits Reasoning in Large Language Models",
+    "block_type": "heading_1",
+    "confidence": 1.0,
+    "font_size": null,
+    "page_num": 0
+  },
+  {
+    "bbox": [
+      152.11099243164062,
+      181.85877990722656,
+      195.3187713623047,
+      190.81515502929688
+    ],
+    "text": "Jason Wei",
+    "block_type": "body",
+    "confidence": 1.0,
+    "font_size": null,
+    "page_num": 0
+  },
+  {
+    "bbox": [
+      154.65098571777344,
+      181.85877990722656,
+      462.37628173828125,
+      239.26168823242188
+    ],
+    "text": "Jason Wei Xuezhi Wang Dale Schuurmans Maarten Bosma Brian Ichter Fei Xia Ed H. Chi Quoc V. Le Denny Zhou Google Research, Brain Team {jasonwei,dennyzhou}@google.com",
+    "block_type": "body",
+    "confidence": 1.0,
+    "font_size": null,
+    "page_num": 0
+  },
+  {
+    "bbox": [
+      283.75799560546875,
+      278.4869079589844,
+      328.2432861328125,
+      289.234619140625
+    ],
+    "text": "Abstract",
+    "block_type": "heading_2",
+    "confidence": 1.0,
+    "font_size": null,
+    "page_num": 0
+  },
+  {
+    "bbox": [
+      143.86599731445312,
+      303.5933532714844,
+      469.7909851074219,
+      367.044921875
+    ],
+    "text": "We explore how generating a  chain of thought —a series of intermediate reasoning steps—significantly improves the ability of large language models to perform complex reasoning. In particular, we show how such reasoning abilities emerge naturally in sufficiently large language models via a simple method called  chain-of- thought prompting , where a few chain of thought demonstrations are provided as exemplars in prompting.",
+    "block_type": "body",
+    "confidence": 1.0,
+    "font_size": null,
+    "page_num": 0
+  },
+  {
+    "bbox": [
+      143.86599731445312,
+      371.0403747558594,
+      468.1362609863281,
+      434.4919128417969
+    ],
+    "text": "Experiments on three large language models show that chain-of-thought prompting improves performance on a range of arithmetic, commonsense, and symbolic reasoning tasks. The empirical gains can be striking. For instance, prompting a PaLM 540B with just eight chain-of-thought exemplars achieves state-of-the-art accuracy on the GSM8K benchmark of math word problems, surpassing even finetuned GPT-3 with a verifier.",
+    "block_type": "body",
+    "confidence": 1.0,
+    "font_size": null,
+    "page_num": 0
+  },
+  {
+    "bbox": [
+      115.0,
+      454.0,
+      497.0,
+      641.0
+    ],
+    "text": "Standard Prompting Chain-of-Thought Prompting Model Input Model Input Q: Roger has 5 tennis balls. He buys 2 more cans of  Q: Roger has 5 tennis balls. He buys 2 more cans of  tennis balls. Each can has 3 tennis balls. How many  tennis balls. Each can has 3 tennis balls. How many  tennis balls does he have now?\n tennis balls does he have now?\n A: The answer is 11.\n A: Roger started with 5 balls. 2 cans of 3 tennis balls  each is 6 tennis balls. 5 + 6 = 11. The answer is 11.\n Q: The cafeteria had 23 apples. If they used 20 to  make lunch and bought 6 more, how many apples  Q: The cafeteria had 23 apples. If they used 20 to  do they have? make lunch and bought 6 more, how many apples  do they have? Model Output Model Output A: The answer is 27. A: The cafeteria had 23 apples originally. They used  20 to make lunch. So they had 23 - 20 = 3. They  bought 6 more apples, so they have 3 + 6 = 9. The  answer is 9.",
+    "block_type": "body",
+    "confidence": 1.0,
+    "font_size": null,
+    "page_num": 0
+  },
+  {
+    "bbox": [
+      108.0,
+      651.1763916015625,
+      505.7471008300781,
+      670.9918823242188
+    ],
+    "text": "Figure 1: Chain-of-thought prompting enables large language models to tackle complex arithmetic, commonsense, and symbolic reasoning tasks. Chain-of-thought reasoning processes are highlighted.",
+    "block_type": "caption",
+    "confidence": 1.0,
+    "font_size": null,
+    "page_num": 0
+  },
+  {
+    "bbox": [
+      108.0,
+      733.7977905273438,
+      385.16937255859375,
+      741.8137817382812
+    ],
+    "text": "36th Conference on Neural Information Processing Systems (NeurIPS 2022).",
+    "block_type": "footer",
+    "confidence": 1.0,
+    "font_size": null,
+    "page_num": 0
+  }
+]

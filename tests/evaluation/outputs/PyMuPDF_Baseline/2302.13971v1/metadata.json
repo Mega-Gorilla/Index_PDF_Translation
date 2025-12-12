@@ -1,0 +1,13 @@
+{
+  "tool_name": "PyMuPDF_Baseline",
+  "pdf_path": "tests/pdf_sample/2302.13971v1.pdf",
+  "pdf_name": "2302.13971v1",
+  "total_pages": 27,
+  "processing_time_seconds": 0.08600035899962677,
+  "blocks_detected": 415,
+  "blocks_by_type": {
+    "unknown": 415
+  },
+  "errors": [],
+  "evaluation_timestamp": "2025-12-11T12:16:02.231642"
+}

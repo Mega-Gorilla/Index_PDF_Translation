@@ -1,0 +1,27 @@
+Title: AutoGen: Enabling Next-Gen LLM Applications via Multi-Agent Conversation
+
+Section headers:
+- 1. Introduction
+- 2. AutoGen agents
+- 3. Multi-Agent Conversations
+- 4. Example Agent Chat
+- 5. Abstract
+
+Body text:
+- AutoGen enables diverse LLM-based applications using multi-agent conversations.
+- AutoGen agents are conversable, customizable, and can be based on LLMs, tools, humans, or even a combination of them.
+- Agents can conversing to solve tasks.
+- They can form a chat, potentially with humans in the loop.
+- The framework supports flexible conversation patterns.
+
+Figure caption:
+Figure 1: AutoGen enables diverse LLM-based applications using multi-agent conversations.
+
+Figure caption:
+Figure 2: AutoGen agents can conversing to solve tasks.
+
+Figure caption:
+Figure 3: AutoGen serves as a generic framework for building diverse applications of various complexities and LLM capacities.
+
+Figure caption:
+Figure 4: Empirical studies demonstrate the effectiveness of the framework in many example applications, with domains ranging from mathematics, coding, question answering, operations research, online decision-making, entertainment, etc.
