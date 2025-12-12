@@ -3,6 +3,50 @@
 > **関連Issue**: [#38](https://github.com/Mega-Gorilla/Index_PDF_Translation/issues/38)
 > **関連調査**: [PyMuPDF4LLM評価レポート](../research/evaluations/pymupdf4llm-evaluation.md)
 
+---
+
+## ⚠️ アーカイブ: ライセンス上の問題により本計画は保留
+
+### 問題の概要
+
+本計画で使用を予定していた`pymupdf-layout`パッケージに**ライセンス上の問題**があることが判明しました。
+
+### ライセンス調査結果
+
+| パッケージ | ライセンス | 商用利用 |
+|-----------|-----------|---------|
+| PyMuPDF | AGPL-3.0 / 商用 | ✅ AGPL遵守で可 |
+| pymupdf4llm | AGPL-3.0 / 商用 | ✅ AGPL遵守で可 |
+| **pymupdf-layout** | **PolyForm Noncommercial 1.0.0** | ❌ 商用ライセンス必要 |
+
+### 技術的制約
+
+`pymupdf-layout`なしでは、本計画の核となる機能が使用できません：
+
+| 機能 | pymupdf-layoutなし | pymupdf-layoutあり |
+|------|-------------------|-------------------|
+| `to_json()` (ParsedDocument) | ❌ NotImplementedError | ✅ |
+| boxclass (構造タグ) | ❌ | ✅ |
+| テキストブロックbbox | ❌ | ✅ |
+
+### 結論
+
+- **ParsedDocumentベースのアーキテクチャ**は`pymupdf-layout`が必須
+- `pymupdf-layout`は**PolyForm Noncommercial**ライセンスのため、商用利用には商用ライセンスが必要
+- 本プロジェクト（AGPL-3.0）での商用利用を想定する場合、別のアプローチを検討する必要がある
+
+### 代替案
+
+1. **既存方式の改善**: ヒストグラム+IQR分類にルールベース検出を追加
+2. **他のOSSツール検討**: DocLayout-YOLO (Apache-2.0)、GROBID (Apache-2.0) 等
+3. **商用ライセンス取得**: Artifexから`pymupdf-layout`の商用ライセンスを購入
+
+### 関連ドキュメント
+
+- [データ抽出方式比較](../research/data-extraction-comparison.md)
+
+---
+
 ## 1. 概要
 
 ### 1.1 目的
