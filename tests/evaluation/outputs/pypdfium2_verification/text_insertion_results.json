@@ -1,0 +1,42 @@
+{
+  "timestamp": "2025-12-12T19:14:27.747028",
+  "capabilities": {
+    "can_insert_english_text": false,
+    "can_insert_japanese_text": false,
+    "can_modify_existing_pdf": false
+  },
+  "errors": [],
+  "tests": [
+    {
+      "name": "english_text_insertion",
+      "success": false,
+      "error": "'PdfDocument' object has no attribute 'add_font'",
+      "traceback": "Traceback (most recent call last):\n  File \"/home/shojo-hakase/codes/Index_PDF_Translation/tests/evaluation/verify_pypdfium2_text_insertion.py\", line 65, in verify_text_insertion\n    pdf_font = pdf.add_font(\n               ^^^^^^^^^^^^\nAttributeError: 'PdfDocument' object has no attribute 'add_font'\n"
+    },
+    {
+      "name": "japanese_text_insertion",
+      "success": false,
+      "error": "'PdfDocument' object has no attribute 'add_font'",
+      "traceback": "Traceback (most recent call last):\n  File \"/home/shojo-hakase/codes/Index_PDF_Translation/tests/evaluation/verify_pypdfium2_text_insertion.py\", line 118, in verify_text_insertion\n    pdf_font = pdf.add_font(\n               ^^^^^^^^^^^^\nAttributeError: 'PdfDocument' object has no attribute 'add_font'\n"
+    },
+    {
+      "name": "modify_existing_pdf",
+      "success": false,
+      "text_objects_removed": 1,
+      "error": "'PdfDocument' object has no attribute 'add_font'",
+      "traceback": "Traceback (most recent call last):\n  File \"/home/shojo-hakase/codes/Index_PDF_Translation/tests/evaluation/verify_pypdfium2_text_insertion.py\", line 203, in verify_text_insertion\n    pdf_font = pdf.add_font(\n               ^^^^^^^^^^^^\nAttributeError: 'PdfDocument' object has no attribute 'add_font'\n"
+    }
+  ],
+  "fonts": {
+    "japanese_font": "src/index_pdf_translation/resources/fonts/ipam.ttf",
+    "english_font": "src/index_pdf_translation/resources/fonts/LiberationSerif-Regular.ttf"
+  },
+  "summary": {
+    "all_capabilities": {
+      "can_insert_english_text": false,
+      "can_insert_japanese_text": false,
+      "can_modify_existing_pdf": false
+    },
+    "full_workflow_possible": false
+  }
+}

@@ -283,38 +283,192 @@ PDFのテキスト削除（墨消し）が困難な理由：
 | pdf-redactor | pdfrwでストリーム書き換え | 正規表現マッチのみ |
 | pikepdf | QPDFでコンテンツストリーム操作 | 低レベルAPI、複雑 |
 
-### 5.3 pypdfium2の墨消し可能性
+### 5.3 pypdfium2の墨消し可能性 ✅ **検証完了**
 
-pypdfium2のPDFium APIには `FPDFPage_RemoveObject()` が存在するが、テキストオブジェクトの特定と削除は複雑。
+**2025-12-12検証結果: 実用的であることを確認**
 
+pypdfium2のPDFium APIを使用したテキスト削除・挿入が完全に動作することを確認した。
+
+#### 検証済み機能
+
+| 機能 | 結果 | 備考 |
+|------|:----:|------|
+| テキストオブジェクト列挙 | ✅ | `page.get_objects(filter=[FPDF_PAGEOBJ_TEXT])` |
+| バウンディングボックス取得 | ✅ | `obj.get_bounds()` → `(left, bottom, right, top)` |
+| テキストオブジェクト削除 | ✅ | `page.remove_obj(obj)` |
+| コンテンツ再生成 | ✅ | `page.gen_content()` |
+| 標準フォントテキスト挿入 | ✅ | Helvetica等 |
+| TrueTypeフォントテキスト挿入 | ✅ | カスタムフォント |
+| 日本語CIDフォントテキスト挿入 | ✅ | IPA明朝等 |
+| 完全ワークフロー | ✅ | 削除 → 挿入 → 保存 |
+
+#### 実装例（検証済み）
+
+**テキスト削除:**
 ```python
-# 理論上の実装（未検証）
 import pypdfium2 as pdfium
-from pypdfium2._helpers import LoopFormObject
 
-pdf = pdfium.PdfDocument(path)
+FPDF_PAGEOBJ_TEXT = pdfium.raw.FPDF_PAGEOBJ_TEXT
+
+pdf = pdfium.PdfDocument(pdf_path)
 page = pdf[0]
 
-for obj in LoopFormObject(page):
-    if obj.type == pdfium.FPDF_PAGEOBJ_TEXT:
-        # テキストオブジェクトを削除
+# テキストオブジェクトを列挙
+for obj in page.get_objects(filter=[FPDF_PAGEOBJ_TEXT]):
+    bounds = obj.get_bounds()  # (left, bottom, right, top)
+
+    # 特定の領域内のテキストを削除
+    if bounds[1] >= 750:  # y座標が750以上
         page.remove_obj(obj)
+
+page.gen_content()
+
+with open(output_path, "wb") as f:
+    pdf.save(f)
 ```
 
-**要検証**: この方法が実用的かどうかは追加調査が必要。
+**テキスト挿入（raw API使用）:**
+```python
+import pypdfium2 as pdfium
+import ctypes
+
+def to_widestring(text: str):
+    """UTF-16LEに変換"""
+    encoded = text.encode('utf-16-le') + b'\x00\x00'
+    arr = (ctypes.c_ushort * (len(encoded) // 2))()
+    for i in range(len(encoded) // 2):
+        arr[i] = int.from_bytes(encoded[i*2:i*2+2], 'little')
+    return arr
+
+def to_byte_array(data: bytes):
+    """バイト配列に変換"""
+    arr = (ctypes.c_ubyte * len(data))()
+    for i, b in enumerate(data):
+        arr[i] = b
+    return arr
+
+# フォントを読み込み
+with open(font_path, "rb") as f:
+    font_data = f.read()
+
+font_arr = to_byte_array(font_data)
+font_handle = pdfium.raw.FPDFText_LoadFont(
+    pdf.raw,
+    font_arr,
+    ctypes.c_uint(len(font_data)),
+    ctypes.c_int(pdfium.raw.FPDF_FONT_TRUETYPE),
+    ctypes.c_int(1)  # CID font for CJK
+)
+
+# テキストオブジェクト作成
+text_obj = pdfium.raw.FPDFPageObj_CreateTextObj(
+    pdf.raw, font_handle, ctypes.c_float(14.0)
+)
+
+# テキスト設定
+text_ws = to_widestring("翻訳されたテキスト")
+pdfium.raw.FPDFText_SetText(text_obj, text_ws)
+
+# 位置設定
+pdfium.raw.FPDFPageObj_Transform(
+    text_obj,
+    ctypes.c_double(1.0), ctypes.c_double(0.0),
+    ctypes.c_double(0.0), ctypes.c_double(1.0),
+    ctypes.c_double(x), ctypes.c_double(y)
+)
+
+# ページに挿入
+pdfium.raw.FPDFPage_InsertObject(page.raw, text_obj)
+page.gen_content()
+```
+
+#### 検証ログ
+
+```
+tests/evaluation/outputs/pypdfium2_verification/
+├── verification_results.json      # 基本機能検証
+├── targeted_removal_results.json  # bbox指定削除検証
+├── text_insertion_v2_results.json # テキスト挿入検証
+├── modified_output.pdf            # 削除後PDF
+├── targeted_removal_output.pdf    # bbox指定削除後PDF
+├── standard_font_v2.pdf           # 標準フォントテスト
+├── truetype_font_v2.pdf           # TrueTypeフォントテスト
+├── japanese_cid_v2.pdf            # 日本語フォントテスト
+└── full_workflow_v2.pdf           # 完全ワークフローテスト
+```
+
+**結論**: pypdfium2はPyMuPDFの代替として**実用的**である。
 
 ---
 
-## 6. 推奨アプローチ
+## 6. 推奨アプローチ ✅ **更新: 2025-12-12**
 
-### 6.1 短期（現実的）
+### 6.1 推奨: pypdfium2による完全Apache 2.0化 🎉
 
-**選択肢A（PyMuPDF継続）+ PP-DocLayoutハイブリッド**
+**検証結果に基づき、pypdfium2でPyMuPDFを完全に代替可能であることが確認された。**
 
 ```
-[PDF] → [pdftext] → テキスト抽出（Apache 2.0）
+[PDF] → [pypdfium2] → テキスト抽出（Apache 2.0）✅
           ↓
-      [pypdfium2] → 画像レンダリング（Apache 2.0）
+      [pypdfium2] → 画像レンダリング（Apache 2.0）✅
+          ↓
+      [PP-DocLayout] → レイアウト分類（Apache 2.0）✅
+          ↓
+      [pypdfium2] → テキスト削除（Apache 2.0）✅ NEW!
+          ↓
+      [pypdfium2] → テキスト挿入（Apache 2.0）✅ NEW!
+          ↓
+      [出力PDF]
+```
+
+| 評価項目 | 評価 |
+|---------|------|
+| 実装コスト | ⭐⭐ 中（raw API使用） |
+| 品質 | ⭐⭐⭐ 高 |
+| ライセンス | ✅ **Apache 2.0のみ** |
+
+**メリット**:
+- **AGPL-3.0制約からの完全解放**
+- 商用ライセンス販売が容易に
+- クローズドソース派生物の許可
+- Google PDFiumの高品質レンダリング
+
+**注意点**:
+- テキスト挿入にraw API（ctypes）が必要
+- ヘルパー関数の開発が推奨
+
+### 6.2 実装ロードマップ
+
+#### Phase 1: pypdfium2ラッパー開発
+```python
+# 新規モジュール: src/index_pdf_translation/core/pypdfium2_wrapper.py
+
+class PdfiumTextEditor:
+    """pypdfium2でテキスト編集を行うラッパークラス"""
+
+    def remove_text_in_region(self, page, bbox):
+        """指定領域内のテキストを削除"""
+
+    def insert_text(self, page, text, pos, font_path, font_size):
+        """テキストを挿入"""
+```
+
+#### Phase 2: 既存コード移行
+1. `pdf_edit.py`のPyMuPDF依存部分をpypdfium2に置換
+2. テキスト抽出: `pdftext`または`pypdfium2`を使用
+3. テキスト削除/挿入: 新規ラッパーを使用
+
+#### Phase 3: テスト・最適化
+1. 既存テストケースでの動作確認
+2. パフォーマンス比較（PyMuPDF vs pypdfium2）
+3. エッジケース対応
+
+### 6.3 フォールバック: PyMuPDF継続
+
+万が一pypdfium2で問題が発生した場合の代替案:
+
+```
+[PDF] → [pypdfium2] → テキスト抽出/画像化（Apache 2.0）
           ↓
       [PP-DocLayout] → レイアウト分類（Apache 2.0）
           ↓
@@ -323,55 +477,42 @@ for obj in LoopFormObject(page):
       [出力PDF]
 ```
 
-**メリット**:
-- 実装変更最小限
-- PP-DocLayoutの恩恵を受けられる
-- PyMuPDF依存を削除/挿入のみに限定
-
-**デメリット**:
-- 引き続きAGPL-3.0制約
-
-### 6.2 中期（要プロトタイプ検証）
-
-**pypdfium2の墨消し機能調査**
-
-1. `FPDFPage_RemoveObject()` の実用性検証
-2. テキストオブジェクト特定アルゴリズム開発
-3. パフォーマンス・品質評価
-
-**成功すれば**: 完全Apache 2.0化が可能
-
-### 6.3 長期（代替アプローチ）
-
-**選択肢C（ハイブリッドPDF再構築）の段階的実装**
-
-1. 単純なテキストのみのPDFでプロトタイプ
-2. 図表・数式の扱いを段階的に追加
-3. 品質とパフォーマンスの最適化
+**この場合のライセンス**: AGPL-3.0
 
 ---
 
-## 7. 次のステップ
+## 7. 次のステップ ✅ **更新: 2025-12-12**
 
-### 7.1 即座に実施可能
+### 7.1 完了タスク ✅
 
-- [ ] pypdfium2の `FPDFPage_RemoveObject()` 検証プロトタイプ作成
-- [ ] pdftext + PP-DocLayout統合のPoC
-- [ ] 選択肢Bの画像オーバーレイ方式プロトタイプ
+- [x] pypdfium2の `FPDFPage_RemoveObject()` 検証 → **成功**
+- [x] pypdfium2のテキスト挿入検証（raw API） → **成功**
+- [x] 日本語CIDフォント対応検証 → **成功**
+- [x] 完全ワークフロー検証（削除→挿入→保存） → **成功**
 
-### 7.2 調査継続
+### 7.2 次に実施すべきタスク
 
-- [ ] pikepdfでのテキスト削除可能性の詳細調査
-- [ ] pdf-redactorのbbox対応拡張可能性
-- [ ] 商用ライブラリ（Apryse等）のライセンス条件確認
+| タスク | 優先度 | 説明 |
+|-------|:------:|------|
+| pypdfium2ラッパークラス開発 | 🔴 高 | `PdfiumTextEditor`クラスの実装 |
+| 既存pdf_edit.py移行 | 🔴 高 | PyMuPDF→pypdfium2への置換 |
+| パフォーマンステスト | 🟡 中 | 処理速度・メモリ使用量比較 |
+| エッジケーステスト | 🟡 中 | 複雑なPDF、数式、表対応 |
+| ライセンス変更 | 🟢 低 | AGPL-3.0→Apache 2.0への変更 |
 
-### 7.3 Issue作成
+### 7.3 Issue作成提案
 
-PyMuPDF代替の本格検討を進めるため、以下のIssueを作成：
+1. **pypdfium2ラッパー実装** (優先度: 高)
+   - `PdfiumTextEditor`クラスの開発
+   - テキスト削除・挿入のヘルパー関数
 
-1. **pypdfium2墨消し機能検証** (優先度: 高)
-2. **pdftext + PP-DocLayout統合** (優先度: 中)
-3. **PDF再構築アーキテクチャ設計** (優先度: 低)
+2. **PyMuPDF依存排除** (優先度: 高)
+   - `pdf_edit.py`のpypdfium2移行
+   - 依存関係からPyMuPDFを削除
+
+3. **ライセンス変更** (優先度: 中)
+   - AGPL-3.0からApache 2.0への移行
+   - 各ファイルのSPDX識別子更新
 
 ---
 

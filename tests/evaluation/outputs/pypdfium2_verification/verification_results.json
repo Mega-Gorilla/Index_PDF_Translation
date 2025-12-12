@@ -1,0 +1,164 @@
+{
+  "pdf_path": "tests/fixtures/sample_llama.pdf",
+  "pypdfium2_version": "unknown",
+  "pdfium_version": "unknown",
+  "verification_timestamp": "2025-12-12T19:11:21.722306",
+  "capabilities": {
+    "can_filter_text_objects": true,
+    "can_get_text_bounds": true,
+    "can_remove_text_objects": true,
+    "can_gen_content": true,
+    "can_save_modified_pdf": true
+  },
+  "errors": [],
+  "page_analyses": [
+    {
+      "page_num": 0,
+      "page_size": [
+        595.2760009765625,
+        841.8900146484375
+      ],
+      "objects_by_type": {
+        "type_1": 156,
+        "type_2": 1
+      },
+      "text_objects": [],
+      "text_objects_with_bounds": [
+        {
+          "index": 0,
+          "bounds": [
+            117.5445785522461,
+            753.35302734375,
+            477.60552978515625,
+            766.2072143554688
+          ],
+          "type": 1
+        },
+        {
+          "index": 1,
+          "bounds": [
+            129.9800567626953,
+            714.8292236328125,
+            203.61215209960938,
+            725.3617553710938
+          ],
+          "type": 1
+        },
+        {
+          "index": 2,
+          "bounds": [
+            204.37290954589844,
+            721.8890380859375,
+            207.4812469482422,
+            725.3241577148438
+          ],
+          "type": 1
+        },
+        {
+          "index": 3,
+          "bounds": [
+            204.28125,
+            715.1400756835938,
+            285.2896728515625,
+            725.5410766601562
+          ],
+          "type": 1
+        },
+        {
+          "index": 4,
+          "bounds": [
+            286.1208801269531,
+            721.8890380859375,
+            289.229248046875,
+            725.3241577148438
+          ],
+          "type": 1
+        },
+        {
+          "index": 5,
+          "bounds": [
+            286.02923583984375,
+            715.1400756835938,
+            376.279052734375,
+            725.5410766601562
+          ],
+          "type": 1
+        },
+        {
+          "index": 6,
+          "bounds": [
+            377.098876953125,
+            721.8890380859375,
+            380.2072448730469,
+            725.3241577148438
+          ],
+          "type": 1
+        },
+        {
+          "index": 7,
+          "bounds": [
+            377.0072326660156,
+            715.1400756835938,
+            465.5354919433594,
+            725.5410766601562
+          ],
+          "type": 1
+        },
+        {
+          "index": 8,
+          "bounds": [
+            111.18034362792969,
+            700.451171875,
+            483.9913024902344,
+            711.4140625
+          ],
+          "type": 1
+        },
+        {
+          "index": 9,
+          "bounds": [
+            134.0862579345703,
+            686.0502319335938,
+            461.1805419921875,
+            696.7620849609375
+          ],
+          "type": 1
+        }
+      ],
+      "total_objects": 157,
+      "text_object_count": 156,
+      "bounds_retrieved": 10
+    }
+  ],
+  "total_pages": 1,
+  "object_type_constants": {
+    "FPDF_PAGEOBJ_TEXT": 1,
+    "FPDF_PAGEOBJ_PATH": 2,
+    "FPDF_PAGEOBJ_IMAGE": 3,
+    "FPDF_PAGEOBJ_SHADING": 4,
+    "FPDF_PAGEOBJ_FORM": 5
+  },
+  "removal_test": {
+    "initial_text_objects": 156,
+    "attempted_removals": 3,
+    "successful_removals": 3,
+    "errors": []
+  },
+  "output_pdf": "tests/evaluation/outputs/pypdfium2_verification/modified_output.pdf",
+  "verification": {
+    "original_text_objects": 156,
+    "after_removal_text_objects": 153,
+    "difference": 3,
+    "removal_verified": true
+  },
+  "summary": {
+    "text_removal_possible": true,
+    "all_capabilities": {
+      "can_filter_text_objects": true,
+      "can_get_text_bounds": true,
+      "can_remove_text_objects": true,
+      "can_gen_content": true,
+      "can_save_modified_pdf": true
+    }
+  }
+}
