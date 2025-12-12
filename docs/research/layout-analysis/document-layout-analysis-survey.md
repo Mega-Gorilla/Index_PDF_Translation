@@ -404,11 +404,32 @@ Doclingプロジェクトの"heron-101"モデル:
 - **高精度**: COCO val2017でYOLOを上回る精度
 - **柔軟なバックボーン**: ResNet-50/101、HGNetV2対応
 
+#### PP-DocLayout vs RT-DETR（ベース）比較
+
+PP-DocLayoutはRT-DETRをベースアーキテクチャとして使用しているが、文書レイアウト解析に特化したファインチューニングにより大幅な性能向上を達成している。
+
+| 項目 | RT-DETR (Docling heron-101) | PP-DocLayout-L |
+|------|---------------------------|----------------|
+| アーキテクチャ | RT-DETRv2 + ResNet101 | RT-DETR-L + PPHGNetV2-B4 |
+| 訓練データ | 150,000 文書 | 30,000 文書（知識蒸留あり） |
+| カテゴリ数 | 11 (DocLayNet) | **23** |
+| DocLayNet mAP | 78% | - |
+| 独自データ mAP@0.5 | - | **90.4%** |
+| 推論速度 | 28 ms/page (A100) | **13.4 ms/page (T4)** |
+
+**結論**: 文書レイアウト解析タスクにおいては、汎用RT-DETRよりも**PP-DocLayout（ファインチューニング版）が優位**。
+- GOT-OCR2.0からの知識蒸留により、より少ない訓練データで高精度を実現
+- 23カテゴリの詳細分類（数式、アルゴリズム、参考文献等）
+- T4 GPUで13.4ms/pageの高速推論
+
+**推奨**: RT-DETRを直接使用するのではなく、PP-DocLayoutを採用すべき。
+
 #### 参考リンク
 
 - [GitHub Repository](https://github.com/lyuwenyu/RT-DETR)
 - [CVPR 2024 Paper](https://openaccess.thecvf.com/content/CVPR2024/papers/Zhao_DETRs_Beat_YOLOs_on_Real-time_Object_Detection_CVPR_2024_paper.pdf)
 - [Docling Layout Models (arXiv)](https://arxiv.org/html/2509.11720)
+- [PP-DocLayout Paper (arXiv)](https://arxiv.org/abs/2503.17213)
 
 ---
 
@@ -720,6 +741,19 @@ client.process("processFulltextDocument", "./pdfs/", output="./outputs/")
 - Java依存（JVM必要）
 - 学術論文に特化（一般文書には最適化されていない）
 - 初期セットアップが複雑
+
+#### ❌ 候補除外（2025-12-12）
+
+**本プロジェクトでの採用を見送り**
+
+| 除外理由 | 詳細 |
+|---------|------|
+| **Java/Docker依存** | Python純粋統合が困難。JVMまたはDockerコンテナが必要 |
+| **REST API方式** | サーバー起動が必要で、ライブラリとしての直接呼び出し不可 |
+| **用途の不一致** | 学術論文のメタデータ抽出（著者、参考文献等）が主目的。bbox座標を使ったレイアウト検出には不向き |
+| **処理フロー** | PDF → TEI XML変換が主であり、PDF編集（文字削除・挿入）のワークフローに適さない |
+
+**代替推奨**: PP-DocLayout（Apache 2.0、Python純粋、bbox座標取得可能）
 
 #### 参考リンク
 
