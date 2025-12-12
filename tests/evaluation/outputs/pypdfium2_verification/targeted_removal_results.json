@@ -1,0 +1,102 @@
+{
+  "pdf_path": "tests/fixtures/sample_llama.pdf",
+  "target_region": [
+    100.0,
+    700.0,
+    500.0,
+    780.0
+  ],
+  "timestamp": "2025-12-12T19:12:15.591706",
+  "removed_objects": [
+    {
+      "bounds": [
+        117.5445785522461,
+        753.35302734375,
+        477.60552978515625,
+        766.2072143554688
+      ],
+      "status": "removed"
+    },
+    {
+      "bounds": [
+        129.9800567626953,
+        714.8292236328125,
+        203.61215209960938,
+        725.3617553710938
+      ],
+      "status": "removed"
+    },
+    {
+      "bounds": [
+        204.37290954589844,
+        721.8890380859375,
+        207.4812469482422,
+        725.3241577148438
+      ],
+      "status": "removed"
+    },
+    {
+      "bounds": [
+        204.28125,
+        715.1400756835938,
+        285.2896728515625,
+        725.5410766601562
+      ],
+      "status": "removed"
+    },
+    {
+      "bounds": [
+        286.1208801269531,
+        721.8890380859375,
+        289.229248046875,
+        725.3241577148438
+      ],
+      "status": "removed"
+    },
+    {
+      "bounds": [
+        286.02923583984375,
+        715.1400756835938,
+        376.279052734375,
+        725.5410766601562
+      ],
+      "status": "removed"
+    },
+    {
+      "bounds": [
+        377.098876953125,
+        721.8890380859375,
+        380.2072448730469,
+        725.3241577148438
+      ],
+      "status": "removed"
+    },
+    {
+      "bounds": [
+        377.0072326660156,
+        715.1400756835938,
+        465.5354919433594,
+        725.5410766601562
+      ],
+      "status": "removed"
+    },
+    {
+      "bounds": [
+        111.18034362792969,
+        700.451171875,
+        483.9913024902344,
+        711.4140625
+      ],
+      "status": "removed"
+    }
+  ],
+  "errors": [],
+  "initial_text_objects": 156,
+  "objects_analyzed": 156,
+  "objects_in_target_region": 9,
+  "successfully_removed": 9,
+  "output_pdf": "tests/evaluation/outputs/pypdfium2_verification/targeted_removal_output.pdf",
+  "final_text_objects": 147,
+  "removal_verified": true,
+  "success": true
+}

@@ -1,0 +1,50 @@
+{
+  "timestamp": "2025-12-12T19:16:40.934755",
+  "capabilities": {
+    "standard_font": true,
+    "truetype_font": true,
+    "japanese_cid": true,
+    "full_workflow": true
+  },
+  "errors": [],
+  "tests": [
+    {
+      "name": "standard_font_text",
+      "success": true,
+      "font_loaded": true,
+      "text_obj_created": true,
+      "text_set": true,
+      "output": "tests/evaluation/outputs/pypdfium2_verification/standard_font_v2.pdf"
+    },
+    {
+      "name": "truetype_font_text",
+      "success": true,
+      "font_loaded": true,
+      "output": "tests/evaluation/outputs/pypdfium2_verification/truetype_font_v2.pdf"
+    },
+    {
+      "name": "japanese_cid_font",
+      "success": true,
+      "font_loaded": true,
+      "output": "tests/evaluation/outputs/pypdfium2_verification/japanese_cid_v2.pdf"
+    },
+    {
+      "name": "full_workflow",
+      "success": true,
+      "initial_objects": 156,
+      "objects_removed": 1,
+      "text_inserted": true,
+      "final_objects": 156,
+      "output": "tests/evaluation/outputs/pypdfium2_verification/full_workflow_v2.pdf"
+    }
+  ],
+  "summary": {
+    "all_capabilities": {
+      "standard_font": true,
+      "truetype_font": true,
+      "japanese_cid": true,
+      "full_workflow": true
+    },
+    "pymupdf_replacement_viable": true
+  }
+}

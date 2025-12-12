@@ -1,0 +1,48 @@
+{
+  "timestamp": "2025-12-12T19:15:43.425872",
+  "capabilities": {
+    "can_insert_standard_font_text": false,
+    "can_insert_truetype_font_text": false,
+    "can_insert_japanese_text": false,
+    "can_do_full_workflow": false
+  },
+  "errors": [],
+  "tests": [
+    {
+      "name": "standard_font_text",
+      "success": false,
+      "font_loaded": true,
+      "text_obj_created": true,
+      "error": "argument 2: TypeError: expected LP_c_ushort instance instead of bytes",
+      "traceback": "Traceback (most recent call last):\n  File \"/home/shojo-hakase/codes/Index_PDF_Translation/tests/evaluation/verify_pypdfium2_text_insertion_raw.py\", line 67, in verify_text_insertion_raw\n    ok = pdfium.raw.FPDFText_SetText(text_obj, text_bytes)\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nctypes.ArgumentError: argument 2: TypeError: expected LP_c_ushort instance instead of bytes\n"
+    },
+    {
+      "name": "truetype_font_text",
+      "success": false,
+      "error": "argument 2: TypeError: expected LP_c_ubyte instance instead of bytes",
+      "traceback": "Traceback (most recent call last):\n  File \"/home/shojo-hakase/codes/Index_PDF_Translation/tests/evaluation/verify_pypdfium2_text_insertion_raw.py\", line 131, in verify_text_insertion_raw\n    font_handle = pdfium.raw.FPDFText_LoadFont(\n                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nctypes.ArgumentError: argument 2: TypeError: expected LP_c_ubyte instance instead of bytes\n"
+    },
+    {
+      "name": "japanese_cid_font_text",
+      "success": false,
+      "error": "argument 2: TypeError: expected LP_c_ubyte instance instead of bytes",
+      "traceback": "Traceback (most recent call last):\n  File \"/home/shojo-hakase/codes/Index_PDF_Translation/tests/evaluation/verify_pypdfium2_text_insertion_raw.py\", line 209, in verify_text_insertion_raw\n    font_handle = pdfium.raw.FPDFText_LoadFont(\n                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nctypes.ArgumentError: argument 2: TypeError: expected LP_c_ubyte instance instead of bytes\n"
+    },
+    {
+      "name": "full_workflow",
+      "success": false,
+      "objects_removed": 1,
+      "error": "argument 2: TypeError: expected LP_c_ubyte instance instead of bytes",
+      "traceback": "Traceback (most recent call last):\n  File \"/home/shojo-hakase/codes/Index_PDF_Translation/tests/evaluation/verify_pypdfium2_text_insertion_raw.py\", line 298, in verify_text_insertion_raw\n    font_handle = pdfium.raw.FPDFText_LoadFont(\n                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nctypes.ArgumentError: argument 2: TypeError: expected LP_c_ubyte instance instead of bytes\n"
+    }
+  ],
+  "summary": {
+    "all_capabilities": {
+      "can_insert_standard_font_text": false,
+      "can_insert_truetype_font_text": false,
+      "can_insert_japanese_text": false,
+      "can_do_full_workflow": false
+    },
+    "pymupdf_replacement_viable": false
+  }
+}
