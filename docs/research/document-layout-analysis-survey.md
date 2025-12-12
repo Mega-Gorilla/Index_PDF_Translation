@@ -1,7 +1,8 @@
 # 文書レイアウト解析技術調査レポート
 
 **作成日**: 2025-12-05
-**関連Issue**: #31 ブロック分類アルゴリズム改善
+**最終更新**: 2025-12-12
+**関連Issue**: #31, #40 ブロック分類アルゴリズム改善
 **目的**: PDF文書のレイアウト解析における最新技術の包括的調査
 
 ---
@@ -12,10 +13,13 @@
 2. [オープンソースツール](#2-オープンソースツール)
    - [2.1 PyMuPDF4LLM + Layout](#21-pymupdf4llm--layout)
    - [2.2 DocLayout-YOLO](#22-doclayout-yolo)
-   - [2.3 DeepSeek-OCR](#23-deepseek-ocr)
-   - [2.4 GROBID](#24-grobid)
-   - [2.5 Unstructured](#25-unstructured)
-   - [2.6 Marker](#26-marker)
+   - [2.3 YOLO-DocLayNet (YOLOv11/v12)](#23-yolo-doclaynet-yolov11v12) 🆕
+   - [2.4 PP-DocLayout](#24-pp-doclayout) 🆕
+   - [2.5 RT-DETR](#25-rt-detr) 🆕
+   - [2.6 DeepSeek-OCR](#26-deepseek-ocr)
+   - [2.7 GROBID](#27-grobid)
+   - [2.8 Unstructured](#28-unstructured)
+   - [2.9 Marker](#29-marker)
 3. [学術研究](#3-学術研究)
    - [3.1 LayoutLMファミリー](#31-layoutlmファミリー)
    - [3.2 LiLT](#32-lilt)
@@ -23,8 +27,9 @@
    - [4.1 PubLayNet](#41-publaynet)
    - [4.2 DocLayNet](#42-doclaynet)
 5. [ツール比較](#5-ツール比較)
-6. [本プロジェクトへの適用考察](#6-本プロジェクトへの適用考察)
-7. [参考文献](#7-参考文献)
+6. [推奨ライブラリ](#6-推奨ライブラリ) 🆕
+7. [本プロジェクトへの適用考察](#7-本プロジェクトへの適用考察)
+8. [参考文献](#8-参考文献)
 
 ---
 
@@ -113,6 +118,19 @@ llama_docs = llama_reader.load_data("input.pdf")
 - 複雑なレイアウトの精度は文書タイプに依存
 - 詳細なベンチマーク結果は公開されていない
 
+#### ⚠️ ライセンス警告（2025-12-12追記）
+
+**重要**: `pymupdf-layout`パッケージは **PolyForm Noncommercial 1.0.0** ライセンスです。
+
+| パッケージ | ライセンス | 商用利用 |
+|-----------|-----------|---------|
+| PyMuPDF | AGPL-3.0 / 商用デュアル | ✅ AGPL遵守で可 |
+| pymupdf4llm | AGPL-3.0 / 商用デュアル | ✅ AGPL遵守で可 |
+| **pymupdf-layout** | **PolyForm Noncommercial 1.0.0** | ❌ 商用ライセンス必要 |
+
+`ParsedDocument`の生成や`to_json()`の利用には`pymupdf-layout`が必要なため、商用利用には注意が必要。
+詳細: [docs/research/data-extraction-comparison.md](data-extraction-comparison.md)
+
 #### 参考リンク
 
 - [PyMuPDF4LLM Documentation](https://pymupdf.readthedocs.io/en/latest/pymupdf4llm/)
@@ -128,10 +146,12 @@ DocLayout-YOLOは、OpenDataLabが開発した文書レイアウト解析に特�
 
 | 項目 | 内容 |
 |------|------|
-| **リリース** | 2024年 |
-| **ライセンス** | Apache-2.0 |
+| **リリース** | 2024年10月 |
+| **ライセンス** | **AGPL-3.0** |
 | **GPU要件** | 推奨（CPUでも動作可能） |
 | **アプローチ** | YOLOv10 + Global-to-Local Controllability |
+
+> **Note**: 2025-12-12ライセンス確認済み。ultralyticsベースのため AGPL-3.0。
 
 #### アーキテクチャ
 
@@ -219,7 +239,180 @@ DocStructBenchモデルでの対応クラス（文書タイプにより異なる
 
 ---
 
-### 2.3 DeepSeek-OCR
+### 2.3 YOLO-DocLayNet (YOLOv11/v12) 🆕
+
+#### 概要
+
+YOLO-DocLayNetは、DocLayNetデータセットで学習されたUltralytics YOLOモデル群。YOLOv8からYOLOv12まで、各バージョンの事前学習済みモデルを提供。
+
+| 項目 | 内容 |
+|------|------|
+| **最新リリース** | YOLOv12 (2025年3月), YOLOv11 (2024年10月) |
+| **ライセンス** | **AGPL-3.0** |
+| **GPU要件** | 推奨（CPUでも動作可能） |
+| **アプローチ** | Ultralytics YOLO + DocLayNet学習 |
+
+#### ベンチマーク結果（DocLayNet mAP50-95）
+
+| モデル | Nano | Small | Medium | Large | Extra |
+|--------|------|-------|--------|-------|-------|
+| **YOLOv12** | 0.756 | 0.782 | 0.788 | 0.792 | 0.794 |
+| **YOLOv11** | 0.735 | 0.767 | 0.781 | 0.793 | 0.794 |
+| YOLOv10 | 0.730 | 0.762 | 0.780 | 0.790 | 0.793 |
+| YOLOv9 | 0.737 | 0.766 | 0.775 | 0.782 | — |
+| YOLOv8 | 0.718 | 0.752 | 0.775 | 0.783 | 0.787 |
+
+**特徴**:
+- YOLOv12のNano〜Mediumモデルで最大2.1%のmAP向上（対YOLOv11）
+- Large/Extraモデルは同等性能
+- Area Attention Mechanism（YOLOv12）で計算効率向上
+
+#### 検出クラス（11種類）
+
+DocLayNetベース:
+- Caption, Footnote, Formula, List-item
+- Page-footer, Page-header, Picture
+- Section-header, Table, Text, Title
+
+#### インストール・使用例
+
+```python
+from ultralytics import YOLO
+
+# モデル読み込み（HuggingFaceから自動ダウンロード）
+model = YOLO("yolov11x-doclaynet.pt")
+
+# 推論
+results = model.predict("document.png")
+
+# 結果処理
+for result in results:
+    for box in result.boxes:
+        print(f"Class: {box.cls}, Conf: {box.conf}, BBox: {box.xyxy}")
+```
+
+#### 参考リンク
+
+- [GitHub Repository](https://github.com/ppaanngggg/yolo-doclaynet)
+- [YOLOv12 Models (HuggingFace)](https://huggingface.co/DILHTWD)
+- [YOLOv11 Article](https://ppaanngggg.medium.com/yolov11-a-new-breakthrough-in-document-layout-analysis-a0a292d9483e)
+
+---
+
+### 2.4 PP-DocLayout 🆕
+
+#### 概要
+
+PP-DocLayoutは、PaddlePaddle（Baidu）が開発したRT-DETRベースの文書レイアウト検出モデル。23種類の詳細なレイアウトカテゴリを検出可能。
+
+| 項目 | 内容 |
+|------|------|
+| **リリース** | 2025年3月7日 (PaddleOCR v2.10) |
+| **ライセンス** | **Apache 2.0** ✅ |
+| **GPU要件** | 推奨（CPUでも動作可能） |
+| **アプローチ** | RT-DETR (Real-Time DEtection TRansformer) |
+
+#### ベンチマーク結果
+
+| モデル | mAP@0.5 | 推論速度 (T4 GPU) | 推論速度 (CPU) |
+|--------|---------|------------------|----------------|
+| **PP-DocLayout-L** | **90.4%** | 13.4 ms/page | - |
+| PP-DocLayout-M | 75.2% | 12.7 ms/page | - |
+| PP-DocLayout-S | - | 8.1 ms/page | 14.5 ms/page |
+
+#### 検出クラス（23種類）
+
+DocLayout-YOLOの10種類より詳細な分類:
+
+| カテゴリ | 要素 |
+|---------|------|
+| **見出し** | document title, paragraph title, section header |
+| **本文** | text, abstract, aside text |
+| **ナビゲーション** | table of contents, page number, header, footer |
+| **参照** | references, footnotes |
+| **図表** | image, figure, figure title, figure caption |
+| **表** | table, table caption |
+| **数式** | formula, formula number, algorithm |
+| **その他** | seal, header image, footer image |
+
+#### インストール・使用例
+
+```bash
+# PaddleXインストール
+pip install paddlex
+
+# 推論
+paddlex --pipeline layout_detection \
+  --input document.pdf \
+  --device gpu:0
+```
+
+```python
+from paddlex import create_pipeline
+
+pipeline = create_pipeline(pipeline="layout_detection")
+output = pipeline.predict("document.pdf")
+
+for res in output:
+    res.print()  # 結果表示
+    res.save_to_img("./output/")  # 可視化保存
+```
+
+#### 参考リンク
+
+- [HuggingFace Models](https://huggingface.co/PaddlePaddle/PP-DocLayout-L)
+- [PaddleX GitHub](https://github.com/PaddlePaddle/PaddleX)
+- [論文 (arXiv)](https://arxiv.org/html/2503.17213v1)
+
+---
+
+### 2.5 RT-DETR 🆕
+
+#### 概要
+
+RT-DETR（Real-Time DEtection TRansformer）は、CVPR 2024で発表された高速物体検出モデル。「DETRs Beat YOLOs on Real-time Object Detection」として注目を集めた。
+
+| 項目 | 内容 |
+|------|------|
+| **発表** | CVPR 2024 |
+| **ライセンス** | **Apache 2.0** ✅ |
+| **GPU要件** | 推奨 |
+| **アプローチ** | DETR + 高効率化 |
+
+#### バージョン履歴
+
+| バージョン | リリース | 特徴 |
+|-----------|---------|------|
+| RT-DETRv4 | 2025年11月 | Vision Foundation Models統合 |
+| RT-DETRv2 | 2024年 | 改善版、Doclingで採用 |
+| RT-DETR | 2024年 | 初版 (CVPR 2024) |
+
+#### 文書レイアウト解析での性能（Docling）
+
+Doclingプロジェクトの"heron-101"モデル:
+
+| 項目 | 値 |
+|------|-----|
+| ベース | RT-DETRv2 + ResNet101 |
+| DocLayNet mAP | **78%** |
+| 推論速度 | 28 ms/image (A100) |
+| 改善 | ベースラインより20.6%〜23.9% mAP向上 |
+
+#### 特徴
+
+- **リアルタイム性能**: YOLO級の速度をTransformerで実現
+- **高精度**: COCO val2017でYOLOを上回る精度
+- **柔軟なバックボーン**: ResNet-50/101、HGNetV2対応
+
+#### 参考リンク
+
+- [GitHub Repository](https://github.com/lyuwenyu/RT-DETR)
+- [CVPR 2024 Paper](https://openaccess.thecvf.com/content/CVPR2024/papers/Zhao_DETRs_Beat_YOLOs_on_Real-time_Object_Detection_CVPR_2024_paper.pdf)
+- [Docling Layout Models (arXiv)](https://arxiv.org/html/2509.11720)
+
+---
+
+### 2.6 DeepSeek-OCR
 
 #### 概要
 
@@ -395,7 +588,7 @@ outputs = model.generate(**inputs)
 
 ---
 
-### 2.4 GROBID
+### 2.7 GROBID
 
 #### 概要
 
@@ -536,7 +729,7 @@ client.process("processFulltextDocument", "./pdfs/", output="./outputs/")
 
 ---
 
-### 2.5 Unstructured
+### 2.8 Unstructured
 
 #### 概要
 
@@ -641,7 +834,7 @@ elements = partition_pdf(
 
 ---
 
-### 2.6 Marker
+### 2.9 Marker
 
 #### 概要
 
@@ -931,41 +1124,132 @@ PubMed Centralの100万以上のPDF論文から自動生成された大規模デ
 
 ## 5. ツール比較
 
-### 総合比較表
+### 総合比較表（2025-12-12更新）
 
-| ツール | ライセンス | AGPL互換 | GPU要件 | 精度 | 速度 | 統合容易性 | 学術論文特化 |
-|--------|-----------|---------|---------|------|------|-----------|-------------|
-| **PyMuPDF4LLM** | AGPL-3.0 | ✅ | 不要 | 中〜高 | 高速 | ★★★★★ | ○ |
-| **DocLayout-YOLO** | Apache-2.0 | ✅ | 推奨 | 高 | 高速 | ★★★☆☆ | ○ |
-| **DeepSeek-OCR** | MIT | ✅ | 必須 | 最高 | 高速 | ★★☆☆☆ | △ |
-| **GROBID** | Apache-2.0 | ✅ | オプション | 高 | 中 | ★★★☆☆ | ★★★★★ |
-| **Unstructured** | Apache-2.0 | ✅ | オプション | 中〜高 | 中 | ★★★★☆ | ○ |
-| **Marker** | GPL-3.0 | ✅ | 推奨 | 高 | 高速 | ★★★☆☆ | ○ |
+| ツール | ライセンス | AGPL互換 | GPU要件 | 精度 | 速度 | 統合容易性 | カテゴリ数 |
+|--------|-----------|---------|---------|------|------|-----------|-----------|
+| **PP-DocLayout** 🆕 | Apache-2.0 | ✅ | 推奨 | 最高 (90.4%) | 高速 | ★★★☆☆ | **23** |
+| **YOLO-DocLayNet v12** 🆕 | AGPL-3.0 | ✅ | 推奨 | 高 (79.4%) | 高速 | ★★★★☆ | 11 |
+| **DocLayout-YOLO** | AGPL-3.0 | ✅ | 推奨 | 高 (79.7%) | 高速 | ★★★☆☆ | 10 |
+| **RT-DETR (Docling)** 🆕 | Apache-2.0 | ✅ | 推奨 | 高 (78%) | 高速 | ★★★☆☆ | 11 |
+| PyMuPDF4LLM | AGPL-3.0 | ✅ | 不要 | 中〜高 | 高速 | ★★★★★ | - |
+| DeepSeek-OCR | MIT | ✅ | 必須 | 最高 | 高速 | ★★☆☆☆ | - |
+| GROBID | Apache-2.0 | ✅ | オプション | 高 | 中 | ★★★☆☆ | - |
+| Unstructured | Apache-2.0 | ✅ | オプション | 中〜高 | 中 | ★★★★☆ | - |
+| Marker | GPL-3.0 | ✅ | 推奨 | 高 | 高速 | ★★★☆☆ | - |
 
-### ユースケース別推奨
+### ユースケース別推奨（2025-12-12更新）
 
 | ユースケース | 推奨ツール | 理由 |
 |-------------|-----------|------|
-| 軽量・高速処理 | PyMuPDF4LLM | GPU不要、既存PyMuPDF統合 |
-| 最高精度（GPU有） | DeepSeek-OCR | 97%精度、省トークン |
-| 学術論文特化 | GROBID | 参考文献、メタデータ抽出に最適 |
+| **詳細レイアウト検出** 🆕 | PP-DocLayout | 23カテゴリ、最高精度、Apache-2.0 |
+| **AGPL互換レイアウト検出** 🆕 | YOLO-DocLayNet | 本プロジェクト同一ライセンス、高精度 |
+| リアルタイム検出 | DocLayout-YOLO | G2Lモジュール、文書特化最適化 |
+| 軽量・高速処理 | PyMuPDF4LLM | GPU不要、既存PyMuPDF統合（⚠️ライセンス注意） |
+| 最高精度OCR | DeepSeek-OCR | 97%精度、省トークン |
+| 学術論文特化 | GROBID | 参考文献、メタデータ抽出 |
 | 汎用文書処理 | Unstructured | 多フォーマット対応 |
 | Markdown出力 | Marker | 高品質Markdown生成 |
-| リアルタイム検出 | DocLayout-YOLO | YOLOベースの高速推論 |
 
-### ライセンス互換性
+### ライセンス互換性（2025-12-12確認）
 
 | ライセンス | AGPL-3.0互換 | 商用利用 | 該当ツール |
 |-----------|-------------|---------|-----------|
-| AGPL-3.0 | ✅ 同一 | ✅ | PyMuPDF4LLM |
-| Apache-2.0 | ✅ 互換 | ✅ | GROBID, Unstructured, DocLayout-YOLO |
+| AGPL-3.0 | ✅ 同一 | ✅ | PyMuPDF4LLM, **DocLayout-YOLO**, **YOLO-DocLayNet** |
+| Apache-2.0 | ✅ 互換 | ✅ | GROBID, Unstructured, **PP-DocLayout**, **RT-DETR** |
 | MIT | ✅ 互換 | ✅ | LiLT, DeepSeek-OCR |
 | GPL-3.0 | ✅ 互換 | ✅ | Marker (コード) |
+| PolyForm Noncommercial | ⚠️ 非商用のみ | ❌ | **pymupdf-layout** |
 | CC BY-NC-SA 4.0 | ⚠️ 非商用のみ | ❌ | LayoutLMv3 (モデル) |
 
 ---
 
-## 6. 本プロジェクトへの適用考察
+## 6. 推奨ライブラリ 🆕
+
+### Index PDF Translation向け推奨
+
+本プロジェクト（AGPL-3.0ライセンス）のブロック分類改善に適したライブラリを、調査結果に基づき推奨する。
+
+### 推奨順位
+
+| 順位 | ライブラリ | ライセンス | 推奨理由 |
+|------|-----------|-----------|---------|
+| **1** | **PP-DocLayout** | Apache 2.0 | 23カテゴリの詳細分類、最高精度(90.4%)、最新(2025/03) |
+| **2** | **YOLO-DocLayNet (v11/v12)** | AGPL-3.0 | 本プロジェクト同一ライセンス、既存評価データあり |
+| **3** | **DocLayout-YOLO** | AGPL-3.0 | 文書特化最適化、既存評価データあり |
+
+### 推奨理由の詳細
+
+#### PP-DocLayout（最推奨）
+
+**メリット:**
+- **23種類のカテゴリ**: document title, paragraph title, section header等を明確に区別
+- **最高精度**: mAP@0.5 = 90.4%（DocLayout-YOLOより高い）
+- **Apache 2.0ライセンス**: 最も柔軟なライセンス
+- **最新リリース**: 2025年3月、活発なメンテナンス
+- **CPU対応**: PP-DocLayout-Sは14.5ms/page (CPU)
+
+**デメリット:**
+- PaddlePaddle依存（追加フレームワーク）
+- 本プロジェクトでの評価データなし（要追加評価）
+
+#### YOLO-DocLayNet（次点）
+
+**メリット:**
+- **AGPL-3.0**: 本プロジェクトと同一ライセンス、互換性確実
+- **既存評価データあり**: `tests/evaluation/outputs/DocLayout_YOLO/`
+- **Ultralytics統合**: PyTorchベース、広いエコシステム
+- **最新YOLOv12**: Nano〜Mediumで最大2.1%精度向上
+
+**デメリット:**
+- 11カテゴリ（PP-DocLayoutより少ない）
+- PyTorch依存（パッケージサイズ増大）
+
+#### DocLayout-YOLO
+
+**メリット:**
+- **文書特化最適化**: G2Lモジュール
+- **既存評価データあり**
+- **AGPL-3.0**: 本プロジェクトと同一ライセンス
+
+**デメリット:**
+- 10カテゴリ（他より少ない）
+- YOLOv10ベース（v12より古い）
+
+### 実装方針：PyMuPDF + レイアウト検出ハイブリッド
+
+推奨ライブラリとPyMuPDFを組み合わせたハイブリッド方式:
+
+```
+[PDFファイル]
+     │
+     ├──→ [PyMuPDF] ──→ テキスト + bbox座標
+     │
+     └──→ [PP-DocLayout/YOLO] ──→ レイアウト分類 + bbox座標
+                │
+                └──→ [マッチング] ──→ 各テキストブロックにカテゴリ付与
+                         │
+                         └──→ [フィルタリング] ──→ 翻訳対象の選別
+```
+
+**処理フロー:**
+1. PyMuPDFでテキストとbbox座標を抽出
+2. レイアウト検出モデルでカテゴリ付きbboxを取得
+3. 両者のbboxをマッチング（IoU計算）
+4. テキストブロックにカテゴリを付与
+5. カテゴリに基づいて翻訳対象をフィルタリング
+
+### 次のステップ
+
+1. [ ] PP-DocLayoutの評価実施
+2. [ ] YOLO-DocLayNet v12の評価実施（既存v10/v11データとの比較）
+3. [ ] ハイブリッド方式のプロトタイプ実装
+4. [ ] 精度・パフォーマンス比較
+5. [ ] 実装計画の策定
+
+---
+
+## 7. 本プロジェクトへの適用考察
 
 ### 現状の課題
 
@@ -1032,7 +1316,7 @@ PyMuPDF Layoutの結果を補完するルールベース処理:
 
 ---
 
-## 7. 参考文献
+## 8. 参考文献
 
 ### 学術論文
 
@@ -1049,11 +1333,25 @@ PyMuPDF Layoutの結果を補完するルールベース処理:
 #### OCR・Vision-Language
 - Wei, H., et al. (2025). "DeepSeek-OCR: Contexts Optical Compression." [arXiv:2510.18234](https://arxiv.org/abs/2510.18234)
 
+#### レイアウト検出（2025年追加）
+- Zhao, Y., et al. (2024). "DETRs Beat YOLOs on Real-time Object Detection." CVPR 2024. [Paper](https://openaccess.thecvf.com/content/CVPR2024/papers/Zhao_DETRs_Beat_YOLOs_on_Real-time_Object_Detection_CVPR_2024_paper.pdf)
+- "DocLayout-YOLO: Enhancing Document Layout Analysis through Diverse Synthetic Data and Global-to-Local Adaptive Perception." [arXiv:2410.12628](https://arxiv.org/abs/2410.12628)
+- "PP-DocLayout: A Unified Document Layout Detection Model to Accelerate Large-Scale Data Construction." [arXiv:2503.17213](https://arxiv.org/html/2503.17213v1)
+- "Advanced Layout Analysis Models for Docling." [arXiv:2509.11720](https://arxiv.org/html/2509.11720)
+
 ### オープンソースツール
 
+#### レイアウト検出（推奨）
+- [PP-DocLayout](https://huggingface.co/PaddlePaddle/PP-DocLayout-L) - Apache-2.0 🆕
+- [YOLO-DocLayNet](https://github.com/ppaanngggg/yolo-doclaynet) - AGPL-3.0 🆕
+- [DocLayout-YOLO](https://github.com/opendatalab/DocLayout-YOLO) - AGPL-3.0
+- [RT-DETR](https://github.com/lyuwenyu/RT-DETR) - Apache-2.0 🆕
+
+#### PDF処理
 - [PyMuPDF4LLM](https://pymupdf.readthedocs.io/en/latest/pymupdf4llm/) - AGPL-3.0
-- [PyMuPDF Layout](https://pymupdf.readthedocs.io/en/latest/pymupdf-layout/index.html) - AGPL-3.0
-- [DocLayout-YOLO](https://github.com/opendatalab/DocLayout-YOLO) - Apache-2.0
+- [PyMuPDF Layout](https://pymupdf.readthedocs.io/en/latest/pymupdf-layout/index.html) - ⚠️ PolyForm Noncommercial
+
+#### その他
 - [DeepSeek-OCR](https://github.com/deepseek-ai/DeepSeek-OCR) - MIT
 - [GROBID](https://github.com/kermitt2/grobid) - Apache-2.0
 - [Unstructured](https://github.com/Unstructured-IO/unstructured) - Apache-2.0
