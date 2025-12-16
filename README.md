@@ -1,6 +1,6 @@
 # Index PDF Translation
 
-> **ARCHIVED**: このリポジトリはアーカイブされました。本プロジェクトは [pypdfium2](https://github.com/ArtifexSoftware/pypdfium2) + [PP-DocLayout](https://github.com/PaddlePaddle/PaddleOCR) を用いた新しいアーキテクチャで再構築されます。現在の実装は参照用として保持されています。
+> **ARCHIVED**: このリポジトリはアーカイブされました。現在の実装は参照用として保持されています。
 
 [![Tests](https://github.com/Mega-Gorilla/Index_PDF_Translation/actions/workflows/test.yml/badge.svg)](https://github.com/Mega-Gorilla/Index_PDF_Translation/actions/workflows/test.yml)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
