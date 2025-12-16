@@ -1,8 +1,11 @@
 # Index PDF Translation
 
+> **ARCHIVED**: このリポジトリはアーカイブされました。本プロジェクトは [pypdfium2](https://github.com/ArtifexSoftware/pypdfium2) + [PP-DocLayout](https://github.com/PaddlePaddle/PaddleOCR) を用いた新しいアーキテクチャで再構築されます。現在の実装は参照用として保持されています。
+
 [![Tests](https://github.com/Mega-Gorilla/Index_PDF_Translation/actions/workflows/test.yml/badge.svg)](https://github.com/Mega-Gorilla/Index_PDF_Translation/actions/workflows/test.yml)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![Status: Archived](https://img.shields.io/badge/Status-Archived-red.svg)]()
 
 > **Note**: 本プロジェクトは、2024年5月31日までWebサービスとして提供されていた「Indqx PDF 翻訳」のソースコードです。**Webサーバー機能は削除済み**で、現在はローカルCLIツールとしてのみ動作します。
 
